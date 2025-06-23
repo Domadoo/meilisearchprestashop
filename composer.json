@@ -1,0 +1,24 @@
+
+{
+    "name": "prestashop/meilisearch_prestashop",
+    "license": "AFL-3.0",
+        "authors": [
+        {
+            "name": "Adam Doudeau",
+            "email": "adam.doudeau1@gmail.com"
+        },
+        {
+            "name": "Johan Vivien",
+            "email": "hotfirenet@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "PrestaShop\\Module\\MeiliSearch\\": "src/"
+        },
+        "config": {
+            "prepend-autoloader": false
+        },
+        "type": "prestashop-module"
+    }
+}

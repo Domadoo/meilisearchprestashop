@@ -1,0 +1,156 @@
+/**
+* 2007-2025 PrestaShop
+*
+* NOTICE OF LICENSE
+*
+* This source file is subject to the Academic Free License (AFL 3.0)
+* that is bundled with this package in the file LICENSE.txt.
+* It is also available through the world-wide-web at this URL:
+* http://opensource.org/licenses/afl-3.0.php
+* If you did not receive a copy of the license and are unable to
+* obtain it through the world-wide-web, please send an email
+* to license@prestashop.com so we can send you a copy immediately.
+*
+* DISCLAIMER
+*
+* Do not edit or add to this file if you wish to upgrade PrestaShop to newer
+* versions in the future. If you wish to customize PrestaShop for your
+* needs please refer to http://www.prestashop.com for more information.
+*
+*  @author    PrestaShop SA <contact@prestashop.com>
+*  @copyright 2007-2025 PrestaShop SA
+*  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
+*  International Registered Trademark & Property of PrestaShop SA
+*
+* Don't forget to prefix your containers with your own identifier
+* to avoid any conflicts with others containers.
+*/
+
+.msp-search-top {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.msp-title {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.msp-total {
+    font-size: 1rem;
+    color: #777;
+}
+
+.msp-product-grid {
+    display: flex;
+    justify-content: center;
+}
+
+.msp-product-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.msp-product-card {
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
+}
+
+.msp-product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.msp-product-image img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.msp-product-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.msp-product-title {
+    font-size: 1.1rem;
+    margin: 0 0 0.5rem 0;
+    line-height: 1.3;
+}
+
+.msp-product-title a {
+    text-decoration: none;
+    color: #333;
+}
+
+.msp-product-price {
+    text-align: center;
+    font-weight: bold;
+    color: #1ebafa;
+    font-size: 1.2rem;
+}
+
+.msp-product-rating {
+    text-align: center;
+}
+
+/* Pagination */
+.msp-pagination-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.msp-pagination-info {
+    font-size: 14px;
+    color: #555;
+}
+
+.msp-pagination {
+    flex-shrink: 0;
+}
+
+.msp-pagination-list {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 0.4rem;
+}
+
+.msp-pagination-item a {
+    display: block;
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    color: #333;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.msp-pagination-item.active a {
+    background-color: #1ebafa;
+    color: white;
+    border-color: 1ebafa;
+}
+
+.msp-pagination-dots {
+    padding: 6px 10px;
+    color: #999;
+}

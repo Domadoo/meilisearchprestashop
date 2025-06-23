@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+	<name>meilisearch_prestashop</name>
+	<displayName><![CDATA[Meilisearch Prestashop]]></displayName>
+	<version><![CDATA[1.0.0]]></version>
+	<description><![CDATA[Prestashop module to replace the standard searchbar with Meilisearch]]></description>
+	<author><![CDATA[Doudeau Adam]]></author>
+	<tab><![CDATA[search_filter]]></tab>
+	<is_configurable>1</is_configurable>
+	<need_instance>1</need_instance>
+</module>
