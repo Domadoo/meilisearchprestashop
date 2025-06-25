@@ -1,28 +1,29 @@
 <?php
+
 /**
-* 2007-2025 PrestaShop
-*
-* NOTICE OF LICENSE
-*
-* This source file is subject to the Academic Free License (AFL 3.0)
-* that is bundled with this package in the file LICENSE.txt.
-* It is also available through the world-wide-web at this URL:
-* http://opensource.org/licenses/afl-3.0.php
-* If you did not receive a copy of the license and are unable to
-* obtain it through the world-wide-web, please send an email
-* to license@prestashop.com so we can send you a copy immediately.
-*
-* DISCLAIMER
-*
-* Do not edit or add to this file if you wish to upgrade PrestaShop to newer
-* versions in the future. If you wish to customize PrestaShop for your
-* needs please refer to http://www.prestashop.com for more information.
-*
-*  @author    PrestaShop SA <contact@prestashop.com>
-*  @copyright 2007-2025 PrestaShop SA
-*  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
-*  International Registered Trademark & Property of PrestaShop SA
-*/
+ * 2007-2025 PrestaShop
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License (AFL 3.0)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * http://opensource.org/licenses/afl-3.0.php
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * DISCLAIMER
+ *
+ * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
+ * versions in the future. If you wish to customize PrestaShop for your
+ * needs please refer to http://www.prestashop.com for more information.
+ *
+ *  @author    PrestaShop SA <contact@prestashop.com>
+ *  @copyright 2007-2025 PrestaShop SA
+ *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
+ *  International Registered Trademark & Property of PrestaShop SA
+ */
 
 declare(strict_types=1);
 
@@ -109,7 +110,7 @@ class Meilisearch_prestashop extends Module
 
     public function callInstallTab()
     {
-        if(!is_int(Tab::getIdFromClassName('AdminMeiliSearch'))) {
+        if (!is_int(Tab::getIdFromClassName('AdminMeiliSearch'))) {
             $this->installTab('AdminMeiliSearch', 'MeiliSearch', 'CONFIGURE');
             $this->installTab('MeiliSearchConfigurationController', 'Configuration', 'AdminMeiliSearch', 'admin_meilisearch_index');
         }
@@ -143,9 +144,9 @@ class Meilisearch_prestashop extends Module
 
         $this->context->smarty->assign('module_dir', $this->_path);
 
-        $output = $this->context->smarty->fetch($this->local_path.'views/templates/admin/configure.tpl');
+        $output = $this->context->smarty->fetch($this->local_path . 'views/templates/admin/configure.tpl');
 
-        return $output.$this->renderForm();
+        return $output . $this->renderForm();
     }
 
     /**
@@ -164,7 +165,7 @@ class Meilisearch_prestashop extends Module
         $helper->identifier = $this->identifier;
         $helper->submit_action = 'submitMeilisearch_prestashopModule';
         $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false)
-            .'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name;
+            . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
         $helper->token = Tools::getAdminTokenLite('AdminModules');
 
         $helper->tpl_vars = array(
@@ -184,8 +185,8 @@ class Meilisearch_prestashop extends Module
         return array(
             'form' => array(
                 'legend' => array(
-                'title' => $this->l('Settings'),
-                'icon' => 'icon-cogs',
+                    'title' => $this->l('Settings'),
+                    'icon' => 'icon-cogs',
                 ),
                 'input' => array(
                     array(
@@ -265,13 +266,13 @@ class Meilisearch_prestashop extends Module
     }
 
     /**
-    * Add the CSS & JavaScript files you want to be loaded in the BO.
-    */
+     * Add the CSS & JavaScript files you want to be loaded in the BO.
+     */
     public function hookDisplayBackOfficeHeader() // TODO
     {
         if (Tools::getValue('configure') == $this->name) {
-            $this->context->controller->addJS($this->_path.'views/js/back.js');
-            $this->context->controller->addCSS($this->_path.'views/css/back.css');
+            $this->context->controller->addJS($this->_path . 'views/js/back.js');
+            $this->context->controller->addCSS($this->_path . 'views/css/back.css');
         }
     }
 
@@ -280,17 +281,17 @@ class Meilisearch_prestashop extends Module
      */
     public function hookHeader() // TODO
     {
-        $this->context->controller->addJS($this->_path.'/views/js/front.js');
-        $this->context->controller->addCSS($this->_path.'/views/css/front.css');
+        $this->context->controller->addJS($this->_path . '/views/js/front.js');
+        $this->context->controller->addCSS($this->_path . '/views/css/front.css');
     }
 
     public function hookActionProductSearchAfter($params)
-    {    
+    {
         $controllerType = Dispatcher::getInstance()->getController();
         if ($controllerType === 'meilisearch') {
             return;
         }
-    
+
         $query = Tools::getValue('s');
         if (!$query) {
             return;
@@ -301,7 +302,7 @@ class Meilisearch_prestashop extends Module
             'meilisearch',
             ['s' => $query]
         );
-    
+
         Tools::redirect($link);
     }
 
@@ -311,12 +312,13 @@ class Meilisearch_prestashop extends Module
     //         return new MeiliSearchProductSearchProvider();
     //     }
     // }
-    
 
 
 
-    public function requestCurl($url, $payload = null, $request = false){
-        $authorization = 'Authorization: Bearer '.Configuration::get('MEILISEARCH_PRESTASHOP_KEY');
+
+    public function requestCurl($url, $payload = null, $request = false)
+    {
+        $authorization = 'Authorization: Bearer ' . Configuration::get('MEILISEARCH_PRESTASHOP_KEY');
         $options = array(
             CURLOPT_RETURNTRANSFER => true,     // return web page
             CURLOPT_HEADER         => false,    // don't return headers
@@ -330,163 +332,103 @@ class Meilisearch_prestashop extends Module
             CURLOPT_SSL_VERIFYPEER => false    // Disabled SSL Cert checks
         );
         $header = ['Content-Type: application/json', $authorization];
-        $ch      = curl_init( $url);
+        $ch      = curl_init($url);
 
-        if($payload != null && $payload != []){
+        if ($payload != null && $payload != []) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
         }
-        
-        if($request != false){
+
+        if ($request != false) {
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $request);
         }
         curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-        curl_setopt_array( $ch, $options );
+        curl_setopt_array($ch, $options);
 
-        $content = curl_exec( $ch );
-        $err     = curl_errno( $ch );
-        $errmsg  = curl_error( $ch );
-        $header  = curl_getinfo( $ch );
-        curl_close( $ch );
-        
+        $content = curl_exec($ch);
+        $err     = curl_errno($ch);
+        $errmsg  = curl_error($ch);
+        $header  = curl_getinfo($ch);
+        curl_close($ch);
+
         $header['errno']   = $err;
         $header['errmsg']  = $errmsg;
         $header['content'] = $content;
-        
+
         try {
             return json_decode($content);
         } catch (\Throwable $th) {
             //throw $th;
         }
-        
     }
 
-    public function getSearchProductsFacets(array $products, array $activeFilters): FacetCollection
+    public function getSearchProductsFacets(array $products, array $activeFilters)
     {
-        // Initialisation des données nécessaires
+        $activeFiltersQueryString = implode('|', $activeFilters);
+        $collection = new FacetCollection();
+
+        // Compteurs
+        $manufacturerCount = [];
         $availabilityCount = [
             'available' => 0,
             'stock' => 0,
         ];
         $technologyCount = [];    // feature 7
         $compatibilityCount = []; // feature 31
+        $typeCount = [];          // feature 6
+        $functionCount = [];      // feature 12
 
-        
-
-
-        // Parcours unique des produits
         foreach ($products as $product) {
+            // Categories
+            $catId = $product['id_category_default'];
+            $categoriesCount[$catId] = ($categoriesCount[$catId] ?? 0) + 1;
 
-            // Disponibilité
-            $available = (int) $product['available_for_order'];
+            // Manufacturer
+            $manuId = $product['id_manufacturer'];
+            $manufacturerCount[$manuId] = ($manufacturerCount[$manuId] ?? 0) + 1;
+
+            // Availability
+            $available = (int)$product['available_for_order'];
             if ($available === 1) {
                 $availabilityCount['available']++;
-                if ((int)$product['quantity'] > 0) {
+                if (!empty($product['quantity']) && $product['quantity'] > 0) {
                     $availabilityCount['stock']++;
                 }
             }
 
-            // Fabricant
-            $manufacturerId = (int) $product['id_manufacturer'];
-            if ($manufacturerId > 0) {
-                $manufacturersCount[$manufacturerId] = isset($manufacturersCount[$manufacturerId]) ? $manufacturersCount[$manufacturerId] + 1 : 1;
-            }
-
-            // Compatibilité et Technologie
+            // Features (feature_values as ["7-36", "31-43", ...])
             if (!empty($product['feature_values']) && is_array($product['feature_values'])) {
                 foreach ($product['feature_values'] as $fv) {
-                    if (strpos($fv, '7-') === 0) {
+                    if (strpos($fv, '6-') === 0) {
+                        $id = (int)explode('-', $fv)[1];
+                        $typeCount[$id] = ($typeCount[$id] ?? 0) + 1;
+                    } elseif (strpos($fv, '7-') === 0) {
                         $id = (int)explode('-', $fv)[1];
                         $technologyCount[$id] = ($technologyCount[$id] ?? 0) + 1;
-                    }
-            
-                    if (strpos($fv, '31-') === 0) {
+                    } elseif (strpos($fv, '12-') === 0) {
+                        $id = (int)explode('-', $fv)[1];
+                        $functionCount[$id] = ($functionCount[$id] ?? 0) + 1;
+                    } elseif (strpos($fv, '31-') === 0) {
                         $id = (int)explode('-', $fv)[1];
                         $compatibilityCount[$id] = ($compatibilityCount[$id] ?? 0) + 1;
                     }
                 }
-            }            
-            
+            }    
         }
 
-        $activeFiltersQueryString = implode('|', $activeFilters);
-        $collection = new FacetCollection();
+        // ------------- Création des facettes -------------
 
-        /**
-         * --- FACETTE DISPONIBILITÉ ---
-         */
-        $facetAvailability = new Facet();
-        $facetAvailability->setLabel($this->l('Disponibilité'))
-            ->setType('availability')
-            ->setDisplayed(true)
-            ->setWidgetType('checkbox')
-            ->setMultipleSelectionAllowed(true);
-    
-        if ($availabilityCount['available'] > 0) {
-            $filterKey = "avail-available";
-
-            $currentFilters = $activeFilters;
-            if (in_array($filterKey, $currentFilters)) {
-                $nextFilters = array_diff($currentFilters, [$filterKey]);
-            } else {
-                $nextFilters = $currentFilters;
-                $nextFilters[] = $filterKey;
-            }
-            $encodedFacetsUrl = implode('|', $nextFilters);
-    
-            $filter = new Filter();
-            $filter->setLabel($this->l('Disponible'))
-                ->setDisplayed(true)
-                ->setActive(in_array($filterKey, $activeFilters))
-                ->setType('availability')
-                ->setValue('available')
-                ->setNextEncodedFacets($encodedFacetsUrl)
-                ->setMagnitude($availabilityCount['available']);
-    
-            $facetAvailability->addFilter($filter);
-        }
-    
-        if ($availabilityCount['stock'] > 0) {
-            $filterKey = "avail-stock";
-
-            $currentFilters = $activeFilters;
-            if (in_array($filterKey, $currentFilters)) {
-                $nextFilters = array_diff($currentFilters, [$filterKey]);
-            } else {
-                $nextFilters = $currentFilters;
-                $nextFilters[] = $filterKey;
-            }
-            $encodedFacetsUrl = implode('|', $nextFilters);
-    
-            $filter = new Filter();
-            $filter->setLabel($this->l('En stock'))
-                ->setDisplayed(true)
-                ->setActive(in_array($filterKey, $activeFilters))
-                ->setType('availability')
-                ->setValue('stock')
-                ->setNextEncodedFacets($encodedFacetsUrl)
-                ->setMagnitude($availabilityCount['stock']);
-    
-            $facetAvailability->addFilter($filter);
-        }
-    
-        if (!empty($facetAvailability->getFilters())) {
-            $collection->addFacet($facetAvailability);
-        }
-
-        /**
-         * --- FACETTE FABRICANTS ---
-         */
-        if (!empty($manufacturersCount)) {
-            $facetManufacturer = new Facet();
-            $facetManufacturer->setLabel($this->l('Brand'))
+        // Facette fabricants
+        if ($manufacturerCount) {
+            $facet = new Facet();
+            $facet->setLabel($this->l('Manufacturers'))
                 ->setType('manufacturer')
                 ->setDisplayed(true)
                 ->setWidgetType('checkbox')
                 ->setMultipleSelectionAllowed(true);
 
-            foreach ($manufacturersCount as $manufacturerId => $count) {
-                $filterKey = "manu-" . $manufacturerId;
-                
+            foreach ($manufacturerCount as $manuId => $count) {
+                $filterKey = "manu-$manuId";
+
                 $currentFilters = $activeFilters;
                 if (in_array($filterKey, $currentFilters)) {
                     $nextFilters = array_diff($currentFilters, [$filterKey]);
@@ -496,38 +438,51 @@ class Meilisearch_prestashop extends Module
                 }
                 $encodedFacetsUrl = implode('|', $nextFilters);
 
-                
-                $manufacturer = new Manufacturer($manufacturerId, $this->context->language->id);
+                $manufacturer = new Manufacturer($manuId, $this->context->language->id);
 
                 $filter = new Filter();
                 $filter->setLabel($manufacturer->name)
-                    ->setDisplayed(true)
-                    ->setActive(in_array($filterKey, $activeFilters))
+                    ->setValue($manuId)
                     ->setType('manufacturer')
-                    ->setValue($manufacturerId)
-                    ->setNextEncodedFacets($encodedFacetsUrl)
-                    ->setMagnitude($count);
-
-                $facetManufacturer->addFilter($filter);
+                    ->setMagnitude($count)
+                    ->setActive(in_array($filterKey, $activeFilters))
+                    ->setNextEncodedFacets($encodedFacetsUrl);
+                $facet->addFilter($filter);
             }
-
-            $collection->addFacet($facetManufacturer);
+            $collection->addFacet($facet);
         }
 
-        /**
-         * --- FACETTE TECHNOLOGIE ---
-         */
-        if ($technologyCount) {
+        // Facette disponibilité — ici on ne gère que 'available' et 'stock'
+        if ($availabilityCount['available'] > 0) {
             $facet = new Facet();
-            $facet->setLabel($this->l('Technology'))
-                ->setType('technology')
+            $facet->setLabel($this->l('Availability'))
+                ->setType('availability')
                 ->setDisplayed(true)
                 ->setWidgetType('checkbox')
                 ->setMultipleSelectionAllowed(true);
-        
-            foreach ($technologyCount as $valueId => $count) {
-                $filterKey = "technology-$valueId";
-                
+
+            // "Available" filtre
+            $filterKey = 'avail-available';
+            $currentFilters = $activeFilters;
+            if (in_array($filterKey, $currentFilters)) {
+                $nextFilters = array_diff($currentFilters, [$filterKey]);
+            } else {
+                $nextFilters = $currentFilters;
+                $nextFilters[] = $filterKey;
+            }
+            $encodedFacetsUrl = implode('|', $nextFilters);
+            $filter = new Filter();
+            $filter->setLabel($this->l('Available'))
+                ->setValue('available')
+                ->setType('availability')
+                ->setMagnitude($availabilityCount['available'])
+                ->setActive(in_array($filterKey, $activeFilters))
+                ->setNextEncodedFacets($encodedFacetsUrl);
+            $facet->addFilter($filter);
+
+            // "In stock" filtre
+            if ($availabilityCount['stock'] > 0) {
+                $filterKey = 'avail-stock';
                 $currentFilters = $activeFilters;
                 if (in_array($filterKey, $currentFilters)) {
                     $nextFilters = array_diff($currentFilters, [$filterKey]);
@@ -536,66 +491,93 @@ class Meilisearch_prestashop extends Module
                     $nextFilters[] = $filterKey;
                 }
                 $encodedFacetsUrl = implode('|', $nextFilters);
-
-
-
-                $featureValue = new FeatureValue($valueId, $this->context->language->id);
-
                 $filter = new Filter();
-                $filter->setLabel($featureValue->value)
-                    ->setValue($valueId)
-                    ->setType('technology')
-                    ->setMagnitude($count)
+                $filter->setLabel($this->l('In stock'))
+                    ->setValue('stock')
+                    ->setType('availability')
+                    ->setMagnitude($availabilityCount['stock'])
                     ->setActive(in_array($filterKey, $activeFilters))
                     ->setNextEncodedFacets($encodedFacetsUrl);
                 $facet->addFilter($filter);
             }
-        
+
             $collection->addFacet($facet);
         }
 
-        /**
-         * --- FACETTE COMPATIBILITE ---
-         */
-        if ($compatibilityCount) {
-            $facet = new Facet();
-            $facet->setLabel($this->l('Compatibility'))
-                ->setType('compatibility')
-                ->setDisplayed(true)
-                ->setWidgetType('checkbox')
-                ->setMultipleSelectionAllowed(true);
-        
-            foreach ($compatibilityCount as $valueId => $count) {
-                $filterKey = "compatibility-$valueId";
+        // Facette features
 
-                $currentFilters = $activeFilters;
-                if (in_array($filterKey, $currentFilters)) {
-                    $nextFilters = array_diff($currentFilters, [$filterKey]);
-                } else {
-                    $nextFilters = $currentFilters;
-                    $nextFilters[] = $filterKey;
-                }
-                $encodedFacetsUrl = implode('|', $nextFilters);
-
-
-                $featureValue = new FeatureValue($valueId, $this->context->language->id);
-                
-                $filter = new Filter();
-                $filter->setLabel($featureValue->value)
-                    ->setValue($valueId)
-                    ->setType('compatibility')
-                    ->setMagnitude($count)
-                    ->setActive(in_array($filterKey, $activeFilters))
-                    ->setNextEncodedFacets($encodedFacetsUrl);
-                $facet->addFilter($filter);
-            }
-        
-            $collection->addFacet($facet);
+        $typeFacet = $this->createFeatureFacet('Type', 'type', $typeCount, $activeFilters, $activeFiltersQueryString);
+        if ($typeFacet) {
+            $collection->addFacet($typeFacet);
         }
-        
-        
+
+        $functionFacet = $this->createFeatureFacet('Function', 'function', $functionCount, $activeFilters, $activeFiltersQueryString);
+        if ($functionFacet) {
+            $collection->addFacet($functionFacet);
+        }
+
+        $technologyFacet = $this->createFeatureFacet('Technology', 'technology', $technologyCount, $activeFilters, $activeFiltersQueryString);
+        if ($technologyFacet) {
+            $collection->addFacet($technologyFacet);
+        }
+
+        $compatibilityFacet = $this->createFeatureFacet('Compatibility', 'compatibility', $compatibilityCount, $activeFilters, $activeFiltersQueryString);
+        if ($compatibilityFacet) {
+            $collection->addFacet($compatibilityFacet);
+        }
+
         return $collection;
     }
 
+    /**
+     * Méthode utilitaire pour créer une facette basée sur une feature (feature_values).
+     */
+    protected function createFeatureFacet(
+        string $label,
+        string $type,
+        array $featureCount,
+        array $activeFilters,
+        string $activeFiltersQueryString
+    ): ?Facet {
+        if (empty($featureCount)) {
+            return null;
+        }
 
+        $facet = new Facet();
+        $facet->setLabel($this->l($label))
+            ->setType($type)
+            ->setDisplayed(true)
+            ->setWidgetType('checkbox')
+            ->setMultipleSelectionAllowed(true);
+
+        foreach ($featureCount as $valueId => $count) {
+            $filterKey = "$type-$valueId";
+
+            $currentFilters = $activeFilters;
+            if (in_array($filterKey, $currentFilters)) {
+                $nextFilters = array_diff($currentFilters, [$filterKey]);
+            } else {
+                $nextFilters = $currentFilters;
+                $nextFilters[] = $filterKey;
+            }
+            $encodedFacetsUrl = implode('|', $nextFilters);
+
+            $featureValue = new FeatureValue($valueId, $this->context->language->id);
+            if (!Validate::isLoadedObject($featureValue)) {
+                continue;
+            }
+
+            $filter = new Filter();
+            $filter->setLabel($featureValue->value)
+                ->setValue($valueId)
+                ->setType($type)
+                ->setMagnitude($count)
+                ->setActive(in_array($filterKey, $activeFilters))
+                ->setNextEncodedFacets($encodedFacetsUrl);
+
+            $facet->addFilter($filter);
+        }
+
+        return $facet;
+    }
 }

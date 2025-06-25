@@ -1,4 +1,5 @@
 <?php
+
 namespace PrestaShop\Module\MeiliSearch\Search;
 
 use PrestaShop\PrestaShop\Core\Product\Search\FacetsRendererInterface;
@@ -46,11 +47,11 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $resultObject->setAvailableSortOrders($this->getAvailableSortOrders($query));
         $resultObject->setCurrentSortOrder($query->getSortOrder());
 
-        $activeFilters = explode('|',$query->getEncodedFacets());
+        $activeFilters = explode('|', $query->getEncodedFacets());
 
-        $categoryfilters = $this->module->getSearchProductsFacets($allProducts,$activeFilters);
+        $categoryfilters = $this->module->getSearchProductsFacets($allProducts, $activeFilters);
 
-        if ( sizeof($categoryfilters->getFacets())){
+        if (sizeof($categoryfilters->getFacets())) {
             $resultObject->setFacetCollection(
                 $categoryfilters //C'est ici qu'on assigne les filtres de notre fonction
             );
@@ -70,9 +71,9 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $page = $query->getPage();
         $perPage = $query->getResultsPerPage();
 
-        $sortOrder = $query->getSortOrder(); 
+        $sortOrder = $query->getSortOrder();
         $field = $sortOrder->getField();
-        
+
 
         $meiliUrl = Configuration::get('MEILISEARCH_PRESTASHOP_URL') . 'indexes/products/search';
 
@@ -85,7 +86,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
             'filter' => []
         ];
 
-        if($field != 'relevance'){
+        if ($field != 'relevance') {
             $direction = strtolower($sortOrder->getDirection()); // 'asc' ou 'desc'
             $meiliSort = ["{$field}:{$direction}"]; // Exemple: ['price:asc']
 
@@ -94,36 +95,55 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
         $filters = $query->getEncodedFacets();
         $filtersArray = explode('|', $filters);
+        $data['filter'] = [];
+
         foreach ($filtersArray as $filterString) {
             $filter = explode('-', $filterString);
-            
-            switch ($filter[0]) {
+
+            if (count($filter) !== 2) {
+                continue; // Format inattendu, on skip
+            }
+
+            list($facetType, $value) = $filter;
+
+            switch ($facetType) {
                 case 'manu':
-                    $data['filter'][] = 'id_manufacturer = ' . $filter[1];
+                    $data['filter'][] = 'id_manufacturer = ' . (int)$value;
                     break;
-                
+
                 case 'avail':
-                    if($filter[1] == 'stock'){
+                    if ($value === 'stock') {
                         $data['filter'][] = 'quantity >= 1';
+                    } elseif ($value === 'available') {
+                        $data['filter'][] = 'available_for_order = 1';
                     }
                     break;
 
                 case 'technology':
-                    $data['filter'][] = '"feature_values" = "7-' . (int)$filter[1] . '"';
+                    // Meilisearch : recherche exacte dans tableau string
+                    $data['filter'][] = '"feature_values" = "7-' . (int)$value . '"';
                     break;
-        
+
                 case 'compatibility':
-                    $data['filter'][] = '"feature_values" = "31-' . (int)$filter[1] . '"';
+                    $data['filter'][] = '"feature_values" = "31-' . (int)$value . '"';
                     break;
-            
+
+                case 'type':
+                    $data['filter'][] = '"feature_values" = "6-' . (int)$value . '"';
+                    break;
+
+                case 'function':
+                    $data['filter'][] = '"feature_values" = "12-' . (int)$value . '"';
+                    break;
+
                 default:
-                    # code...
+                    // Si jamais tu veux gérer d'autres filtres un jour
                     break;
             }
         }
 
         $response = $this->module->requestCurl($meiliUrl, json_encode($data));
-        
+
 
         // echo '<pre>';
         // print_r($response);
@@ -133,7 +153,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
 
         return [
-            'products' => $this->formatProducts($productsChunk[$page-1]),
+            'products' => $this->formatProducts($productsChunk[$page - 1]),
             'allProducts' => $this->formatProducts($response->hits),
             'total' => $response->estimatedTotalHits,
         ];
@@ -142,7 +162,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     private function formatProducts($products)
     {
         // Formatte les produits comme attendus par PrestaShop
-        return json_decode(json_encode($products),true);
+        return json_decode(json_encode($products), true);
     }
 
     public function getAvailableSortOrders(ProductSearchQuery $query)
@@ -160,5 +180,4 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                 ->setLabel($this->translator->trans('Price, high to low', [], 'Shop.Theme.Catalog')),
         ];
     }
-
 }
