@@ -1,143 +1,99 @@
-{extends file='page.tpl'}
+{**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * DISCLAIMER
+ *
+ * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
+ * versions in the future. If you wish to customize PrestaShop for your
+ * needs please refer to https://devdocs.prestashop.com/ for more information.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License 3.0 (AFL-3.0)
+ *}
+{extends file=$layout}
 
-{block name='page_content'}
-    {if $resultat->totalHits == 0}
-        <div class="msp-search-empty">
-            <p>{l s='No result found for:' mod='meilisearch_prestashop'} "<strong>{$resultat->query}</strong>"</p>
-        </div>
-    {else}
-        <div class="msp-search-top container">
-            <h2 class="msp-title">{l s='results for:' mod='meilisearch_prestashop'} "<strong>{$resultat->query}</strong>"
-            </h2>
-        </div>
-
-        <div class="msp-product-grid container">
-            <div class="msp-product-list">
-                {foreach from=$resultat->hits item=product}
-                    {assign var='productUrl' value="/index.php?id_product=`$product->id_product`&controller=product"}
-
-                    <div class="msp-product-card">
-                        <a href="{$productUrl}" class="msp-product-image">
-                            <img src="{$product->image_url}" alt="{$product->name|escape:'html'}" loading="lazy">
-                        </a>
-
-                        <div class="msp-product-info">
-                            <h3 class="msp-product-title">
-                                <a href="{$productUrl}">{$product->name|escape:'html'}</a>
-                            </h3>
-
-                            {if isset($product->rate) && $product->rate > 0}
-                                <div class="skeepers_product__stars msp-product-rating" data-product-id="{$product->id_product}">
-                                    <div class="stars">
-                                        {assign var=rating value=$product->rate}
-                                        {assign var=fullStars value=($rating|floor)}
-                                        {assign var=partial value=$rating - $fullStars}
-                                        {section name=i loop=5}
-                                            {if $smarty.section.i.index < $fullStars}
-                                                {assign var=width value=100}
-                                            {elseif $smarty.section.i.index == $fullStars && $partial > 0}
-                                                {assign var=width value=($partial*100)|intval}
-                                            {else}
-                                                {assign var=width value=0}
-                                            {/if}
-                                            <span class="stars__item"
-                                                style="background: linear-gradient(to right, rgba(250,137,0,1) 0%, rgba(250,137,0,1) {$width}%, rgba(250,137,0,0.3) {$width}%, rgba(250,137,0,0.3) 100%)">
-                                                ★
-                                            </span>
-                                        {/section}
-                                    </div>
-                                    <div class="stars__rating">
-                                        <span class="rate-aggregate">{$rating}</span>
-                                        <span class="rate-aggregate__separator">/</span>
-                                        <span class="rate-aggregate__max">5 - </span>
-                                        <span class="rate-total">{$product->rate_count|default:'—'}</span>
-                                        <span>avis</span>
-                                    </div>
-                                </div>
-                            {/if}
-
-                            <div class="msp-product-price">
-                                {$product->price|number_format:2:',':' '}&nbsp;€
-                            </div>
+{block name='head_microdata_special'}
+  {include file='_partials/microdata/product-list-jsonld.tpl' listing=$listing}
+{/block}
 
 
-                        </div>
-                    </div>
-                {/foreach}
-            </div>
-        </div>
-    
-        {assign var="currentPage" value=$resultat->page}
-        {assign var="hitsPerPage" value=$resultat->hitsPerPage}
-        {assign var="totalHits" value=$resultat->totalHits}
+{block name='content'}
+  {block name='product_facets'}
+    <div id="left-column" class="col-xs-12 col-sm-4 col-md-3">
+      <div id="search_filters_wrapper" class="hidden-sm-down">
+        {$listing.rendered_facets nofilter}
+      </div>
+    </div>
+  {/block}
 
-        {assign var="totalPages" value=$resultat->totalPages}
-        {assign var="url" value=$url}
-    
-        {assign var="startIndex" value=($currentPage - 1) * $hitsPerPage + 1}
-        {assign var="endIndex" value=$currentPage * $hitsPerPage}
-        {if $endIndex > $totalHits}
-            {assign var="endIndex" value=$totalHits}
+  <div id="content-wrapper" class="js-content-wrapper left-column col-xs-12 col-sm-8 col-md-9">
+
+    <section id="main">
+
+      {block name='product_list_header'}
+        <h1 id="js-product-list-header" class="h2">{$listing.label}</h1>
+      {/block}
+
+      {block name='subcategory_list'}
+        {if isset($subcategories) && $subcategories|@count > 0}
+          {include file='catalog/_partials/subcategories.tpl' subcategories=$subcategories}
         {/if}
-    
-        <div class="msp-pagination-wrapper">
-            <div class="msp-pagination-info">
-                Affichage {$startIndex} - {$endIndex} de {$totalHits} article(s)
+      {/block}
+
+      {hook h="displayHeaderCategory"}
+
+      <section id="products">
+        {if $listing.products|count}
+
+          {block name='product_list_top'}
+            {include file='catalog/_partials/products-top.tpl' listing=$listing}
+          {/block}
+
+
+          {block name='product_list_active_filters'}
+            <div class="hidden-sm-down">
+              {$listing.rendered_active_filters nofilter}
             </div>
-            {if $resultat->totalPages > 1}
-                <nav class="msp-pagination">
-                    <ul class="msp-pagination-list">
-                        {if $currentPage > 1}
-                            <li class="msp-pagination-item">
-                                <a href="{$url}&page={$currentPage-1}">‹ Précédent</a>
-                            </li>
-                        {/if}
-        
-                        <li class="msp-pagination-item{if $currentPage == 1} active{/if}">
-                            <a href="{$url}&page=1">1</a>
-                        </li>
-        
-                        {if $currentPage > 3}
-                            <li class="msp-pagination-item msp-pagination-dots">…</li>
-                        {/if}
-        
-                        {if $currentPage - 1 > 1}
-                            <li class="msp-pagination-item">
-                                <a href="{$url}&page={$currentPage - 1}">{$currentPage - 1}</a>
-                            </li>
-                        {/if}
-        
-                        {if $currentPage != 1 && $currentPage != $totalPages}
-                            <li class="msp-pagination-item active">
-                                <a href="{$url}&page={$currentPage}">{$currentPage}</a>
-                            </li>
-                        {/if}
-        
-                        {if $currentPage + 1 < $totalPages}
-                            <li class="msp-pagination-item">
-                                <a href="{$url}&page={$currentPage + 1}">{$currentPage + 1}</a>
-                            </li>
-                        {/if}
-        
-                        {if $currentPage < $totalPages - 2}
-                            <li class="msp-pagination-item msp-pagination-dots">…</li>
-                        {/if}
-        
-                        {if $totalPages > 1}
-                            <li class="msp-pagination-item{if $currentPage == $totalPages} active{/if}">
-                                <a href="{$url}&page={$totalPages}">{$totalPages}</a>
-                            </li>
-                        {/if}
-        
-                        {if $currentPage < $totalPages}
-                            <li class="msp-pagination-item">
-                                <a href="{$url}&page={$currentPage+1}">Suivant ›</a>
-                            </li>
-                        {/if}
-                    </ul>
-                </nav>
-            {/if}
-        </div>
-        
-    {/if}
+          {/block}
+
+          {block name='product_list'}
+            {include file='catalog/_partials/products.tpl' listing=$listing productClass="col-xs-12 col-sm-6 col-xl-4"}
+          {/block}
+
+          {block name='product_list_bottom'}
+            {include file='catalog/_partials/products-bottom.tpl' listing=$listing}
+          {/block}
+
+        {else}
+          <div id="js-product-list-top"></div>
+
+          <div id="js-product-list">
+            {capture assign="errorContent"}
+              <h4>{l s='No products available yet' d='Shop.Theme.Catalog'}</h4>
+              <p>{l s='Stay tuned! More products will be shown here as they are added.' d='Shop.Theme.Catalog'}</p>
+            {/capture}
+
+            {include file='errors/not-found.tpl' errorContent=$errorContent}
+          </div>
+
+          <div id="js-product-list-bottom"></div>
+        {/if}
+      </section>
+
+      {hook h="displayFooterCategory"}
+
+    </section>
+  </div>
 {/block}

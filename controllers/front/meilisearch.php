@@ -16,7 +16,7 @@ class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductList
     {
         parent::initContent();
 
-        $this->doProductSearch('catalog/listing/product-list.tpl');
+        $this->doProductSearch('../../../modules/meilisearch_prestashop/views/templates/front/search.tpl');
     }
 
     public function getProductSearchQuery()
@@ -35,6 +35,8 @@ class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductList
             $query->setSortOrder(new SortOrder('meilisearch', 'relevance', 'ASC'));
         }
 
+        // echo '<pre>';
+        // exit(print_r($query));
         return $query;
     }
 
@@ -51,27 +53,6 @@ class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductList
     public function getListingLabel()
     {
         return $this->trans('Search results', [], 'Modules.Meilisearchprestashop.Meilisearch');
-    }
-
-
-
-    protected function doProductSearch($template, $params = [], $locale = null)
-    {
-        if ($this->ajax) {
-            ob_end_clean();
-            header('Content-Type: application/json');
-            $this->ajaxRender(json_encode($this->getAjaxProductSearchVariables()));
-
-            return;
-        } else {
-            $variables = $this->getProductSearchVariables();
-            
-            // exit(print_r($variables['rendered_active_filters']));
-            $this->context->smarty->assign([
-                'listing' => $variables,
-            ]);
-            $this->setTemplate($template, $params, $locale);
-        }
     }
 
 }

@@ -8,7 +8,7 @@ use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchContext;
 use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchResult;
 use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
 use Symfony\Component\Translation\TranslatorInterface;
-
+use Tools;
 
 
 use PrestaShop\PrestaShop\Core\Product\Search\FacetCollection; #Collection de facettes 
@@ -36,6 +36,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         // Appelle ton index Meilisearch ici et récupère les produits :
         $result = $this->searchInMeili($query);
 
+        $allProducts = $result['allProducts'];
         $products = $result['products']; // tableau de produits format PrestaShop
         $total = $result['total'];
 
@@ -46,14 +47,20 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $resultObject->setCurrentSortOrder($query->getSortOrder());
 
         $activeFilters = explode('|',$query->getEncodedFacets());
-        $resultObject->setFacetCollection(
-            $this->getSampleFacets($activeFilters)
-        );
 
+        $categoryfilters = $this->module->getSearchProductsFacets($allProducts,$activeFilters);
+
+        if ( sizeof($categoryfilters->getFacets())){
+            $resultObject->setFacetCollection(
+                $categoryfilters //C'est ici qu'on assigne les filtres de notre fonction
+            );
+        }
         $resultObject->setEncodedFacets(
             $query->getEncodedFacets()
         );
 
+        // echo '<pre>';
+        // exit(print_r($resultObject->getFacetCollection()));
         return $resultObject;
     }
 
@@ -71,8 +78,11 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
         $data = [
             'q' => $search,
-            'hitsPerPage' => $perPage,
-            'page' => (int)$page,
+            'limit' => 9999,
+            // 'hitsPerPage' => $perPage,
+            // 'page' => (int)$page,
+            'attributesToRetrieve' => ["*"],
+            'filter' => []
         ];
 
         if($field != 'relevance'){
@@ -82,12 +92,46 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
             $data['sort'] = $meiliSort;
         }
 
+        $filters = $query->getEncodedFacets();
+        $filtersArray = explode('|', $filters);
+        foreach ($filtersArray as $filterString) {
+            $filter = explode('-', $filterString);
+            
+            switch ($filter[0]) {
+                case 'manu':
+                    $data['filter'][] = 'id_manufacturer = ' . $filter[1];
+                    break;
+                
+                case 'cat':
+                    $data['filter'][] = 'id_category_default = ' . $filter[1];
+                    break;
+
+                case 'avail':
+                    if($filter[1] == 'stock'){
+                        $data['filter'][] = 'quantity >= 1';
+                    }
+                    break;
+
+                default:
+                    # code...
+                    break;
+            }
+        }
+
         $response = $this->module->requestCurl($meiliUrl, json_encode($data));
         
 
+        // echo '<pre>';
+        // print_r($response);
+        // exit(print_r($query));
+
+        $productsChunk = array_chunk($response->hits, 48);
+
+
         return [
-            'products' => $this->formatProducts($response->hits),
-            'total' => $response->totalHits,
+            'products' => $this->formatProducts($productsChunk[$page-1]),
+            'allProducts' => $this->formatProducts($response->hits),
+            'total' => $response->estimatedTotalHits,
         ];
     }
 
@@ -113,64 +157,4 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         ];
     }
 
-    /**
-     * Fonction d'explication sur comment afficher des facettes
-     * @return FacetCollection
-     */
-    protected function getSampleFacets($activeFilters)
-    { 
-    
-        //Gestion des filtres actifs
-        $activeFiltersQueryString ='';
-        $activeFiltersQueryString .= implode('|',$activeFilters);
-        
-        
-        //Création d'une collection de facettes
-        $collection = new FacetCollection();
-        
-        //Création d'une facette
-        $facet = new Facet();
-        $facet->setLabel('Facette 1')
-        ->setType('custom')
-        ->setDisplayed(true) //Flag pour afficher ou nom la facette
-        ->setWidgetType('checkbox') //Type de widget
-        ->setMultipleSelectionAllowed(true); //Défini si on peut cocher plusieurs variantes
-        
-        
-        //Ajout de filtres à cette facette
-        $encodedFactetsUrl1 = $activeFiltersQueryString != '' ? $activeFiltersQueryString."|test-1": "test-1";
-        
-        $filter1 = new Filter();
-        $filter1->setLabel('filtre 1') //Libellé du filtre
-        ->setDisplayed(true) //Flag pour afficher ou nom le filtre
-        ->setActive(in_array("test-1",$activeFilters) ? true : false ) //Définition si le filtre est actif ou non
-        ->setType('test') // Type du filtre
-        ->setValue('2') //Valeur du filtre
-        ->setNextEncodedFacets($encodedFactetsUrl1) //Url pour afficher la filtre
-        ->setMagnitude(1); //Nombre de résultats du filtre
-        
-        //Ajout du filtre à la facette
-        $facet->addFilter($filter1); 
-        
-        $encodedFactetsUrl2 = $activeFiltersQueryString != '' ? $activeFiltersQueryString."|test-2": "test-2";
-        
-        //Idem pour un 2ème filtre
-        $filter2 = new Filter();
-        $filter2->setLabel('filtre 2') //Libellé du filtre
-        ->setDisplayed(true) //Flag pour afficher ou nom le filtre
-        ->setActive(in_array("test-2",$activeFilters) ? true : false ) //Définition si le filtre est actif ou non
-        ->setType('test') // Type du filtre
-        ->setValue('2') //Valeur du filtre
-        ->setNextEncodedFacets($encodedFactetsUrl2) //Url pour afficher la filtre
-        ->setMagnitude(3); //Nombre de résultats du filtre
-        //Ajout du filtre à la facette
-        $facet->addFilter($filter2); 
-        
-        
-        //Ajout de la facette à la collection
-        $collection->addFacet($facet);
-        
-        //Renvoi de la collection de facette
-        return $collection;
-    }
 }

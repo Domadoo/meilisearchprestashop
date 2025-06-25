@@ -30,7 +30,10 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-use PrestaShop\Module\MeiliSearch\Search\MeiliSearchProductSearchProvider;
+use PrestaShop\PrestaShop\Core\Product\Search\FacetCollection; #Collection de facettes 
+use PrestaShop\PrestaShop\Core\Product\Search\Facet; #Classe de la facette 
+use PrestaShop\PrestaShop\Core\Product\Search\Filter; #Classe des filtres 
+use PrestaShop\PrestaShop\Core\Product\Search\URLFragmentSerializer; #Pour transformer l'url 
 
 class Meilisearch_prestashop extends Module
 {
@@ -356,4 +359,188 @@ class Meilisearch_prestashop extends Module
         }
         
     }
+
+    public function getSearchProductsFacets(array $products, array $activeFilters): FacetCollection
+    {
+        // Initialisation des données nécessaires
+        $categoriesCount = [];
+        $availabilityCount = [
+            'available' => 0,
+            'stock' => 0,
+        ];
+
+        // Parcours unique des produits
+        foreach ($products as $product) {
+            // Catégorie
+            $catId = (int) $product['id_category_default'];
+            $categoriesCount[$catId] = isset($categoriesCount[$catId]) 
+                ? $categoriesCount[$catId] + 1 
+                : 1;
+
+            // Disponibilité
+            $available = (int) $product['available_for_order'];
+            if ($available === 1) {
+                $availabilityCount['available']++;
+                if ((int)$product['quantity'] > 0) {
+                    $availabilityCount['stock']++;
+                }
+            }
+
+            // Fabricant
+            $manufacturerId = (int) $product['id_manufacturer'];
+            if ($manufacturerId > 0) {
+                $manufacturersCount[$manufacturerId] = isset($manufacturersCount[$manufacturerId]) ? $manufacturersCount[$manufacturerId] + 1 : 1;
+            }
+        }
+
+        $activeFiltersQueryString = implode('|', $activeFilters);
+        $collection = new FacetCollection();
+
+        /**
+         * --- FACETTE CATEGORIES ---
+         */
+        if (!empty($categoriesCount)) {
+            $facetCategory = new Facet();
+            $facetCategory->setLabel($this->l('Catégories'))
+                ->setType('category')
+                ->setDisplayed(true)
+                ->setWidgetType('checkbox')
+                ->setMultipleSelectionAllowed(true);
+
+            foreach ($categoriesCount as $categoryId => $count) {
+                $filterKey = "cat-" . $categoryId;
+
+                $currentFilters = $activeFilters;
+                if (in_array($filterKey, $currentFilters)) {
+                    $nextFilters = array_diff($currentFilters, [$filterKey]);
+                } else {
+                    $nextFilters = $currentFilters;
+                    $nextFilters[] = $filterKey;
+                }
+                $encodedFacetsUrl = implode('|', $nextFilters);
+
+                $category = new Category($categoryId, $this->context->language->id);
+
+                $filter = new Filter();
+                $filter->setLabel($category->name)
+                    ->setDisplayed(true)
+                    ->setActive(in_array($filterKey, $activeFilters))
+                    ->setType('category')
+                    ->setValue($categoryId)
+                    ->setNextEncodedFacets($encodedFacetsUrl)
+                    ->setMagnitude($count);
+
+                $facetCategory->addFilter($filter);
+            }
+
+            $collection->addFacet($facetCategory);
+        }
+
+        /**
+         * --- FACETTE DISPONIBILITÉ ---
+         */
+        $facetAvailability = new Facet();
+        $facetAvailability->setLabel($this->l('Disponibilité'))
+            ->setType('availability')
+            ->setDisplayed(true)
+            ->setWidgetType('checkbox')
+            ->setMultipleSelectionAllowed(true);
+    
+        if ($availabilityCount['available'] > 0) {
+            $filterKey = "avail-available";
+
+            $currentFilters = $activeFilters;
+            if (in_array($filterKey, $currentFilters)) {
+                $nextFilters = array_diff($currentFilters, [$filterKey]);
+            } else {
+                $nextFilters = $currentFilters;
+                $nextFilters[] = $filterKey;
+            }
+            $encodedFacetsUrl = implode('|', $nextFilters);
+    
+            $filter = new Filter();
+            $filter->setLabel($this->l('Disponible'))
+                ->setDisplayed(true)
+                ->setActive(in_array($filterKey, $activeFilters))
+                ->setType('availability')
+                ->setValue('available')
+                ->setNextEncodedFacets($encodedFacetsUrl)
+                ->setMagnitude($availabilityCount['available']);
+    
+            $facetAvailability->addFilter($filter);
+        }
+    
+        if ($availabilityCount['stock'] > 0) {
+            $filterKey = "avail-stock";
+
+            $currentFilters = $activeFilters;
+            if (in_array($filterKey, $currentFilters)) {
+                $nextFilters = array_diff($currentFilters, [$filterKey]);
+            } else {
+                $nextFilters = $currentFilters;
+                $nextFilters[] = $filterKey;
+            }
+            $encodedFacetsUrl = implode('|', $nextFilters);
+    
+            $filter = new Filter();
+            $filter->setLabel($this->l('En stock'))
+                ->setDisplayed(true)
+                ->setActive(in_array($filterKey, $activeFilters))
+                ->setType('availability')
+                ->setValue('stock')
+                ->setNextEncodedFacets($encodedFacetsUrl)
+                ->setMagnitude($availabilityCount['stock']);
+    
+            $facetAvailability->addFilter($filter);
+        }
+    
+        if (!empty($facetAvailability->getFilters())) {
+            $collection->addFacet($facetAvailability);
+        }
+
+        /**
+         * --- FACETTE FABRICANTS ---
+         */
+        if (!empty($manufacturersCount)) {
+            $facetManufacturer = new Facet();
+            $facetManufacturer->setLabel($this->l('Brand'))
+                ->setType('manufacturer')
+                ->setDisplayed(true)
+                ->setWidgetType('checkbox')
+                ->setMultipleSelectionAllowed(true);
+
+            foreach ($manufacturersCount as $manufacturerId => $count) {
+                $filterKey = "manu-" . $manufacturerId;
+                
+                $currentFilters = $activeFilters;
+                if (in_array($filterKey, $currentFilters)) {
+                    $nextFilters = array_diff($currentFilters, [$filterKey]);
+                } else {
+                    $nextFilters = $currentFilters;
+                    $nextFilters[] = $filterKey;
+                }
+                $encodedFacetsUrl = implode('|', $nextFilters);
+
+                
+                $manufacturer = new Manufacturer($manufacturerId, $this->context->language->id);
+
+                $filter = new Filter();
+                $filter->setLabel($manufacturer->name)
+                    ->setDisplayed(true)
+                    ->setActive(in_array($filterKey, $activeFilters))
+                    ->setType('manufacturer')
+                    ->setValue($manufacturerId)
+                    ->setNextEncodedFacets($encodedFacetsUrl)
+                    ->setMagnitude($count);
+
+                $facetManufacturer->addFilter($filter);
+            }
+
+            $collection->addFacet($facetManufacturer);
+        }
+
+        return $collection;
+    }
+
+
 }
