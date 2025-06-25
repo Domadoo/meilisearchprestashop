@@ -363,19 +363,18 @@ class Meilisearch_prestashop extends Module
     public function getSearchProductsFacets(array $products, array $activeFilters): FacetCollection
     {
         // Initialisation des données nécessaires
-        $categoriesCount = [];
         $availabilityCount = [
             'available' => 0,
             'stock' => 0,
         ];
+        $technologyCount = [];    // feature 7
+        $compatibilityCount = []; // feature 31
+
+        
+
 
         // Parcours unique des produits
         foreach ($products as $product) {
-            // Catégorie
-            $catId = (int) $product['id_category_default'];
-            $categoriesCount[$catId] = isset($categoriesCount[$catId]) 
-                ? $categoriesCount[$catId] + 1 
-                : 1;
 
             // Disponibilité
             $available = (int) $product['available_for_order'];
@@ -391,50 +390,26 @@ class Meilisearch_prestashop extends Module
             if ($manufacturerId > 0) {
                 $manufacturersCount[$manufacturerId] = isset($manufacturersCount[$manufacturerId]) ? $manufacturersCount[$manufacturerId] + 1 : 1;
             }
+
+            // Compatibilité et Technologie
+            if (!empty($product['feature_values']) && is_array($product['feature_values'])) {
+                foreach ($product['feature_values'] as $fv) {
+                    if (strpos($fv, '7-') === 0) {
+                        $id = (int)explode('-', $fv)[1];
+                        $technologyCount[$id] = ($technologyCount[$id] ?? 0) + 1;
+                    }
+            
+                    if (strpos($fv, '31-') === 0) {
+                        $id = (int)explode('-', $fv)[1];
+                        $compatibilityCount[$id] = ($compatibilityCount[$id] ?? 0) + 1;
+                    }
+                }
+            }            
+            
         }
 
         $activeFiltersQueryString = implode('|', $activeFilters);
         $collection = new FacetCollection();
-
-        /**
-         * --- FACETTE CATEGORIES ---
-         */
-        if (!empty($categoriesCount)) {
-            $facetCategory = new Facet();
-            $facetCategory->setLabel($this->l('Catégories'))
-                ->setType('category')
-                ->setDisplayed(true)
-                ->setWidgetType('checkbox')
-                ->setMultipleSelectionAllowed(true);
-
-            foreach ($categoriesCount as $categoryId => $count) {
-                $filterKey = "cat-" . $categoryId;
-
-                $currentFilters = $activeFilters;
-                if (in_array($filterKey, $currentFilters)) {
-                    $nextFilters = array_diff($currentFilters, [$filterKey]);
-                } else {
-                    $nextFilters = $currentFilters;
-                    $nextFilters[] = $filterKey;
-                }
-                $encodedFacetsUrl = implode('|', $nextFilters);
-
-                $category = new Category($categoryId, $this->context->language->id);
-
-                $filter = new Filter();
-                $filter->setLabel($category->name)
-                    ->setDisplayed(true)
-                    ->setActive(in_array($filterKey, $activeFilters))
-                    ->setType('category')
-                    ->setValue($categoryId)
-                    ->setNextEncodedFacets($encodedFacetsUrl)
-                    ->setMagnitude($count);
-
-                $facetCategory->addFilter($filter);
-            }
-
-            $collection->addFacet($facetCategory);
-        }
 
         /**
          * --- FACETTE DISPONIBILITÉ ---
@@ -539,6 +514,86 @@ class Meilisearch_prestashop extends Module
             $collection->addFacet($facetManufacturer);
         }
 
+        /**
+         * --- FACETTE TECHNOLOGIE ---
+         */
+        if ($technologyCount) {
+            $facet = new Facet();
+            $facet->setLabel($this->l('Technology'))
+                ->setType('technology')
+                ->setDisplayed(true)
+                ->setWidgetType('checkbox')
+                ->setMultipleSelectionAllowed(true);
+        
+            foreach ($technologyCount as $valueId => $count) {
+                $filterKey = "technology-$valueId";
+                
+                $currentFilters = $activeFilters;
+                if (in_array($filterKey, $currentFilters)) {
+                    $nextFilters = array_diff($currentFilters, [$filterKey]);
+                } else {
+                    $nextFilters = $currentFilters;
+                    $nextFilters[] = $filterKey;
+                }
+                $encodedFacetsUrl = implode('|', $nextFilters);
+
+
+
+                $featureValue = new FeatureValue($valueId, $this->context->language->id);
+
+                $filter = new Filter();
+                $filter->setLabel($featureValue->value)
+                    ->setValue($valueId)
+                    ->setType('technology')
+                    ->setMagnitude($count)
+                    ->setActive(in_array($filterKey, $activeFilters))
+                    ->setNextEncodedFacets($encodedFacetsUrl);
+                $facet->addFilter($filter);
+            }
+        
+            $collection->addFacet($facet);
+        }
+
+        /**
+         * --- FACETTE COMPATIBILITE ---
+         */
+        if ($compatibilityCount) {
+            $facet = new Facet();
+            $facet->setLabel($this->l('Compatibility'))
+                ->setType('compatibility')
+                ->setDisplayed(true)
+                ->setWidgetType('checkbox')
+                ->setMultipleSelectionAllowed(true);
+        
+            foreach ($compatibilityCount as $valueId => $count) {
+                $filterKey = "compatibility-$valueId";
+
+                $currentFilters = $activeFilters;
+                if (in_array($filterKey, $currentFilters)) {
+                    $nextFilters = array_diff($currentFilters, [$filterKey]);
+                } else {
+                    $nextFilters = $currentFilters;
+                    $nextFilters[] = $filterKey;
+                }
+                $encodedFacetsUrl = implode('|', $nextFilters);
+
+
+                $featureValue = new FeatureValue($valueId, $this->context->language->id);
+                
+                $filter = new Filter();
+                $filter->setLabel($featureValue->value)
+                    ->setValue($valueId)
+                    ->setType('compatibility')
+                    ->setMagnitude($count)
+                    ->setActive(in_array($filterKey, $activeFilters))
+                    ->setNextEncodedFacets($encodedFacetsUrl);
+                $facet->addFilter($filter);
+            }
+        
+            $collection->addFacet($facet);
+        }
+        
+        
         return $collection;
     }
 

@@ -102,16 +102,20 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                     $data['filter'][] = 'id_manufacturer = ' . $filter[1];
                     break;
                 
-                case 'cat':
-                    $data['filter'][] = 'id_category_default = ' . $filter[1];
-                    break;
-
                 case 'avail':
                     if($filter[1] == 'stock'){
                         $data['filter'][] = 'quantity >= 1';
                     }
                     break;
 
+                case 'technology':
+                    $data['filter'][] = '"feature_values" = "7-' . (int)$filter[1] . '"';
+                    break;
+        
+                case 'compatibility':
+                    $data['filter'][] = '"feature_values" = "31-' . (int)$filter[1] . '"';
+                    break;
+            
                 default:
                     # code...
                     break;

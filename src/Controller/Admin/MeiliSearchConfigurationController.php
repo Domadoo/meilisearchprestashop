@@ -44,10 +44,12 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
             WHERE pl.`id_lang` = ' . (int) $id_lang . '
             AND product_shop.`active` = 1
             AND product_shop.`visibility` = "both"
+            AND p.`available_for_order` = true
         ';
 
         $products = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
 
+        
         $typeMap = [
             'id_product' => 'int',
             'id_supplier' => 'int',
@@ -92,6 +94,32 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
             'final_price' => 'float',
             'id_lang' => 'int',
         ];
+
+        // Récupère les IDs produits
+        $productIds = array_column($products, 'id_product');
+        $productIdsStr = implode(',', array_map('intval', $productIds));
+
+        // Récupération des features
+        $featuresSql = '
+            SELECT id_product, id_feature, id_feature_value
+            FROM `'._DB_PREFIX_.'feature_product`
+            WHERE id_product IN (' . $productIdsStr . ')
+        ';
+
+        $featureResults = Db::getInstance()->executeS($featuresSql);
+
+        // Structure à plat : [id_product => [ "2-36", "2-60", ... ]]
+        $productFeatureValues = [];
+        foreach ($featureResults as $row) {
+            $idProduct = (int)$row['id_product'];
+            $featureKey = (int)$row['id_feature'] . '-' . (int)$row['id_feature_value'];
+
+            if (!isset($productFeatureValues[$idProduct])) {
+                $productFeatureValues[$idProduct] = [];
+            }
+
+            $productFeatureValues[$idProduct][] = $featureKey;
+        }
         
         foreach ($products as &$product) {
             foreach ($typeMap as $field => $type) {
@@ -109,9 +137,13 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
                     }
                 }
             }
+            $id = $product['id_product'];
+            $product['feature_values'] = $productFeatureValues[$id] ?? [];
         }
-        
-        // dump($products);
+        unset($product);
+
+        // echo '<pre>';
+        // print_r($products);
         // exit();
 
         // $payloadIndex = json_encode([
