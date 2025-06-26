@@ -63,6 +63,7 @@ class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductList
             $this->context->smarty->assign([
                 'listing' => $variables,
             ]);
+            
             $this->setTemplate($template, $params, $locale);
         }
     }
