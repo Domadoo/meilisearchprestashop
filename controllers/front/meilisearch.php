@@ -4,9 +4,6 @@ use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchQuery;
 use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchContext;
 use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchResult;
 use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
-use PrestaShop\PrestaShop\Core\Product\Search\Facet;
-use PrestaShop\PrestaShop\Core\Product\Search\Filter;
-use PrestaShop\PrestaShop\Core\Search\Filters;
 use PrestaShop\Module\MeiliSearch\Search\MeiliSearchProductSearchProvider;
 
 class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductListingFrontController
@@ -35,8 +32,6 @@ class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductList
             $query->setSortOrder(new SortOrder('meilisearch', 'relevance', 'ASC'));
         }
 
-        // echo '<pre>';
-        // exit(print_r($query));
         return $query;
     }
 

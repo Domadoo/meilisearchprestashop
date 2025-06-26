@@ -25,6 +25,15 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
 
     public function indexAction()
     {
+        // Juste la vue avec le bouton
+        return $this->render('@Modules/meilisearch_prestashop/views/templates/admin/index.html.twig');
+    }
+
+
+    public function indexProductsAction()
+    {
+
+        
         $id_lang = (int) Context::getContext()->language->id;
         $meiliUrl = Configuration::get('MEILISEARCH_PRESTASHOP_URL');
 
@@ -142,15 +151,12 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
         }
         unset($product);
 
-        // echo '<pre>';
-        // print_r($products);
-        // exit();
 
-        // $payloadIndex = json_encode([
-        //     'uid' => 'products',
-        //     'primaryKey' => 'id_product'
-        // ]);
-        // $this->module->requestCurl($meiliUrl . 'indexes', $payloadIndex);
+        $payloadIndex = json_encode([
+            'uid' => 'products',
+            'primaryKey' => 'id_product'
+        ]);
+        $this->module->requestCurl($meiliUrl . 'indexes', $payloadIndex);
 
         $arrayProductsChunk = array_chunk($products, 200);
 
@@ -159,13 +165,14 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
             $this->module->requestCurl($meiliUrl . 'indexes/products/documents', json_encode($arrayProducts));
         }
 
-        // $this->module->requestCurl($meiliUrl . 'indexes/products/settings/sortable-attributes', json_encode(['name','price']), 'PUT');
-        // $this->module->requestCurl($meiliUrl . 'indexes/products/settings/ranking-rules', json_encode(["sort","words","typo","proximity","attribute","exactness"]), 'PUT');
-        // $this->module->requestCurl($meiliUrl . 'indexes/products/settings/filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition']), 'PUT');
+        $this->module->requestCurl($meiliUrl . 'indexes/products/settings/sortable-attributes', json_encode(['name','price']), 'PUT');
+        $this->module->requestCurl($meiliUrl . 'indexes/products/settings/ranking-rules', json_encode(["sort","words","typo","proximity","attribute","exactness"]), 'PUT');
+        $this->module->requestCurl($meiliUrl . 'indexes/products/settings/filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'id_category_default
+', 'quantity', 'feature_values']), 'PUT');
 
 
         $this->addFlash('success', 'Produits indexés avec succès dans Meilisearch.');
 
-        return $this->render('@Modules/meilisearch_prestashop/views/templates/admin/index.html.twig');
+        return $this->redirectToRoute('admin_meilisearchconfiguration_index');
     }
 }

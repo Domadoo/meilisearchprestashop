@@ -1,5 +1,12 @@
-admin_meilisearch_index:
+admin_meilisearchconfiguration_index:
   path: /admin/meilisearch
   methods: [GET]
   defaults:
     _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchConfigurationController::indexAction'
+
+admin_meilisearchconfiguration_index_products:
+  path: /admin/meilisearch/index-products
+  methods: [POST]
+  defaults:
+    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchConfigurationController::indexProductsAction'
+

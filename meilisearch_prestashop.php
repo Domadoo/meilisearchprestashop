@@ -68,10 +68,7 @@ class Meilisearch_prestashop extends Module
     public function install()
     {
         return parent::install() &&
-            $this->registerHook('displaySearch') &&
             $this->registerHook('actionProductSearchAfter') &&
-            $this->registerHook('productSearchProvider') &&
-            $this->registerHook('header') &&
             $this->callInstallTab();
     }
 
@@ -112,7 +109,7 @@ class Meilisearch_prestashop extends Module
     {
         if (!is_int(Tab::getIdFromClassName('AdminMeiliSearch'))) {
             $this->installTab('AdminMeiliSearch', 'MeiliSearch', 'CONFIGURE');
-            $this->installTab('MeiliSearchConfigurationController', 'Configuration', 'AdminMeiliSearch', 'admin_meilisearch_index');
+            $this->installTab('MeiliSearchConfigurationController', 'Configuration', 'AdminMeiliSearch');
         }
 
         return true;
@@ -265,25 +262,6 @@ class Meilisearch_prestashop extends Module
         }
     }
 
-    /**
-     * Add the CSS & JavaScript files you want to be loaded in the BO.
-     */
-    public function hookDisplayBackOfficeHeader() // TODO
-    {
-        if (Tools::getValue('configure') == $this->name) {
-            $this->context->controller->addJS($this->_path . 'views/js/back.js');
-            $this->context->controller->addCSS($this->_path . 'views/css/back.css');
-        }
-    }
-
-    /**
-     * Add the CSS & JavaScript files you want to be added on the FO.
-     */
-    public function hookHeader() // TODO
-    {
-        $this->context->controller->addJS($this->_path . '/views/js/front.js');
-        $this->context->controller->addCSS($this->_path . '/views/css/front.css');
-    }
 
     public function hookActionProductSearchAfter($params)
     {
@@ -305,16 +283,6 @@ class Meilisearch_prestashop extends Module
 
         Tools::redirect($link);
     }
-
-    // public function hookProductSearchProvider($params){
-    //     $query = $params['query'];
-    //     if ($query->getQueryType()) {
-    //         return new MeiliSearchProductSearchProvider();
-    //     }
-    // }
-
-
-
 
     public function requestCurl($url, $payload = null, $request = false)
     {

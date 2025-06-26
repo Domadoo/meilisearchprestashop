@@ -2,23 +2,13 @@
 
 namespace PrestaShop\Module\MeiliSearch\Search;
 
-use PrestaShop\PrestaShop\Core\Product\Search\FacetsRendererInterface;
 use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchProviderInterface;
 use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchQuery;
 use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchContext;
 use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchResult;
 use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
 use Symfony\Component\Translation\TranslatorInterface;
-use Tools;
 
-
-use PrestaShop\PrestaShop\Core\Product\Search\FacetCollection; #Collection de facettes 
-use PrestaShop\PrestaShop\Core\Product\Search\Facet; #Classe de la facette 
-use PrestaShop\PrestaShop\Core\Product\Search\Filter; #Classe des filtres 
-use PrestaShop\PrestaShop\Core\Product\Search\URLFragmentSerializer; #Pour transformer l'url
-
-
-use Context;
 use Configuration;
 
 class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
@@ -60,8 +50,6 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
             $query->getEncodedFacets()
         );
 
-        // echo '<pre>';
-        // exit(print_r($resultObject->getFacetCollection()));
         return $resultObject;
     }
 
@@ -80,8 +68,6 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $data = [
             'q' => $search,
             'limit' => 9999,
-            // 'hitsPerPage' => $perPage,
-            // 'page' => (int)$page,
             'attributesToRetrieve' => ["*"],
             'filter' => []
         ];
@@ -145,13 +131,13 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $response = $this->module->requestCurl($meiliUrl, json_encode($data));
 
 
-        // echo '<pre>';
-        // print_r($response);
-        // exit(print_r($query));
-
+        
         $productsChunk = array_chunk($response->hits, 48);
 
-
+        if(!key_exists(0, $productsChunk)){
+            $productsChunk[0] = [];
+        }
+        
         return [
             'products' => $this->formatProducts($productsChunk[$page - 1]),
             'allProducts' => $this->formatProducts($response->hits),
