@@ -10,6 +10,7 @@ use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
 use Symfony\Component\Translation\TranslatorInterface;
 
 use Configuration;
+use Context;
 
 class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 {
@@ -55,6 +56,9 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
     private function searchInMeili($query)
     {
+        $context = Context::getContext();
+        $iso_lang = $context->language->iso_code;
+
         $search = $query->getSearchString();
         $page = $query->getPage();
         $perPage = $query->getResultsPerPage();
@@ -63,7 +67,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $field = $sortOrder->getField();
 
 
-        $meiliUrl = Configuration::get('MEILISEARCH_PRESTASHOP_URL') . 'indexes/products/search';
+        $meiliUrl = Configuration::get('MEILISEARCH_PRESTASHOP_URL') . 'indexes/products_'.$iso_lang.'/search';
 
         $data = [
             'q' => $search,

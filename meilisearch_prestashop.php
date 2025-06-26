@@ -109,7 +109,7 @@ class Meilisearch_prestashop extends Module
     {
         if (!is_int(Tab::getIdFromClassName('AdminMeiliSearch'))) {
             $this->installTab('AdminMeiliSearch', 'MeiliSearch', 'CONFIGURE');
-            $this->installTab('MeiliSearchConfigurationController', 'Configuration', 'AdminMeiliSearch');
+            $this->installTab('MeiliSearchConfigurationController', 'Configuration', 'AdminMeiliSearch', 'admin_meilisearchconfiguration_index');
         }
 
         return true;

@@ -49,5 +49,22 @@ class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductList
     {
         return $this->trans('Search results', [], 'Modules.Meilisearchprestashop.Meilisearch');
     }
+    
+    protected function doProductSearch($template, $params = [], $locale = null)
+    {
+        if ($this->ajax) {
+            ob_end_clean();
+            header('Content-Type: application/json');
+            $this->ajaxRender(json_encode($this->getAjaxProductSearchVariables()));
+
+            return;
+        } else {
+            $variables = $this->getProductSearchVariables();
+            $this->context->smarty->assign([
+                'listing' => $variables,
+            ]);
+            $this->setTemplate($template, $params, $locale);
+        }
+    }
 
 }
