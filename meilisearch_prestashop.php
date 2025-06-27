@@ -68,6 +68,7 @@ class Meilisearch_prestashop extends Module
     public function install()
     {
         return parent::install() &&
+            $this->registerHook('displayHeader') &&
             $this->registerHook('actionProductSearchAfter') &&
             $this->registerHook('displayTop') &&
             $this->registerHook('displaySearch') &&
@@ -262,6 +263,27 @@ class Meilisearch_prestashop extends Module
         foreach (array_keys($form_values) as $key) {
             Configuration::updateValue($key, Tools::getValue($key));
         }
+    }
+
+    // Affichage Searchbar
+    public function hookDisplayTop(){
+        return $this->display(__FILE__, 'meilisearch_searchbar.tpl');
+    }
+
+    public function hookDisplaySearch(){
+        return $this->display(__FILE__, 'meilisearch_searchbar.tpl');
+    
+    }
+
+    public function hookDisplayHeader(){
+        Media::addJsDef(['searchPlaceholder' =>  [
+            '1' => $this->l('Search an article', 'meilisearch_searchbar'),
+            '2' => $this->l('Search a product', 'meilisearch_searchbar'),
+            '3' => $this->l('Search a category', 'meilisearch_searchbar')
+        ]]);
+
+        $this->context->controller->addJS($this->_path.'/views/js/front/meilisearch_searchbar.js');
+        $this->context->controller->addCSS($this->_path.'/views/css/front/meilisearch_searchbar.css');
     }
 
 
@@ -549,15 +571,5 @@ class Meilisearch_prestashop extends Module
         }
 
         return $facet;
-    }
-
-    // Affichage Searchbar
-    public function hookDisplayTop(){
-
-        return $this->display(__FILE__, 'meilisearch_searchbar.tpl');
-    }
-
-    public function hookDisplaySearch(){
-        return $this->display(__FILE__, 'meilisearch_searchbar.tpl');
     }
 }
