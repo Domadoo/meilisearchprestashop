@@ -70,7 +70,6 @@ class Meilisearch_prestashop extends Module
         return parent::install() &&
             $this->registerHook('displayHeader') &&
             $this->registerHook('actionProductSearchAfter') &&
-            $this->registerHook('displayTop') &&
             $this->registerHook('displaySearch') &&
             $this->callInstallTab();
     }
@@ -265,14 +264,8 @@ class Meilisearch_prestashop extends Module
         }
     }
 
-    // Affichage Searchbar
-    public function hookDisplayTop(){
-        return $this->display(__FILE__, 'meilisearch_searchbar.tpl');
-    }
-
     public function hookDisplaySearch(){
         return $this->display(__FILE__, 'meilisearch_searchbar.tpl');
-    
     }
 
     public function hookDisplayHeader(){

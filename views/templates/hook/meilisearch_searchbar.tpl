@@ -1,4 +1,4 @@
-<form method="get" action="{$link->getPageLink('search')|escape:'html':'UTF-8'}" class="search-bar-wrapper" style="width: 100%; padding: 1rem;">
+<form method="get" action="{$link->getPageLink('search')|escape:'html':'UTF-8'}" class="search-bar-wrapper">
   <input type="hidden" name="controller" value="search">
   <div class="search-bar-container">
     <span class="search-icon">
