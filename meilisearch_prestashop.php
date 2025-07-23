@@ -44,7 +44,7 @@ class Meilisearch_prestashop extends Module
     {
         $this->name = 'meilisearch_prestashop';
         $this->tab = 'search_filter';
-        $this->version = '1.0.0';
+        $this->version = '1.0.1';
         $this->author = 'Doudeau Adam, Johan Vivien';
         $this->need_instance = 0;
 
