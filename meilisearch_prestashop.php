@@ -44,7 +44,7 @@ class Meilisearch_prestashop extends Module
     {
         $this->name = 'meilisearch_prestashop';
         $this->tab = 'search_filter';
-        $this->version = '1.0.0';
+        $this->version = '1.0.1';
         $this->author = 'Doudeau Adam, Johan Vivien';
         $this->need_instance = 0;
 
@@ -70,7 +70,6 @@ class Meilisearch_prestashop extends Module
         return parent::install() &&
             $this->registerHook('displayHeader') &&
             $this->registerHook('actionProductSearchAfter') &&
-            $this->registerHook('displayTop') &&
             $this->registerHook('displaySearch') &&
             $this->callInstallTab();
     }
@@ -265,14 +264,8 @@ class Meilisearch_prestashop extends Module
         }
     }
 
-    // Affichage Searchbar
-    public function hookDisplayTop(){
-        return $this->display(__FILE__, 'meilisearch_searchbar.tpl');
-    }
-
     public function hookDisplaySearch(){
         return $this->display(__FILE__, 'meilisearch_searchbar.tpl');
-    
     }
 
     public function hookDisplayHeader(){

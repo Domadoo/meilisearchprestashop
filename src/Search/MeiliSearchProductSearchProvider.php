@@ -133,7 +133,13 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         }
 
         $response = $this->module->requestCurl($meiliUrl, json_encode($data));
-
+        if(!$response || !isset($response->hits) || !is_array($response->hits)) {
+            return [
+                'products' => [],
+                'allProducts' => [],
+                'total' => 0,
+            ];
+        }
 
         
         $productsChunk = array_chunk($response->hits, 48);

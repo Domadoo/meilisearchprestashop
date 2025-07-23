@@ -35,3 +35,13 @@
     outline: none;
     border-color: var(--domadoo-primary-color);
 }
+
+#meilisearch-searchbar{
+    width: 100%;
+}
+
+.search-bar-wrapper{
+    width: 100%; 
+    padding: 0.65rem;
+    padding-right: 2.5rem;
+}
