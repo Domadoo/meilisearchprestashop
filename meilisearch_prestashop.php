@@ -44,7 +44,7 @@ class Meilisearch_prestashop extends Module
     {
         $this->name = 'meilisearch_prestashop';
         $this->tab = 'search_filter';
-        $this->version = '1.0.1';
+        $this->version = '1.1.0';
         $this->author = 'Doudeau Adam, Johan Vivien';
         $this->need_instance = 0;
 
@@ -67,6 +67,8 @@ class Meilisearch_prestashop extends Module
      */
     public function install()
     {
+        include(dirname(__FILE__).'/sql/install.php');
+
         return parent::install() &&
             $this->registerHook('displayHeader') &&
             $this->registerHook('actionProductSearchAfter') &&
@@ -112,6 +114,7 @@ class Meilisearch_prestashop extends Module
         if (!is_int(Tab::getIdFromClassName('AdminMeiliSearch'))) {
             $this->installTab('AdminMeiliSearch', 'MeiliSearch', 'CONFIGURE');
             $this->installTab('MeiliSearchConfigurationController', 'Configuration', 'AdminMeiliSearch', 'admin_meilisearchconfiguration_index');
+            $this->installTab('MeiliSearchStatsController', 'Statistics', 'AdminMeiliSearch', 'admin_meilisearch_stats_index');
         }
 
         return true;
@@ -230,6 +233,11 @@ class Meilisearch_prestashop extends Module
                         'name' => 'MEILISEARCH_PRESTASHOP_KEY',
                         'label' => $this->l('KEY'),
                     ),
+                    array(
+                        'type' => 'text',
+                        'name' => 'MEILISEARCH_PRESTASHOP_PREFIX',
+                        'label' => $this->l('PREFIX'),
+                    ),
                 ),
                 'submit' => array(
                     'title' => $this->l('Save'),
@@ -249,6 +257,7 @@ class Meilisearch_prestashop extends Module
             'MEILISEARCH_PRESTASHOP_ACCOUNT_PASSWORD' => Configuration::get('MEILISEARCH_PRESTASHOP_ACCOUNT_PASSWORD', null),
             'MEILISEARCH_PRESTASHOP_URL' => Configuration::get('MEILISEARCH_PRESTASHOP_URL', null),
             'MEILISEARCH_PRESTASHOP_KEY' => Configuration::get('MEILISEARCH_PRESTASHOP_KEY', null),
+            'MEILISEARCH_PRESTASHOP_PREFIX' => Configuration::get('MEILISEARCH_PRESTASHOP_PREFIX', null),
         );
     }
 
@@ -277,28 +286,6 @@ class Meilisearch_prestashop extends Module
 
         $this->context->controller->addJS($this->_path.'/views/js/front/meilisearch_searchbar.js');
         $this->context->controller->addCSS($this->_path.'/views/css/front/meilisearch_searchbar.css');
-    }
-
-
-    public function hookActionProductSearchAfter($params)
-    {
-        $controllerType = Dispatcher::getInstance()->getController();
-        if ($controllerType === 'meilisearch') {
-            return;
-        }
-
-        $query = Tools::getValue('s');
-        if (!$query) {
-            return;
-        }
-
-        $link = Context::getContext()->link->getModuleLink(
-            'meilisearch_prestashop',
-            'meilisearch',
-            ['s' => $query]
-        );
-
-        Tools::redirect($link);
     }
 
     public function requestCurl($url, $payload = null, $request = false)

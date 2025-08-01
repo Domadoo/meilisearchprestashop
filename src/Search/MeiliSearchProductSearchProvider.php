@@ -9,6 +9,8 @@ use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchResult;
 use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
 use Symfony\Component\Translation\TranslatorInterface;
 
+use PrestaShop\Module\Classes\MeilisearchStatssearch;
+use PrestaShopLogger;
 use Configuration;
 use Context;
 
@@ -20,7 +22,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     public function __construct(TranslatorInterface $translator)
     {
         $this->translator = $translator;
-        $this->module = \Module::getInstanceByName('meilisearch_prestashop');;
+        $this->module = \Module::getInstanceByName('meilisearch_prestashop');
     }
 
     public function runQuery(ProductSearchContext $context, ProductSearchQuery $query)
@@ -67,7 +69,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $field = $sortOrder->getField();
 
 
-        $meiliUrl = Configuration::get('MEILISEARCH_PRESTASHOP_URL') . 'indexes/products_'.$iso_lang.'/search';
+        $meiliUrl = Configuration::get('MEILISEARCH_PRESTASHOP_URL') . 'indexes/'. Configuration::get('MEILISEARCH_PRESTASHOP_PREFIX') .'products_'.$iso_lang.'/search';
 
         $data = [
             'q' => $search,
@@ -147,6 +149,11 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         if(!key_exists(0, $productsChunk)){
             $productsChunk[0] = [];
         }
+
+        $newSearch = new MeilisearchStatssearch();
+        $newSearch->query = $search;
+        $newSearch->nb_results = $response->estimatedTotalHits;
+        $newSearch->save();
         
         return [
             'products' => $this->formatProducts($productsChunk[$page - 1]),

@@ -47,15 +47,13 @@ class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductList
 
     public function getListingLabel()
     {
-        return $this->trans('Search results', [], 'Modules.Meilisearchprestashop.Meilisearch');
+        return $this->getTranslator()->trans('Search results', [], 'Modules.Meilisearch_prestashop.Meilisearch');
     }
     
     protected function doProductSearch($template, $params = [], $locale = null)
     {
         if ($this->ajax) {
-            ob_end_clean();
-            header('Content-Type: application/json');
-            $this->ajaxRender(json_encode($this->getAjaxProductSearchVariables()));
+
 
             return;
         } else {
