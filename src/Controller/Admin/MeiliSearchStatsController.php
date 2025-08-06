@@ -3,7 +3,7 @@ namespace PrestaShop\Module\MeiliSearch\Controller\Admin;
 
 use PrestaShopBundle\Controller\Admin\FrameworkBundleAdminController;
 use PrestaShop\Module\Classes\MeilisearchStatssearch;
-
+use Media;
 
 
 class MeiliSearchStatsController extends FrameworkBundleAdminController
@@ -21,7 +21,39 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
     {
         // Juste la vue avec le bouton
         $objMeilisearchStats = new MeilisearchStatssearch();
-        // exit(print_r($test->getMostSearchedQueries(100)));
+
+
+        $mostSearchedQueries = $objMeilisearchStats->getMostSearchedQueries(10);
+        foreach ($mostSearchedQueries as $query) {
+            $dataMostSearchQueriesValues[] = [
+                'label' => $query['label'],
+                'value' => (int)$query['value'],
+            ];
+        }
+        $dataMostSearchedQueries = [[
+            'key' => 'Most Searched Queries',
+            'color' => '#ff0000',
+            'values' => $dataMostSearchQueriesValues,
+        ]];
+
+        $mostSearchedEmptyQueries = $objMeilisearchStats->getMostSearchedEmptyQueries(10);
+        foreach ($mostSearchedEmptyQueries as $query) {
+            $dataMostSearchedEmptyQueriesValues[] = [
+                'label' => $query['label'],
+                'value' => (int)$query['value'],
+            ];
+        }
+        $dataMostSearchedEmptyQueries = [[
+            'key' => 'Most Searched Empty Queries',
+            'color' => '#ff0000',
+            'values' => $dataMostSearchedEmptyQueriesValues,
+        ]]; 
+
+        Media::addJsDef([
+            'dataSearches' => $dataMostSearchedQueries,
+            'dataEmpty' => $dataMostSearchedEmptyQueries,
+        ]);
+        
         return $this->render('@Modules/meilisearch_prestashop/views/templates/admin/stats/statistiques.html.twig');
     }
 }

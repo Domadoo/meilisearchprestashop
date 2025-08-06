@@ -1,11 +1,48 @@
 {% extends '@PrestaShop/Admin/layout.html.twig' %}
 
+
 {% block content %}
-  <div class="card">
-    <div class="card-header">
-      <h3>Indexation Meilisearch</h3>
+
+    <div class="row md-4">
+        <div class="card col">
+            <div class="card-header">
+                <h3>{{'Top Searches'|trans({}, 'Modules.Meilisearch_prestashop.admin', 'fr')}}</h3>
+            </div>
+            <div class="card-body" id="chart-searches">
+                <svg></svg>
+            </div>
+        </div>
+        <div class="card col">
+            <div class="card-header">
+                <h3>Top Clicked</h3>
+            </div>
+            <div class="card-body" id="chart-clicks">
+                <svg></svg>
+            </div>
+        </div>
+        <div class="card col">
+            <div class="card-header">
+                <h3>No results</h3>
+            </div>
+            <div class="card-body" id="chart-no-results">
+                <svg></svg>
+            </div>
+        </div>
     </div>
-    <div class="card-body">
-    </div>
-  </div>
+
+    <style>
+.card {
+    width: 33%;
+}
+
+.card-body svg {
+  height: 400px;
+}
+
+</style>
+{% endblock %}
+
+{% block javascripts %}
+  {{ parent() }}
+  <script src="{{ asset('../modules/meilisearch_prestashop/views/js/admin/stats/statistiques.js') }}"></script>
 {% endblock %}

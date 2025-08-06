@@ -40,9 +40,17 @@ class MeilisearchStatssearch extends ObjectModel
 
     public static function getMostSearchedQueries($limit = 10)
     {
-        $sql = 'SELECT query, count(*) as `nb_search` FROM ' . _DB_PREFIX_ . 'meilisearch_statssearch A GROUP BY A.query ORDER BY nb_search DESC LIMIT ' . (int)$limit;
+        $sql = 'SELECT query as `label`, count(*) as `value` FROM ' . _DB_PREFIX_ . 'meilisearch_statssearch A GROUP BY A.query ORDER BY value DESC LIMIT ' . (int)$limit;
         $results = Db::getInstance()->executeS($sql);
-        
+
+        return $results ? $results : [];
+    }
+
+    public static function getMostSearchedEmptyQueries($limit = 10)
+    {
+        $sql = 'SELECT query as `label`, count(*) as `value` FROM ' . _DB_PREFIX_ . 'meilisearch_statssearch A WHERE nb_results = 0 GROUP BY A.query ORDER BY value DESC LIMIT ' . (int)$limit;
+        $results = Db::getInstance()->executeS($sql);
+
         return $results ? $results : [];
     }
 }
