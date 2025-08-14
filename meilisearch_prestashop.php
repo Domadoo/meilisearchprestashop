@@ -34,7 +34,7 @@ if (!defined('_PS_VERSION_')) {
 use PrestaShop\PrestaShop\Core\Product\Search\FacetCollection; #Collection de facettes 
 use PrestaShop\PrestaShop\Core\Product\Search\Facet; #Classe de la facette 
 use PrestaShop\PrestaShop\Core\Product\Search\Filter; #Classe des filtres 
-use PrestaShop\PrestaShop\Core\Product\Search\URLFragmentSerializer; #Pour transformer l'url 
+use PrestaShop\PrestaShop\Core\Product\Search\URLFragmentSerializer; #Pour transformer l'url
 
 class Meilisearch_prestashop extends Module
 {
@@ -283,6 +283,17 @@ class Meilisearch_prestashop extends Module
             '2' => $this->l('Search a product', 'meilisearch_searchbar'),
             '3' => $this->l('Search a category', 'meilisearch_searchbar')
         ]]);
+
+        $link = Context::getContext()->link->getModuleLink(
+            'meilisearch_prestashop',
+            'meilisearch'
+        );
+
+        $cookie = $this->context->cookie;
+
+        $this->context->smarty->assign([
+            'meilisearchUrl' => $link,
+        ]);
 
         $this->context->controller->addJS($this->_path.'/views/js/front/meilisearch_searchbar.js');
         $this->context->controller->addCSS($this->_path.'/views/css/front/meilisearch_searchbar.css');

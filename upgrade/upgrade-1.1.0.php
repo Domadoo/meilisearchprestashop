@@ -47,6 +47,8 @@ function updateDb()
         `id_statssearch` int(11) NOT NULL AUTO_INCREMENT,
         `query` varchar(255) NOT NULL,
         `nb_results` int(11) NOT NULL,
+        `id_product` int(11) DEFAULT NULL,
+        `position` int(11) DEFAULT NULL,
         `date_add` datetime NOT NULL DEFAULT current_timestamp(),
         PRIMARY KEY  (`id_statssearch`)
     ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';

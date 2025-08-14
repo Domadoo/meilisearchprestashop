@@ -8,11 +8,12 @@ use PrestaShop\Module\MeiliSearch\Search\MeiliSearchProductSearchProvider;
 
 class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductListingFrontController
 {
+    public $module;
 
     public function initContent()
     {
         parent::initContent();
-
+        
         $this->doProductSearch('../../../modules/meilisearch_prestashop/views/templates/front/search.tpl');
     }
 
@@ -53,7 +54,9 @@ class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductList
     protected function doProductSearch($template, $params = [], $locale = null)
     {
         if ($this->ajax) {
-
+            ob_end_clean();
+            header('Content-Type: application/json');
+            $this->ajaxRender(json_encode($this->getAjaxProductSearchVariables()));
 
             return;
         } else {
@@ -64,6 +67,24 @@ class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductList
             
             $this->setTemplate($template, $params, $locale);
         }
+    }
+
+    public function setMedia()
+    {
+        parent::setMedia();
+
+        $this->module = \Module::getInstanceByName('meilisearch_prestashop');
+
+        $page = Tools::getValue('page') ? Tools::getValue('page') : 1;
+        Media::addJsDef([
+            'base_url' => $this->context->link->getModuleLink($this->module->name, 'ajax', [], true),
+            'page' => $page,
+        ]);
+
+        $this->registerJavascript(
+            'meilisearch_search_js',
+            'modules/'.$this->module->name.'/views/js/front/search.js'
+        );
     }
 
 }

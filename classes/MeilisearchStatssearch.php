@@ -26,6 +26,8 @@ class MeilisearchStatssearch extends ObjectModel
     public $id_statssearch;
     public $query;
     public $nb_results;
+    public $id_product;
+    public $position;
     public $date_add;
 
     public static $definition = array(
@@ -34,6 +36,8 @@ class MeilisearchStatssearch extends ObjectModel
         'fields'    => array(
             'query' => array('type' => self::TYPE_STRING, 'validate' => 'isString', 'size' => 255, 'required' => true),
             'nb_results' => array('type' => self::TYPE_INT, 'validate' => 'isUnsignedInt', 'required' => true),
+            'id_product' => array('type' => self::TYPE_INT, 'validate' => 'isInt', 'required' => false),
+            'position' => array('type' => self::TYPE_INT, 'validate' => 'isInt', 'required' => false),
             'date_add' => array('type' => self::TYPE_DATE, 'validate' => 'isDateFormat', 'required' => true),
         )
     );

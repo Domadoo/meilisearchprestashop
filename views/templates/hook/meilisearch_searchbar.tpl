@@ -1,4 +1,4 @@
-<form method="get" class="search-bar-wrapper">
+<form method="get" action="{$meilisearchUrl}" class="search-bar-wrapper">
   <div class="search-bar-container">
     <span class="search-icon">
       <i class="material-icons">search</i>

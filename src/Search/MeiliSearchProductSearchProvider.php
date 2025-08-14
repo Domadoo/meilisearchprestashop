@@ -150,11 +150,18 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
             $productsChunk[0] = [];
         }
 
-        $newSearch = new MeilisearchStatssearch();
-        $newSearch->query = $search;
-        $newSearch->nb_results = $response->estimatedTotalHits;
-        $newSearch->save();
-        
+        $cookie = $context->cookie;
+
+        if(!(isset($cookie->meilisearch_query) && $cookie->meilisearch_query == $search)){
+            $newSearch = new MeilisearchStatssearch();
+            $newSearch->query = $search;
+            $newSearch->nb_results = $response->estimatedTotalHits;
+            $newSearch->save();
+
+            $cookie->meilisearch_id = $newSearch->id;
+            $cookie->meilisearch_query = $search;
+        }
+
         return [
             'products' => $this->formatProducts($productsChunk[$page - 1]),
             'allProducts' => $this->formatProducts($response->hits),
