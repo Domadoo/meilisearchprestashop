@@ -42,17 +42,48 @@ class MeilisearchStatssearch extends ObjectModel
         )
     );
 
-    public static function getMostSearchedQueries($limit = 10)
+    public static function getMostSearchedQueries($limit = 10, $dateBegin = null, $dateEnd = null)
     {
-        $sql = 'SELECT query as `label`, count(*) as `value` FROM ' . _DB_PREFIX_ . 'meilisearch_statssearch A GROUP BY A.query ORDER BY value DESC LIMIT ' . (int)$limit;
+        if($dateBegin && $dateEnd) {
+            $datediff = 'WHERE date_add BETWEEN \'' . pSQL($dateBegin) . '\' AND \'' . pSQL($dateEnd) . '\'';
+        }else {
+            $datediff = '';
+        }
+        $sql = 'SELECT query as `label`, count(*) as `value` FROM ' . _DB_PREFIX_ . 'meilisearch_statssearch A ' . $datediff . ' GROUP BY A.query ORDER BY value DESC LIMIT ' . (int)$limit;
         $results = Db::getInstance()->executeS($sql);
 
         return $results ? $results : [];
     }
 
-    public static function getMostSearchedEmptyQueries($limit = 10)
+    public static function getMostSearchedEmptyQueries($limit = 10, $dateBegin = null, $dateEnd = null)
     {
-        $sql = 'SELECT query as `label`, count(*) as `value` FROM ' . _DB_PREFIX_ . 'meilisearch_statssearch A WHERE nb_results = 0 GROUP BY A.query ORDER BY value DESC LIMIT ' . (int)$limit;
+        if($dateBegin && $dateEnd) {
+            $datediff = 'AND date_add BETWEEN \'' . pSQL($dateBegin) . '\' AND \'' . pSQL($dateEnd) . '\'';
+        }else {
+            $datediff = '';
+        }
+
+        $sql = 'SELECT query as `label`, count(*) as `value` FROM ' . _DB_PREFIX_ . 'meilisearch_statssearch A WHERE nb_results = 0 '.$datediff.' GROUP BY A.query ORDER BY value DESC LIMIT ' . (int)$limit;
+        $results = Db::getInstance()->executeS($sql);
+
+        return $results ? $results : [];
+    }
+
+    public static function getMostClickedProducts($limit = 10, $dateBegin = null, $dateEnd = null)
+    {
+        if($dateBegin && $dateEnd) {
+            $datediff = 'AND date_add BETWEEN \'' . pSQL($dateBegin) . '\' AND \'' . pSQL($dateEnd) . '\'';
+        }else {
+            $datediff = '';
+        }
+
+        $sql = 'SELECT name as `label`, count(*) as `value`, A.id_product 
+        FROM ' . _DB_PREFIX_ . 'meilisearch_statssearch A
+        JOIN ' . _DB_PREFIX_ . 'product_lang P ON (A.id_product = P.id_product)
+        WHERE (A.id_product IS NOT NULL AND A.id_product != 0)  AND id_lang = 1 '.$datediff.'
+        GROUP BY A.id_product
+        ORDER BY value DESC 
+        LIMIT ' . (int)$limit;
         $results = Db::getInstance()->executeS($sql);
 
         return $results ? $results : [];

@@ -14,6 +14,10 @@ class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductList
     {
         parent::initContent();
         
+        // echo '<pre>';
+        // exit(print_r($_SERVER));
+        // exit(print_r($this->context->controller));
+        // exit(print_r(array_keys((array)$this->context)));
         $this->doProductSearch('../../../modules/meilisearch_prestashop/views/templates/front/search.tpl');
     }
 

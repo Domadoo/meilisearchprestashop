@@ -2,6 +2,21 @@
 
 
 {% block content %}
+    <div id="calendar" class="panel">
+        <form action="{{ path('admin_meilisearch_stats_index') }}" method="post" id="calendar_form" class="calendar-form form-inline d-flex justify-content-between align-items-center">
+
+            {# Boutons de sélection jour / mois / année #}
+            <div class="btn-group" role="group" aria-label="Calendar shortcuts">
+                <button type="submit" name="submitDateDay" class="btn btn-outline-secondary {{ buttonClicked == 'submitDateDay' ? 'active' : '' }}">{{ 'Day'|trans({}, 'Admin.Global') }}</button>
+                <button type="submit" name="submitDateMonth" class="btn btn-outline-secondary {{ buttonClicked == 'submitDateMonth' ? 'active' : '' }}">{{ 'Month'|trans({}, 'Admin.Global') }}</button>
+                <button type="submit" name="submitDateYear" class="btn btn-outline-secondary {{ buttonClicked == 'submitDateYear' ? 'active' : '' }}">{{ 'Year'|trans({}, 'Admin.Global') }}</button>
+                <button type="submit" name="submitDateDayPrev" class="btn btn-outline-secondary {{ buttonClicked == 'submitDateDayPrev' ? 'active' : '' }}">{{ 'Day'|trans({}, 'Admin.Global') }}-1</button>
+                <button type="submit" name="submitDateMonthPrev" class="btn btn-outline-secondary {{ buttonClicked == 'submitDateMonthPrev' ? 'active' : '' }}">{{ 'Month'|trans({}, 'Admin.Global') }}-1</button>
+                <button type="submit" name="submitDateYearPrev" class="btn btn-outline-secondary {{ buttonClicked == 'submitDateYearPrev' ? 'active' : '' }}">{{ 'Year'|trans({}, 'Admin.Global') }}-1</button>
+                <button type="submit" name="submitDateAllTime" class="btn btn-outline-secondary {{ buttonClicked == 'submitDateAllTime' ? 'active' : '' }}">{{ 'All Time'|trans({}, 'Admin.Global') }}</button>
+            </div>
+        </form>
+    </div>
 
     <div class="row md-4">
         <div class="card col">
@@ -29,20 +44,102 @@
             </div>
         </div>
     </div>
+{# 
+    <h2>Stats Dashboard</h2>
 
-<style>
-    .card-body svg {
-        height: 300px;
-    }
+  <!-- Jauges -->
+  <div class="dashboard">
+    <div class="gauge">
+      <h3>Searches</h3>
+      <canvas id="gauge1" width="250" height="200"></canvas>
+    </div>
+    <div class="gauge">
+      <h3>CTR</h3>
+      <canvas id="gauge2" width="250" height="200"></canvas>
+    </div>
+    <div class="gauge">
+      <h3>Conversion</h3>
+      <canvas id="gauge3" width="250" height="200"></canvas>
+    </div>
+  </div>
 
-    .card {
-        margin: 0rem 0.5rem;
-    }
-</style>
+  <!-- Graphe NVD3 --> #}
+  <svg id="chart2" style="height:400px;"></svg> 
 
+{% endblock %}
+
+{% block stylesheets %}
+  {{ parent() }}
+  <link rel="stylesheet" href="{{ asset('../modules/meilisearch_prestashop/views/css/admin/stats/statistiques.css') }}">
 {% endblock %}
 
 {% block javascripts %}
   {{ parent() }}
   <script src="{{ asset('../modules/meilisearch_prestashop/views/js/admin/stats/statistiques.js') }}"></script>
+
+  {# <script>
+    // ---------------------------
+    // Jauges avec gauge.js
+    // ---------------------------
+    var opts = {
+      angle: 0, // cercle complet
+      lineWidth: 0.3,
+      radiusScale: 0.5,
+      pointer: {
+        length: 0.6,
+        strokeWidth: 0.04,
+        color: '#000000'
+      },
+      limitMax: false,
+      limitMin: false,
+      colorStart: "#6FADCF",
+      colorStop: "#8FC0DA",
+      strokeColor: '#E0E0E0',
+      generateGradient: true
+    };
+
+    // Gauge 1 - Searches
+    var gauge1 = new Gauge(document.getElementById("gauge1")).setOptions(opts);
+    gauge1.maxValue = 500; // max
+    gauge1.set(226);       // valeur
+
+    // Gauge 2 - CTR
+    var gauge2 = new Gauge(document.getElementById("gauge2")).setOptions(opts);
+    gauge2.maxValue = 100; // en %
+    gauge2.set(67.7);
+
+    // Gauge 3 - Conversion
+    var gauge3 = new Gauge(document.getElementById("gauge3")).setOptions(opts);
+    gauge3.maxValue = 100;
+    gauge3.set(0);
+
+    // ---------------------------
+    // Bar chart avec NVD3
+    // ---------------------------
+    var data = [{
+      key: "Search Metrics",
+      values: [
+        { x: "Searches", y: 226 },
+        { x: "Clicks", y: 153 },
+        { x: "Conversions", y: 0 }
+      ]
+    }];
+
+    nv.addGraph(function() {
+      var chart = nv.models.multiBarChart()
+        .reduceXTicks(false)
+        .rotateLabels(0)
+        .showControls(false)
+        .groupSpacing(0.3);
+
+      chart.yAxis.tickFormat(d3.format(',.1f'));
+
+      d3.select('#chart')
+        .datum(data)
+        .call(chart);
+
+      nv.utils.windowResize(chart.update);
+      return chart;
+    });
+  </script> #}
 {% endblock %}
