@@ -5,6 +5,7 @@ use PrestaShopBundle\Controller\Admin\FrameworkBundleAdminController;
 use PrestaShop\Module\Classes\MeilisearchStatssearch;
 use Media;
 use Tools;
+use Language;
 
 class MeiliSearchStatsController extends FrameworkBundleAdminController
 {
@@ -19,13 +20,9 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
 
     public function indexAction()
     {
-        // Juste la vue avec le bouton
-        // exit(print_r(Tools::isSubmit('submitDateDay') . ' ' . Tools::isSubmit('submitDateMonth') . ' ' . Tools::isSubmit('submitDateYear') . ' ' . Tools::isSubmit('submitDateDayPrev') . ' ' . Tools::isSubmit('submitDateMonthPrev') . ' ' . Tools::isSubmit('submitDateYearPrev') . ' ' . Tools::isSubmit('submitDateAllTime')));
-        // exit(print_r($_POST));
         $objMeilisearchStats = new MeilisearchStatssearch();
-
-
-        $buttonClicked = 'submitDateAllTime';
+        $buttonClicked = Tools::getValue('selectedPeriod', 'submitDateAllTime');
+        $id_lang = Tools::getValue('id_lang', 0);
 
         foreach ($_POST as $key => $value) {
             if (strpos($key, 'submitDate') === 0) {
@@ -68,7 +65,7 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             }
         }
 
-        $mostSearchedQueries = $objMeilisearchStats->getMostSearchedQueries(10, $dateBegin, $dateEnd);
+        $mostSearchedQueries = $objMeilisearchStats->getMostSearchedQueries(10, $dateBegin, $dateEnd, $id_lang);
         $i = 1;
         $dataMostSearchQueriesValues = [];
         foreach ($mostSearchedQueries as $query) {
@@ -85,7 +82,7 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             'values' => $dataMostSearchQueriesValues,
         ]];
 
-        $mostSearchedEmptyQueries = $objMeilisearchStats->getMostSearchedEmptyQueries(10, $dateBegin, $dateEnd);
+        $mostSearchedEmptyQueries = $objMeilisearchStats->getMostSearchedEmptyQueries(10, $dateBegin, $dateEnd, $id_lang);
         $i = 1;
         $dataMostSearchedEmptyQueriesValues = [];
         foreach ($mostSearchedEmptyQueries as $query) {
@@ -102,7 +99,7 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             'values' => $dataMostSearchedEmptyQueriesValues,
         ]]; 
 
-        $mostClickedProducts = $objMeilisearchStats->getMostClickedProducts(10, $dateBegin, $dateEnd);
+        $mostClickedProducts = $objMeilisearchStats->getMostClickedProducts(10, $dateBegin, $dateEnd, $id_lang);
         $i = 1;
         $dataMostClickedProductsValues = [];
         foreach ($mostClickedProducts as $product) {
@@ -119,14 +116,34 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             'values' => $dataMostClickedProductsValues
         ]];
 
+        $ctrPercentages = $objMeilisearchStats->getCTR($dateBegin, $dateEnd, $id_lang);
+        $dataCtr = [];
+        if ($ctrPercentages) {
+            $dataCtr = [
+                [
+                    'label' => 'Click Through Rate',
+                    'value' => (float)$ctrPercentages,
+                ],
+                [
+                    'label' => 'No Click Through Rate',
+                    'value' => 100 - (float)$ctrPercentages,
+                ],
+            ];
+        }
+
+
         Media::addJsDef([
             'dataSearches' => $dataMostSearchedQueries,
             'dataEmpty' => $dataMostSearchedEmptyQueries,
             'dataClicks' => $dataMostClickedProducts,
+            'dataCtr' => $dataCtr,
         ]);
-        
+
         return $this->render('@Modules/meilisearch_prestashop/views/templates/admin/stats/statistiques.html.twig', [
             'buttonClicked' => $buttonClicked,
+            'ctrPercentages' => $ctrPercentages,
+            'selectedIdLang' => Tools::getValue('id_lang'),
+            'languages' => Language::getLanguages(false),
         ]);
     }
 }

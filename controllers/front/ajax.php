@@ -29,8 +29,9 @@ class Meilisearch_prestashopAjaxModuleFrontController extends ModuleFrontControl
                     $newSearch->position = Tools::getValue('position');
                     $newSearch->save();
 
-                    unset($cookie->meilisearch_id);
-                    unset($cookie->meilisearch_query);
+                    $cookie->meilisearch_product_id = Tools::getValue('id_product');
+                    // unset($cookie->meilisearch_id);
+                    // unset($cookie->meilisearch_query);
                 }
                 break;
             

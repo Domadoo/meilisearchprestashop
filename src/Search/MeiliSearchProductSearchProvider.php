@@ -8,9 +8,9 @@ use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchContext;
 use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchResult;
 use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
 use Symfony\Component\Translation\TranslatorInterface;
+use PrestaShop\PrestaShop\Adapter\SymfonyContainer;
 
 use PrestaShop\Module\Classes\MeilisearchStatssearch;
-use PrestaShopLogger;
 use Configuration;
 use Context;
 
@@ -152,14 +152,19 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
         $cookie = $context->cookie;
 
-        if(!(isset($cookie->meilisearch_query) && $cookie->meilisearch_query == $search)){
+        if(isset($cookie->meilisearch_product_id) || !(isset($cookie->meilisearch_query) && $cookie->meilisearch_query == $search 
+        && (!isset($_SERVER['HTTP_REFERER']) || strpos($_SERVER['HTTP_REFERER'], '/module/meilisearch_prestashop/meilisearch')))
+        ) {
             $newSearch = new MeilisearchStatssearch();
             $newSearch->query = $search;
             $newSearch->nb_results = $response->estimatedTotalHits;
+            $newSearch->id_customer = isset($context->customer) ? $context->customer->id : null;
+            $newSearch->id_lang = $context->language->id; 
             $newSearch->save();
 
             $cookie->meilisearch_id = $newSearch->id;
             $cookie->meilisearch_query = $search;
+            unset($cookie->meilisearch_product_id);
         }
 
         return [

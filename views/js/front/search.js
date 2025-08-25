@@ -23,10 +23,17 @@ function ajaxProductClick(product, index) {
 
 let listProducts = document.getElementById('products');
 listProducts.addEventListener('click', function(event) {
+
     if (event.target && event.target.closest('.thumbnail-container')) {
+
         let product = event.target.closest('.product').firstElementChild;
         let productsRow = document.querySelector('#js-product-list');
-        
         ajaxProductClick(product, Array.from(productsRow.firstElementChild.children).indexOf(product.parentElement));
+
+        let productHref = product.firstElementChild.firstElementChild.firstElementChild;
+        let url = new URL(productHref.href);
+        url.searchParams.set('id_session', id_statssearch);
+        productHref.href = url.toString();
+
     }
 });

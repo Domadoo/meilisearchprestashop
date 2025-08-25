@@ -71,6 +71,11 @@ class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductList
             
             $this->setTemplate($template, $params, $locale);
         }
+
+        $cookie = Context::getContext()->cookie;
+        Media::addJsDef([
+            'id_statssearch' => (int)$cookie->meilisearch_id,
+        ]);
     }
 
     public function setMedia()

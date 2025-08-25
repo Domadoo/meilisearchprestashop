@@ -73,6 +73,7 @@ class Meilisearch_prestashop extends Module
             $this->registerHook('displayHeader') &&
             $this->registerHook('actionProductSearchAfter') &&
             $this->registerHook('displaySearch') &&
+            $this->registerHook('actionCartSave') &&
             $this->callInstallTab();
     }
 
@@ -278,6 +279,7 @@ class Meilisearch_prestashop extends Module
     }
 
     public function hookDisplayHeader(){
+
         Media::addJsDef(['searchPlaceholder' =>  [
             '1' => $this->l('Search an article', 'meilisearch_searchbar'),
             '2' => $this->l('Search a product', 'meilisearch_searchbar'),
@@ -297,6 +299,24 @@ class Meilisearch_prestashop extends Module
 
         $this->context->controller->addJS($this->_path.'/views/js/front/meilisearch_searchbar.js');
         $this->context->controller->addCSS($this->_path.'/views/css/front/meilisearch_searchbar.css');
+    }
+
+    public function hookActionCartSave($params)
+    {
+        PrestaShopLogger::addLog('ActionCartSave hook called', 1);
+        $context = Context::getContext();
+        $cookie = Context::getContext()->cookie;
+        PrestaShopLogger::addLog(print_r($context->controller,true), 1);
+        if(isset($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], '/module/meilisearch_prestashop/meilisearch') !== false && isset($cookie->meilisearch_id)) {
+            PrestaShopLogger::addLog('ActionCartSave hook called', 2);
+            $id_search = (int)$cookie->meilisearch_id;
+            $search = new MeilisearchStatssearch($id_search);
+            if(Validate::isLoadedObject($search)) {
+                $search->isAddedToCart = true;
+                $search->save();
+            }
+        }
+
     }
 
     public function requestCurl($url, $payload = null, $request = false)

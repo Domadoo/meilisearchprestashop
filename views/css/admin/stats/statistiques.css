@@ -1,9 +1,23 @@
+.card-body{
+    justify-content: center;
+    text-align: center;
+    align-items: center;
+}
+
+.card-ctr .card-body h3{
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+    color: #1f77b4;
+}
+
 .card-body svg {
-    height: 300px;
+    height: 400px;
+    width: 100%;
 }
 
 .card {
-    margin: 0rem 0.5rem;
+    margin: 0.5rem 0.5rem;
 }
 
 #calendar {
@@ -36,4 +50,8 @@
 .active {
     background-color: #25b9d7 !important;
     color: #fff !important;
+}
+
+#lang {
+    padding: 10px;
 }

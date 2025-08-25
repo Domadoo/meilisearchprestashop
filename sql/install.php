@@ -31,6 +31,10 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'meilisearch_statssearch
     `nb_results` int(11) NOT NULL,
     `id_product` int(11) DEFAULT NULL,
     `position` int(11) DEFAULT NULL,
+    `id_customer` int(11) DEFAULT NULL,
+    `isAddedToCart` tinyint(1) DEFAULT NULL,
+    `isOrdered` tinyint(1) DEFAULT NULL,
+    `id_lang` int(11) NOT NULL,
     `date_add` datetime NOT NULL DEFAULT current_timestamp(),
     PRIMARY KEY  (`id_statssearch`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
