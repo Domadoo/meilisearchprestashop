@@ -59,7 +59,7 @@
     </div>
 
     <div class= "row md-6">
-        <div class="card col card-ctr">
+        <div class="card col card-stats-gauge">
             <div class="card-header">
                 <h3>{{'CTR'|trans({}, 'Modules.Meilisearch_prestashop.admin', 'fr')}}</h3>
             </div>
@@ -73,12 +73,32 @@
                 </div>
             </div>
         </div>
-        <div class="card col">
+        <div class="card col card-stats-gauge">
             <div class="card-header">
-                <h3>{{'CTR'|trans({}, 'Modules.Meilisearch_prestashop.admin', 'fr')}}</h3>
+                <h3>{{'Added to cart rate'|trans({}, 'Modules.Meilisearch_prestashop.admin', 'fr')}}</h3>
             </div>
-            <div class="card-body" id="chart-conversion">
-                <svg></svg>
+            <div class="card-body">
+                <div>
+                    <h3>{{ addedToCartRate }} %</h3>
+                    <h4>{{ 'Added to cart rate'|trans({}, 'Modules.Meilisearch_prestashop.admin', 'fr') }}</h4>
+                </div>
+                <div id="chart-added-to-cart-rate">
+                    <svg></svg>
+                </div>
+            </div>
+        </div>
+        <div class="card col card-stats-gauge">
+            <div class="card-header">
+                <h3>{{'Conversion rate'|trans({}, 'Modules.Meilisearch_prestashop.admin', 'fr')}}</h3>
+            </div>
+            <div class="card-body">
+                <div>
+                    <h3>{{ conversionRate }} %</h3>
+                    <h4>{{ 'Conversion rate'|trans({}, 'Modules.Meilisearch_prestashop.admin', 'fr') }}</h4>
+                </div>
+                <div id="chart-conversion-rate">
+                    <svg></svg>
+                </div>
             </div>
         </div>
     </div>

@@ -50,8 +50,8 @@ function updateDb()
         `id_product` int(11) DEFAULT NULL,
         `position` int(11) DEFAULT NULL,
         `id_customer` int(11) DEFAULT NULL,
-        `isAddedToCart` tinyint(1) DEFAULT NULL,
-        `isOrdered` tinyint(1) DEFAULT NULL,
+        `id_cart` int(11) NOT NULL,
+        `is_ordered` tinyint(1) DEFAULT NULL,
         `id_lang` int(11) NOT NULL,
         `date_add` datetime NOT NULL DEFAULT current_timestamp(),
         PRIMARY KEY  (`id_statssearch`)

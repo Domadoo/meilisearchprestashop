@@ -29,8 +29,8 @@ class MeilisearchStatssearch extends ObjectModel
     public $id_product;
     public $position;
     public $id_customer;
-    public $isAddedToCart;
-    public $isOrdered;
+    public $id_cart;
+    public $is_ordered;
     public $id_lang; // Default language ID, can be changed based on your needs
     public $date_add;
 
@@ -43,8 +43,8 @@ class MeilisearchStatssearch extends ObjectModel
             'id_product' => array('type' => self::TYPE_INT, 'validate' => 'isInt', 'required' => false),
             'position' => array('type' => self::TYPE_INT, 'validate' => 'isInt', 'required' => false),
             'id_customer' => array('type' => self::TYPE_INT, 'validate' => 'isInt', 'required' => false),
-            'isAddedToCart' => array('type' => self::TYPE_BOOL, 'validate' => 'isBool', 'required' => false),
-            'isOrdered' => array('type' => self::TYPE_BOOL, 'validate' => 'isBool', 'required' => false),
+            'id_cart' => array('type' => self::TYPE_INT, 'validate' => 'isInt', 'required' => false),
+            'is_ordered' => array('type' => self::TYPE_BOOL, 'validate' => 'isBool', 'required' => false),
             'id_lang' => array('type' => self::TYPE_INT, 'validate' => 'isInt', 'required' => true),
             'date_add' => array('type' => self::TYPE_DATE, 'validate' => 'isDateFormat', 'required' => true),
         )
@@ -107,7 +107,7 @@ class MeilisearchStatssearch extends ObjectModel
         return $results ? $results : [];
     }
 
-    public function getCTR($dateBegin = null, $dateEnd = null, $id_lang = 0)
+    public static function getCTR($dateBegin = null, $dateEnd = null, $id_lang = 0)
     {
         if($dateBegin && $dateEnd) {
             $where = 'AND date_add BETWEEN \'' . pSQL($dateBegin) . '\' AND \'' . pSQL($dateEnd) . '\'';
@@ -126,5 +126,55 @@ class MeilisearchStatssearch extends ObjectModel
         $totalSearches = Db::getInstance()->getValue($sql);
 
         return ($totalSearches > 0) ? round(($totalClicks / $totalSearches) * 100, 2) : 0;
+    }
+
+    public static function getAddedToCartRate($dateBegin = null, $dateEnd = null, $id_lang = 0)
+    {
+        if($dateBegin && $dateEnd) {
+            $where = 'AND date_add BETWEEN \'' . pSQL($dateBegin) . '\' AND \'' . pSQL($dateEnd) . '\'';
+        }else {
+            $where = '';
+        }
+
+        if($id_lang && $id_lang > 0) {
+            $where .= ' AND id_lang = ' . (int)$id_lang;
+        }
+
+        $sql = 'SELECT count(*) as `value` FROM ' . _DB_PREFIX_ . 'meilisearch_statssearch A WHERE A.id_cart != 0  '.$where;
+        $totalAddedToCart = Db::getInstance()->getValue($sql);
+
+        $sql = 'SELECT count(*) as `value` FROM ' . _DB_PREFIX_ . 'meilisearch_statssearch A WHERE A.nb_results > 0 '.$where;
+        $totalSearches = Db::getInstance()->getValue($sql);
+
+        return ($totalSearches > 0) ? round(($totalAddedToCart / $totalSearches) * 100, 2) : 0;
+    }
+
+    public static function getConversionRate($dateBegin = null, $dateEnd = null, $id_lang = 0)
+    {
+        if($dateBegin && $dateEnd) {
+            $where = 'AND date_add BETWEEN \'' . pSQL($dateBegin) . '\' AND \'' . pSQL($dateEnd) . '\'';
+        }else {
+            $where = '';
+        }
+
+        if($id_lang && $id_lang > 0) {
+            $where .= ' AND id_lang = ' . (int)$id_lang;
+        }
+
+        $sql = 'SELECT count(*) as `value` FROM ' . _DB_PREFIX_ . 'meilisearch_statssearch A WHERE A.is_ordered = 1  '.$where;
+        $totalOrdered = Db::getInstance()->getValue($sql);
+
+        $sql = 'SELECT count(*) as `value` FROM ' . _DB_PREFIX_ . 'meilisearch_statssearch A WHERE A.nb_results > 0 '.$where;
+        $totalSearches = Db::getInstance()->getValue($sql);
+
+        return ($totalSearches > 0) ? round(($totalOrdered / $totalSearches) * 100, 2) : 0;
+    }
+
+    public static function getSearchesByIdCart($id_cart)
+    {
+        $sql = 'SELECT * FROM ' . _DB_PREFIX_ . 'meilisearch_statssearch A WHERE A.id_cart = ' . (int)$id_cart;
+        $results = Db::getInstance()->executeS($sql);
+
+        return $results ? $results : [];
     }
 }

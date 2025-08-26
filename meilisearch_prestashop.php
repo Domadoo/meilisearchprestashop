@@ -36,6 +36,8 @@ use PrestaShop\PrestaShop\Core\Product\Search\Facet; #Classe de la facette
 use PrestaShop\PrestaShop\Core\Product\Search\Filter; #Classe des filtres 
 use PrestaShop\PrestaShop\Core\Product\Search\URLFragmentSerializer; #Pour transformer l'url
 
+use PrestaShop\Module\Classes\MeilisearchStatssearch;
+
 class Meilisearch_prestashop extends Module
 {
     protected $config_form = false;
@@ -73,7 +75,9 @@ class Meilisearch_prestashop extends Module
             $this->registerHook('displayHeader') &&
             $this->registerHook('actionProductSearchAfter') &&
             $this->registerHook('displaySearch') &&
-            $this->registerHook('actionCartSave') &&
+            $this->registerHook('actionCartUpdateQuantityBefore') &&
+            $this->registerHook('actionPresentProduct') &&
+            $this->registerHook('actionValidateOrder') &&
             $this->callInstallTab();
     }
 
@@ -301,22 +305,52 @@ class Meilisearch_prestashop extends Module
         $this->context->controller->addCSS($this->_path.'/views/css/front/meilisearch_searchbar.css');
     }
 
-    public function hookActionCartSave($params)
+    public function hookActionPresentProduct()
     {
-        PrestaShopLogger::addLog('ActionCartSave hook called', 1);
-        $context = Context::getContext();
-        $cookie = Context::getContext()->cookie;
-        PrestaShopLogger::addLog(print_r($context->controller,true), 1);
-        if(isset($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], '/module/meilisearch_prestashop/meilisearch') !== false && isset($cookie->meilisearch_id)) {
-            PrestaShopLogger::addLog('ActionCartSave hook called', 2);
-            $id_search = (int)$cookie->meilisearch_id;
-            $search = new MeilisearchStatssearch($id_search);
+        unset($this->context->cookie->meilisearch_query);
+        unset($this->context->cookie->meilisearch_id);
+        if(Tools::getValue('id_meilisearch_statssearch')) {
+            $id_meilisearch_statssearch = (int)Tools::getValue('id_meilisearch_statssearch');
+            $search = new MeilisearchStatssearch($id_meilisearch_statssearch);
             if(Validate::isLoadedObject($search)) {
-                $search->isAddedToCart = true;
-                $search->save();
+                
+                $this->context->cookie->meilisearch_id = $id_meilisearch_statssearch;
+                $this->context->cookie->meilisearch_product_id = Tools::getValue('id_product');
             }
         }
+    }
 
+    public function hookActionCartUpdateQuantityBefore($params)
+    {
+        if(isset($this->context->cookie->meilisearch_id) && isset($this->context->cookie->meilisearch_product_id) 
+            && $params['product']->id == $this->context->cookie->meilisearch_product_id && $params['operator'] == 'up') {
+
+            $newSearch = new MeilisearchStatssearch($this->context->cookie->meilisearch_id);
+            if(!Validate::isLoadedObject($newSearch) || $newSearch->id_product != $this->context->cookie->meilisearch_product_id) {
+                return;
+            }
+            $newSearch->id_cart = $params['cart']->id;
+            $newSearch->save();
+
+            unset($this->context->cookie->meilisearch_id);
+            unset($this->context->cookie->meilisearch_product_id);
+        }
+    }
+
+    public function hookActionValidateOrder($params)
+    {
+        try {
+            $listSearches = MeilisearchStatssearch::getSearchesByIdCart($params['cart']->id);
+            foreach ($listSearches as $search) {
+                $newSearch = new MeilisearchStatssearch($search['id_statssearch']);
+                if(Validate::isLoadedObject($newSearch)) {
+                    $newSearch->is_ordered = 1;
+                    $newSearch->save();
+                }
+            }
+        } catch (\Throwable $th) {
+            PrestaShopLogger::addLog('Error validation order Meilisearch : '.$th->getMessage(), 3);
+        }
     }
 
     public function requestCurl($url, $payload = null, $request = false)

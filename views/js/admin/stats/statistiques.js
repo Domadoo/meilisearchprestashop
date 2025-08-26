@@ -94,3 +94,51 @@ nv.addGraph(function() {
 
   return chartCtr;
 });
+
+nv.addGraph(function() {
+  var chartCart = nv.models.pieChart()
+      .x(function(d) { return d.label })
+      .y(function(d) { return d.value })
+      .showLabels(true)     //Display pie labels
+      .labelThreshold(.05)  //Configure the minimum slice size for labels to show up
+      .labelType("percent") //Configure what type of data to show in the label. Can be "key", "value" or "percent"
+      .donut(true)          //Turn on Donut mode. Makes pie chart look tasty!
+      .donutRatio(0.35)     //Configure how big you want the donut hole size to be.
+      .showLegend(false)
+    ;
+
+    chartCart.pie
+        .startAngle(function(d) { return d.startAngle / 2 - Math.PI / 2 })
+        .endAngle(function(d) { return d.endAngle / 2 - Math.PI / 2 });
+
+    d3.select("#chart-added-to-cart-rate svg")
+        .datum(dataAddedToCartRate)
+        .transition().duration(350)
+        .call(chartCart);
+
+  return chartCart;
+});
+
+nv.addGraph(function() {
+  var chartConversion = nv.models.pieChart()
+      .x(function(d) { return d.label })
+      .y(function(d) { return d.value })
+      .showLabels(true)     //Display pie labels
+      .labelThreshold(.05)  //Configure the minimum slice size for labels to show up
+      .labelType("percent") //Configure what type of data to show in the label. Can be "key", "value" or "percent"
+      .donut(true)          //Turn on Donut mode. Makes pie chart look tasty!
+      .donutRatio(0.35)     //Configure how big you want the donut hole size to be.
+      .showLegend(false)
+    ;
+
+    chartConversion.pie
+        .startAngle(function(d) { return d.startAngle / 2 - Math.PI / 2 })
+        .endAngle(function(d) { return d.endAngle / 2 - Math.PI / 2 });
+
+    d3.select("#chart-conversion-rate svg")
+        .datum(dataConversionRate)
+        .transition().duration(350)
+        .call(chartConversion);
+
+  return chartConversion;
+});

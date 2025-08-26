@@ -23,7 +23,7 @@ function ajaxProductClick(product, index) {
 
 let listProducts = document.getElementById('products');
 listProducts.addEventListener('click', function(event) {
-
+    event.preventDefault();
     if (event.target && event.target.closest('.thumbnail-container')) {
 
         let product = event.target.closest('.product').firstElementChild;
@@ -31,9 +31,20 @@ listProducts.addEventListener('click', function(event) {
         ajaxProductClick(product, Array.from(productsRow.firstElementChild.children).indexOf(product.parentElement));
 
         let productHref = product.firstElementChild.firstElementChild.firstElementChild;
-        let url = new URL(productHref.href);
-        url.searchParams.set('id_session', id_statssearch);
-        productHref.href = url.toString();
+        let productUrl = productHref.href;
+
+        let form = document.createElement('form');
+        form.method = 'POST';
+        form.action = productUrl;
+
+        let input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'id_meilisearch_statssearch';
+        input.value = id_statssearch;
+        form.appendChild(input);
+
+        document.body.appendChild(form);
+        form.submit();
 
     }
 });

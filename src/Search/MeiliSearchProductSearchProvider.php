@@ -152,9 +152,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
         $cookie = $context->cookie;
 
-        if(isset($cookie->meilisearch_product_id) || !(isset($cookie->meilisearch_query) && $cookie->meilisearch_query == $search 
-        && (!isset($_SERVER['HTTP_REFERER']) || strpos($_SERVER['HTTP_REFERER'], '/module/meilisearch_prestashop/meilisearch')))
-        ) {
+        if(!isset($cookie->meilisearch_id) || !isset($cookie->meilisearch_query) || $cookie->meilisearch_query != $search) {
             $newSearch = new MeilisearchStatssearch();
             $newSearch->query = $search;
             $newSearch->nb_results = $response->estimatedTotalHits;

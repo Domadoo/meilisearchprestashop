@@ -131,17 +131,51 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             ];
         }
 
+        $addedToCartRate = $objMeilisearchStats->getAddedToCartRate($dateBegin, $dateEnd, $id_lang);
+        $dataAddedToCartRate = [];
+        if ($addedToCartRate) {
+            $dataAddedToCartRate = [
+                [
+                    'label' => 'Added to Cart Rate',
+                    'value' => (float)$addedToCartRate,
+                ],
+                [
+                    'label' => 'No Added to Cart Rate',
+                    'value' => 100 - (float)$addedToCartRate,
+                ],
+            ];
+        }
+
+        $conversionRate = $objMeilisearchStats->getConversionRate($dateBegin, $dateEnd, $id_lang);
+        $dataConversionRate = [];
+        if ($conversionRate) {
+            $dataConversionRate = [
+                [
+                    'label' => 'Conversion Rate',
+                    'value' => (float)$conversionRate,
+                ],
+                [
+                    'label' => 'No Conversion Rate',
+                    'value' => 100 - (float)$conversionRate,
+                ],
+            ];
+        }
+
 
         Media::addJsDef([
             'dataSearches' => $dataMostSearchedQueries,
             'dataEmpty' => $dataMostSearchedEmptyQueries,
             'dataClicks' => $dataMostClickedProducts,
             'dataCtr' => $dataCtr,
+            'dataAddedToCartRate' => $dataAddedToCartRate,
+            'dataConversionRate' => $dataConversionRate,
         ]);
 
         return $this->render('@Modules/meilisearch_prestashop/views/templates/admin/stats/statistiques.html.twig', [
             'buttonClicked' => $buttonClicked,
             'ctrPercentages' => $ctrPercentages,
+            'addedToCartRate' => $addedToCartRate,
+            'conversionRate' => $conversionRate,
             'selectedIdLang' => Tools::getValue('id_lang'),
             'languages' => Language::getLanguages(false),
         ]);
