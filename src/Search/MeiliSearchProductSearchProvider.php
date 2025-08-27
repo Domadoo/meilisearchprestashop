@@ -154,7 +154,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
         if(!isset($cookie->meilisearch_id) || !isset($cookie->meilisearch_query) || $cookie->meilisearch_query != $search) {
             $newSearch = new MeilisearchStatssearch();
-            $newSearch->query = $search;
+            $newSearch->query = mb_strtolower($search);
             $newSearch->nb_results = $response->estimatedTotalHits;
             $newSearch->id_customer = isset($context->customer) ? $context->customer->id : null;
             $newSearch->id_lang = $context->language->id; 

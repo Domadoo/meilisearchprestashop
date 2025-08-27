@@ -73,7 +73,6 @@ class Meilisearch_prestashop extends Module
 
         return parent::install() &&
             $this->registerHook('displayHeader') &&
-            $this->registerHook('actionProductSearchAfter') &&
             $this->registerHook('displaySearch') &&
             $this->registerHook('actionCartUpdateQuantityBefore') &&
             $this->registerHook('actionPresentProduct') &&
@@ -284,10 +283,12 @@ class Meilisearch_prestashop extends Module
 
     public function hookDisplayHeader(){
 
+        $this->trans('This product is no longer available.', [], 'Modules.Meilisearchprestashop.front');
+
         Media::addJsDef(['searchPlaceholder' =>  [
-            '1' => $this->l('Search an article', 'meilisearch_searchbar'),
-            '2' => $this->l('Search a product', 'meilisearch_searchbar'),
-            '3' => $this->l('Search a category', 'meilisearch_searchbar')
+            '1' => $this->l('Search an article'),
+            '2' => $this->l('Search a product'),
+            '3' => $this->l('Search a category')
         ]]);
 
         $link = Context::getContext()->link->getModuleLink(

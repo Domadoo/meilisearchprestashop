@@ -121,7 +121,7 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
         if ($ctrPercentages) {
             $dataCtr = [
                 [
-                    'label' => 'Click Through Rate',
+                    'label' => $this->trans('Click Through Rate', 'Modules.Meilisearchprestashop.Stats.php', []),
                     'value' => (float)$ctrPercentages,
                 ],
                 [
@@ -179,5 +179,12 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             'selectedIdLang' => Tools::getValue('id_lang'),
             'languages' => Language::getLanguages(false),
         ]);
+    }
+
+    public function getTextTranslations()
+    {
+        return array(
+
+        );
     }
 }
