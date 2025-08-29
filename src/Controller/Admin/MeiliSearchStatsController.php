@@ -82,23 +82,6 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             'values' => $dataMostSearchQueriesValues,
         ]];
 
-        $mostSearchedEmptyQueries = $objMeilisearchStats->getMostSearchedEmptyQueries(10, $dateBegin, $dateEnd, $id_lang);
-        $i = 1;
-        $dataMostSearchedEmptyQueriesValues = [];
-        foreach ($mostSearchedEmptyQueries as $query) {
-            $dataMostSearchedEmptyQueriesValues[] = [
-                'label' => $query['label'],
-                'value' => (int)$query['value'],
-                'id' => $i++,
-            ];
-        }
-
-        $dataMostSearchedEmptyQueries = [[
-            'key' => 'Most Searched Empty Queries',
-            'color' => '#ff0000',
-            'values' => $dataMostSearchedEmptyQueriesValues,
-        ]]; 
-
         $mostClickedProducts = $objMeilisearchStats->getMostClickedProducts(10, $dateBegin, $dateEnd, $id_lang);
         $i = 1;
         $dataMostClickedProductsValues = [];
@@ -116,16 +99,33 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             'values' => $dataMostClickedProductsValues
         ]];
 
+        $mostSearchedEmptyQueries = $objMeilisearchStats->getMostSearchedEmptyQueries(10, $dateBegin, $dateEnd, $id_lang);
+        $i = 1;
+        $dataMostSearchedEmptyQueriesValues = [];
+        foreach ($mostSearchedEmptyQueries as $query) {
+            $dataMostSearchedEmptyQueriesValues[] = [
+                'label' => $query['label'],
+                'value' => (int)$query['value'],
+                'id' => $i++,
+            ];
+        }
+
+        $dataMostSearchedEmptyQueries = [[
+            'key' => 'Most Searched Empty Queries',
+            'color' => '#ff0000',
+            'values' => $dataMostSearchedEmptyQueriesValues,
+        ]]; 
+
         $ctrPercentages = $objMeilisearchStats->getCTR($dateBegin, $dateEnd, $id_lang);
         $dataCtr = [];
         if ($ctrPercentages) {
             $dataCtr = [
                 [
-                    'label' => $this->trans('Click Through Rate', 'Modules.Meilisearchprestashop.Stats.php', []),
+                    'label' => $this->module->l('Click through rate', 'meilisearchstatscontroller'),
                     'value' => (float)$ctrPercentages,
                 ],
                 [
-                    'label' => 'No Click Through Rate',
+                    'label' => $this->module->l('No Click through rate', 'meilisearchstatscontroller'),
                     'value' => 100 - (float)$ctrPercentages,
                 ],
             ];
@@ -136,11 +136,11 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
         if ($addedToCartRate) {
             $dataAddedToCartRate = [
                 [
-                    'label' => 'Added to Cart Rate',
+                    'label' => $this->module->l('Added to cart rate', 'meilisearchstatscontroller'),
                     'value' => (float)$addedToCartRate,
                 ],
                 [
-                    'label' => 'No Added to Cart Rate',
+                    'label' => $this->module->l('No Added to cart rate', 'meilisearchstatscontroller'),
                     'value' => 100 - (float)$addedToCartRate,
                 ],
             ];
@@ -151,11 +151,11 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
         if ($conversionRate) {
             $dataConversionRate = [
                 [
-                    'label' => 'Conversion Rate',
+                    'label' => $this->module->l('Conversion rate', 'meilisearchstatscontroller'),
                     'value' => (float)$conversionRate,
                 ],
                 [
-                    'label' => 'No Conversion Rate',
+                    'label' => $this->module->l('No Conversion rate', 'meilisearchstatscontroller'),
                     'value' => 100 - (float)$conversionRate,
                 ],
             ];
@@ -189,18 +189,9 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             'topClickedText' => $this->module->l('Top Clicked', 'meilisearchstatscontroller'),
             'noResultsText' => $this->module->l('No results', 'meilisearchstatscontroller'),
             'CTRText' => $this->module->l('CTR', 'meilisearchstatscontroller'),
-            'clickThroughRateText' => $this->module->l('Click Through Rate', 'meilisearchstatscontroller'),
-            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
-            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
-            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
-            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
-            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
-            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
-            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
-            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
-            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
-            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
-            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
+            'clickThroughRateText' => $this->module->l('Click through rate', 'meilisearchstatscontroller'),
+            'addedToCartRateText' => $this->module->l('Added to cart rate', 'meilisearchstatscontroller'),
+            'conversionRateText' => $this->module->l('Conversion rate', 'meilisearchstatscontroller'),
         );
     }
 }

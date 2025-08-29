@@ -48,7 +48,7 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
 
     public function getListingLabel()
     {
-        return $this->getTranslator()->trans('Search results', [], 'Modules.Meilisearchprestashop.Meilisearch');
+        return $this->module->l('Search results', 'meilisearch');
     }
     
     protected function doProductSearch($template, $params = [], $locale = null)

@@ -26,7 +26,14 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
     public function indexAction()
     {
         // Juste la vue avec le bouton
-        return $this->render('@Modules/meilisearchprestashop/views/templates/admin/index.html.twig');
+        return $this->render('@Modules/meilisearchprestashop/views/templates/admin/index.html.twig', $this->getTranslatedText());
+    }
+
+    public function getTranslatedText(){
+        return array(
+            'indexingMeilisearchText' => $this->module->l('Meilisearch indexing', 'meilisearchconfigurationcontroller'),
+            'indexingMeillisearchProductsText'=> $this->module->l('Index products in Meilisearch', 'meilisearchconfigurationcontroller')
+        );
     }
 
 
