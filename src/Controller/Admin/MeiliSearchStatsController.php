@@ -161,8 +161,9 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             ];
         }
 
+        $totalSearches = $objMeilisearchStats->getTotalSearches($dateBegin, $dateEnd, $id_lang);
 
-        
+
         Media::addJsDef([
             'dataSearches' => $dataMostSearchedQueries,
             'dataEmpty' => $dataMostSearchedEmptyQueries,
@@ -178,7 +179,8 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             'addedToCartRate' => $addedToCartRate,
             'conversionRate' => $conversionRate,
             'selectedIdLang' => Tools::getValue('id_lang'),
-            'languages' => Language::getLanguages(false)
+            'languages' => Language::getLanguages(false),
+            'totalSearches' => $totalSearches
         ], $this->getTranslatedText()));
     }
 
@@ -192,6 +194,7 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             'clickThroughRateText' => $this->module->l('Click through rate', 'meilisearchstatscontroller'),
             'addedToCartRateText' => $this->module->l('Added to cart rate', 'meilisearchstatscontroller'),
             'conversionRateText' => $this->module->l('Conversion rate', 'meilisearchstatscontroller'),
+            'totalSearchesText' => $this->module->l('Total searches', 'meilisearchstatscontroller'),
         );
     }
 }

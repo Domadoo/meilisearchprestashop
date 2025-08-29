@@ -36,6 +36,7 @@ $_MODULE['<{meilisearchprestashop}prestashop>meilisearchstatscontroller_1eb5e571
 $_MODULE['<{meilisearchprestashop}prestashop>meilisearchstatscontroller_62c4450358fad0bfcd634e62095f79fe'] = 'Mais clicados';
 $_MODULE['<{meilisearchprestashop}prestashop>meilisearchstatscontroller_c49c29bb6656c1f25f2cfac84f83b5ba'] = 'Sem resultados';
 $_MODULE['<{meilisearchprestashop}prestashop>meilisearchstatscontroller_ff2a7a5418a49af64a57ef3cf31d7721'] = 'CTR';
+$_MODULE['<{meilisearchprestashop}prestashop>meilisearchstatscontroller_e05776e56e923bf7eff311adcab86b56'] = 'Pesquisas totais';
 $_MODULE['<{meilisearchprestashop}prestashop>configure_8a82326e503d813d6204ee9b73b5c510'] = 'Meilisearch Prestashop';
 $_MODULE['<{meilisearchprestashop}prestashop>configure_97ef4c38620de4481c6fdf342838c728'] = 'Aqui está meu novo módulo genérico!';
 $_MODULE['<{meilisearchprestashop}prestashop>configure_13adfa430efbb8fd38d9ca2ffe8cbc83'] = 'Graças ao PrestaShop, agora tenho um ótimo módulo.';

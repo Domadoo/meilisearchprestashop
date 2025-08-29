@@ -177,4 +177,21 @@ class MeilisearchStatssearch extends ObjectModel
 
         return $results ? $results : [];
     }
+
+    public function getTotalSearches($dateBegin = null, $dateEnd = null, $id_lang = 0){
+        if($dateBegin && $dateEnd) {
+            $where = 'AND date_add BETWEEN \'' . pSQL($dateBegin) . '\' AND \'' . pSQL($dateEnd) . '\'';
+        }else {
+            $where = '';
+        }
+
+        if($id_lang && $id_lang > 0) {
+            $where .= ' AND id_lang = ' . (int)$id_lang;
+        }
+
+        $sql = 'SELECT count(*) as `value` FROM ' . _DB_PREFIX_ . 'meilisearch_statssearch A WHERE 1  '.$where;
+        $totalSearches = Db::getInstance()->getValue($sql);
+
+        return $totalSearches ? $totalSearches : 0;
+    }
 }
