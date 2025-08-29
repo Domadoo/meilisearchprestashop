@@ -24,25 +24,25 @@
 *}
 
 <div class="panel">
-	<h3><i class="icon icon-credit-card"></i> {l s='Meilisearch Prestashop' mod='meilisearch_prestashop'}</h3>
+	<h3><i class="icon icon-credit-card"></i> {l s='Meilisearch Prestashop' mod='meilisearchprestashop'}</h3>
 	<p>
-		<strong>{l s='Here is my new generic module!' mod='meilisearch_prestashop'}</strong><br />
-		{l s='Thanks to PrestaShop, now I have a great module.' mod='meilisearch_prestashop'}<br />
-		{l s='I can configure it using the following configuration form.' mod='meilisearch_prestashop'}
+		<strong>{l s='Here is my new generic module!' mod='meilisearchprestashop'}</strong><br />
+		{l s='Thanks to PrestaShop, now I have a great module.' mod='meilisearchprestashop'}<br />
+		{l s='I can configure it using the following configuration form.' mod='meilisearchprestashop'}
 	</p>
 	<br />
 	<p>
-		{l s='This module will boost your sales!' mod='meilisearch_prestashop'}
+		{l s='This module will boost your sales!' mod='meilisearchprestashop'}
 	</p>
 </div>
 
 <div class="panel">
-	<h3><i class="icon icon-tags"></i> {l s='Documentation' mod='meilisearch_prestashop'}</h3>
+	<h3><i class="icon icon-tags"></i> {l s='Documentation' mod='meilisearchprestashop'}</h3>
 	<p>
-		&raquo; {l s='You can get a PDF documentation to configure this module' mod='meilisearch_prestashop'} :
+		&raquo; {l s='You can get a PDF documentation to configure this module' mod='meilisearchprestashop'} :
 		<ul>
-			<li><a href="#" target="_blank">{l s='English' mod='meilisearch_prestashop'}</a></li>
-			<li><a href="#" target="_blank">{l s='French' mod='meilisearch_prestashop'}</a></li>
+			<li><a href="#" target="_blank">{l s='English' mod='meilisearchprestashop'}</a></li>
+			<li><a href="#" target="_blank">{l s='French' mod='meilisearchprestashop'}</a></li>
 		</ul>
 	</p>
 </div>

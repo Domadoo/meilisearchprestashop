@@ -15,7 +15,7 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
     {
         parent::__construct();
         // Récupère une instance fonctionnelle du module
-        $this->module = \Module::getInstanceByName('meilisearch_prestashop');
+        $this->module = \Module::getInstanceByName('meilisearchprestashop');
     }
 
     public function indexAction()
@@ -162,6 +162,7 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
         }
 
 
+        
         Media::addJsDef([
             'dataSearches' => $dataMostSearchedQueries,
             'dataEmpty' => $dataMostSearchedEmptyQueries,
@@ -171,20 +172,35 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             'dataConversionRate' => $dataConversionRate,
         ]);
 
-        return $this->render('@Modules/meilisearch_prestashop/views/templates/admin/stats/statistiques.html.twig', [
+        return $this->render('@Modules/meilisearchprestashop/views/templates/admin/stats/statistiques.html.twig', array_merge([
             'buttonClicked' => $buttonClicked,
             'ctrPercentages' => $ctrPercentages,
             'addedToCartRate' => $addedToCartRate,
             'conversionRate' => $conversionRate,
             'selectedIdLang' => Tools::getValue('id_lang'),
-            'languages' => Language::getLanguages(false),
-        ]);
+            'languages' => Language::getLanguages(false)
+        ], $this->getTranslatedText()));
     }
 
-    public function getTextTranslations()
-    {
+    public function getTranslatedText(){
         return array(
-
+            'allLanguagesText' => $this->module->l('All Languages', 'meilisearchstatscontroller'),
+            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
+            'topClickedText' => $this->module->l('Top Clicked', 'meilisearchstatscontroller'),
+            'noResultsText' => $this->module->l('No results', 'meilisearchstatscontroller'),
+            'CTRText' => $this->module->l('CTR', 'meilisearchstatscontroller'),
+            'clickThroughRateText' => $this->module->l('Click Through Rate', 'meilisearchstatscontroller'),
+            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
+            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
+            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
+            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
+            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
+            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
+            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
+            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
+            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
+            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
+            'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
         );
     }
 }

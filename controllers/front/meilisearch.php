@@ -6,7 +6,7 @@ use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchResult;
 use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
 use PrestaShop\Module\MeiliSearch\Search\MeiliSearchProductSearchProvider;
 
-class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductListingFrontController
+class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListingFrontController
 {
     public $module;
 
@@ -14,7 +14,7 @@ class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductList
     {
         parent::initContent();
         
-        $this->doProductSearch('../../../modules/meilisearch_prestashop/views/templates/front/search.tpl');
+        $this->doProductSearch('../../../modules/meilisearchprestashop/views/templates/front/search.tpl');
     }
 
     public function getProductSearchQuery()
@@ -48,7 +48,7 @@ class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductList
 
     public function getListingLabel()
     {
-        return $this->getTranslator()->trans('Search results', [], 'Modules.Meilisearch_prestashop.Meilisearch');
+        return $this->getTranslator()->trans('Search results', [], 'Modules.Meilisearchprestashop.Meilisearch');
     }
     
     protected function doProductSearch($template, $params = [], $locale = null)
@@ -78,7 +78,7 @@ class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductList
     {
         parent::setMedia();
 
-        $this->module = \Module::getInstanceByName('meilisearch_prestashop');
+        $this->module = \Module::getInstanceByName('meilisearchprestashop');
 
         $page = Tools::getValue('page') ? Tools::getValue('page') : 1;
         Media::addJsDef([

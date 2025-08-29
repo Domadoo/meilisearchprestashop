@@ -2,7 +2,7 @@
 
 use PrestaShop\Module\Classes\MeilisearchStatssearch;
 
-class Meilisearch_prestashopAjaxModuleFrontController extends ModuleFrontController
+class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontController
 {
     public function __construct()
 	{

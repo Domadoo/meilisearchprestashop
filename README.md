@@ -1,1 +1,1 @@
-# meilisearch_prestashop
+# meilisearchprestashop

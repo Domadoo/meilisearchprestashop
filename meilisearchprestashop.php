@@ -38,13 +38,13 @@ use PrestaShop\PrestaShop\Core\Product\Search\URLFragmentSerializer; #Pour trans
 
 use PrestaShop\Module\Classes\MeilisearchStatssearch;
 
-class Meilisearch_prestashop extends Module
+class Meilisearchprestashop extends Module
 {
     protected $config_form = false;
 
     public function __construct()
     {
-        $this->name = 'meilisearch_prestashop';
+        $this->name = 'meilisearchprestashop';
         $this->tab = 'search_filter';
         $this->version = '1.1.0';
         $this->author = 'Doudeau Adam, Johan Vivien';
@@ -136,6 +136,11 @@ class Meilisearch_prestashop extends Module
         return true;
     }
 
+    public function isUsingNewTranslationSystem()
+    {
+        return false;
+    }
+
     /**
      * Load the configuration form
      */
@@ -144,7 +149,7 @@ class Meilisearch_prestashop extends Module
         /**
          * If values have been submitted in the form, process.
          */
-        if (((bool)Tools::isSubmit('submitMeilisearch_prestashopModule')) == true) {
+        if (((bool)Tools::isSubmit('submitMeilisearchprestashopModule')) == true) {
             $this->postProcess();
         }
 
@@ -169,7 +174,7 @@ class Meilisearch_prestashop extends Module
         $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG', 0);
 
         $helper->identifier = $this->identifier;
-        $helper->submit_action = 'submitMeilisearch_prestashopModule';
+        $helper->submit_action = 'submitMeilisearchprestashopModule';
         $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false)
             . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
         $helper->token = Tools::getAdminTokenLite('AdminModules');
@@ -198,7 +203,7 @@ class Meilisearch_prestashop extends Module
                     array(
                         'type' => 'switch',
                         'label' => $this->l('Live mode'),
-                        'name' => 'MEILISEARCH_PRESTASHOP_LIVE_MODE',
+                        'name' => 'MEILISEARCHPRESTASHOP_LIVE_MODE',
                         'is_bool' => true,
                         'desc' => $this->l('Use this module in live mode'),
                         'values' => array(
@@ -219,27 +224,27 @@ class Meilisearch_prestashop extends Module
                         'type' => 'text',
                         'prefix' => '<i class="icon icon-envelope"></i>',
                         'desc' => $this->l('Enter a valid email address'),
-                        'name' => 'MEILISEARCH_PRESTASHOP_ACCOUNT_EMAIL',
+                        'name' => 'MEILISEARCHPRESTASHOP_ACCOUNT_EMAIL',
                         'label' => $this->l('Email'),
                     ),
                     array(
                         'type' => 'password',
-                        'name' => 'MEILISEARCH_PRESTASHOP_ACCOUNT_PASSWORD',
+                        'name' => 'MEILISEARCHPRESTASHOP_ACCOUNT_PASSWORD',
                         'label' => $this->l('Password'),
                     ),
                     array(
                         'type' => 'text',
-                        'name' => 'MEILISEARCH_PRESTASHOP_URL',
+                        'name' => 'MEILISEARCHPRESTASHOP_URL',
                         'label' => $this->l('URL'),
                     ),
                     array(
                         'type' => 'text',
-                        'name' => 'MEILISEARCH_PRESTASHOP_KEY',
+                        'name' => 'MEILISEARCHPRESTASHOP_KEY',
                         'label' => $this->l('KEY'),
                     ),
                     array(
                         'type' => 'text',
-                        'name' => 'MEILISEARCH_PRESTASHOP_PREFIX',
+                        'name' => 'MEILISEARCHPRESTASHOP_PREFIX',
                         'label' => $this->l('PREFIX'),
                     ),
                 ),
@@ -256,12 +261,12 @@ class Meilisearch_prestashop extends Module
     protected function getConfigFormValues()
     {
         return array(
-            'MEILISEARCH_PRESTASHOP_LIVE_MODE' => Configuration::get('MEILISEARCH_PRESTASHOP_LIVE_MODE', true),
-            'MEILISEARCH_PRESTASHOP_ACCOUNT_EMAIL' => Configuration::get('MEILISEARCH_PRESTASHOP_ACCOUNT_EMAIL', 'contact@prestashop.com'),
-            'MEILISEARCH_PRESTASHOP_ACCOUNT_PASSWORD' => Configuration::get('MEILISEARCH_PRESTASHOP_ACCOUNT_PASSWORD', null),
-            'MEILISEARCH_PRESTASHOP_URL' => Configuration::get('MEILISEARCH_PRESTASHOP_URL', null),
-            'MEILISEARCH_PRESTASHOP_KEY' => Configuration::get('MEILISEARCH_PRESTASHOP_KEY', null),
-            'MEILISEARCH_PRESTASHOP_PREFIX' => Configuration::get('MEILISEARCH_PRESTASHOP_PREFIX', null),
+            'MEILISEARCHPRESTASHOP_LIVE_MODE' => Configuration::get('MEILISEARCHPRESTASHOP_LIVE_MODE', true),
+            'MEILISEARCHPRESTASHOP_ACCOUNT_EMAIL' => Configuration::get('MEILISEARCHPRESTASHOP_ACCOUNT_EMAIL', 'contact@prestashop.com'),
+            'MEILISEARCHPRESTASHOP_ACCOUNT_PASSWORD' => Configuration::get('MEILISEARCHPRESTASHOP_ACCOUNT_PASSWORD', null),
+            'MEILISEARCHPRESTASHOP_URL' => Configuration::get('MEILISEARCHPRESTASHOP_URL', null),
+            'MEILISEARCHPRESTASHOP_KEY' => Configuration::get('MEILISEARCHPRESTASHOP_KEY', null),
+            'MEILISEARCHPRESTASHOP_PREFIX' => Configuration::get('MEILISEARCHPRESTASHOP_PREFIX', null),
         );
     }
 
@@ -292,7 +297,7 @@ class Meilisearch_prestashop extends Module
         ]]);
 
         $link = Context::getContext()->link->getModuleLink(
-            'meilisearch_prestashop',
+            'meilisearchprestashop',
             'meilisearch'
         );
 
@@ -356,7 +361,7 @@ class Meilisearch_prestashop extends Module
 
     public function requestCurl($url, $payload = null, $request = false)
     {
-        $authorization = 'Authorization: Bearer ' . Configuration::get('MEILISEARCH_PRESTASHOP_KEY');
+        $authorization = 'Authorization: Bearer ' . Configuration::get('MEILISEARCHPRESTASHOP_KEY');
         $options = array(
             CURLOPT_RETURNTRANSFER => true,     // return web page
             CURLOPT_HEADER         => false,    // don't return headers

@@ -19,14 +19,14 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
     {
         parent::__construct();
         // Récupère une instance fonctionnelle du module
-        $this->module = \Module::getInstanceByName('meilisearch_prestashop');
+        $this->module = \Module::getInstanceByName('meilisearchprestashop');
     }
 
 
     public function indexAction()
     {
         // Juste la vue avec le bouton
-        return $this->render('@Modules/meilisearch_prestashop/views/templates/admin/index.html.twig');
+        return $this->render('@Modules/meilisearchprestashop/views/templates/admin/index.html.twig');
     }
 
 
@@ -38,7 +38,7 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
         foreach ($languages as $language) {
             $id_lang = $language['id_lang'];
             $iso_code = $language['iso_code'];
-            $meiliUrl = Configuration::get('MEILISEARCH_PRESTASHOP_URL');
+            $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
     
     
             $sql = '
@@ -156,7 +156,7 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
     
     
             $payloadIndex = json_encode([
-                'uid' => Configuration::get('MEILISEARCH_PRESTASHOP_PREFIX') . 'products_' . $iso_code,
+                'uid' => Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code,
                 'primaryKey' => 'id_product'
             ]);
             $this->module->requestCurl($meiliUrl . 'indexes', $payloadIndex);
@@ -165,12 +165,12 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
     
             // Envoi à Meilisearch
             foreach ($arrayProductsChunk as $arrayProducts) {
-                $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCH_PRESTASHOP_PREFIX') .'products_'.$iso_code.'/documents', json_encode($arrayProducts));
+                $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/documents', json_encode($arrayProducts));
             }
     
-            $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCH_PRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/sortable-attributes', json_encode(['name','price']), 'PUT');
-            $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCH_PRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/ranking-rules', json_encode(["sort","words","typo","proximity","attribute","exactness"]), 'PUT');
-            $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCH_PRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'id_category_default
+            $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/sortable-attributes', json_encode(['name','price']), 'PUT');
+            $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/ranking-rules', json_encode(["sort","words","typo","proximity","attribute","exactness"]), 'PUT');
+            $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'id_category_default
     ', 'quantity', 'feature_values']), 'PUT');
         }
 

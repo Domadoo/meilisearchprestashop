@@ -34,7 +34,7 @@ if (!defined('_PS_VERSION_')) {
  */
 function upgrade_module_1_1_0($module)
 {
-    $module = \Module::getInstanceByName('meilisearch_prestashop');
+    $module = \Module::getInstanceByName('meilisearchprestashop');
     $module->registerHook('actionCartUpdateQuantityBefore');
     $module->registerHook('actionPresentProduct');
     $module->registerHook('actionValidateOrder');

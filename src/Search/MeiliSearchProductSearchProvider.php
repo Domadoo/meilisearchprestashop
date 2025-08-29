@@ -22,7 +22,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     public function __construct(TranslatorInterface $translator)
     {
         $this->translator = $translator;
-        $this->module = \Module::getInstanceByName('meilisearch_prestashop');
+        $this->module = \Module::getInstanceByName('meilisearchprestashop');
     }
 
     public function runQuery(ProductSearchContext $context, ProductSearchQuery $query)
@@ -69,7 +69,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $field = $sortOrder->getField();
 
 
-        $meiliUrl = Configuration::get('MEILISEARCH_PRESTASHOP_URL') . 'indexes/'. Configuration::get('MEILISEARCH_PRESTASHOP_PREFIX') .'products_'.$iso_lang.'/search';
+        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL') . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_lang.'/search';
 
         $data = [
             'q' => $search,
