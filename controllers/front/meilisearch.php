@@ -48,6 +48,7 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
 
     public function getListingLabel()
     {
+        $this->module = \Module::getInstanceByName('meilisearchprestashop');
         return $this->module->l('Search results', 'meilisearch');
     }
     
