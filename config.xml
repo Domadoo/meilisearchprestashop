@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <module>
-	<name>meilisearch_prestashop</name>
+	<name>meilisearchprestashop</name>
 	<displayName><![CDATA[Meilisearch Prestashop]]></displayName>
 	<version><![CDATA[1.0.0]]></version>
 	<description><![CDATA[Prestashop module to replace the standard searchbar with Meilisearch]]></description>

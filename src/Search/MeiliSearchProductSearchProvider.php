@@ -8,7 +8,9 @@ use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchContext;
 use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchResult;
 use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
 use Symfony\Component\Translation\TranslatorInterface;
+use PrestaShop\PrestaShop\Adapter\SymfonyContainer;
 
+use PrestaShop\Module\Classes\MeilisearchStatssearch;
 use Configuration;
 use Context;
 
@@ -20,7 +22,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     public function __construct(TranslatorInterface $translator)
     {
         $this->translator = $translator;
-        $this->module = \Module::getInstanceByName('meilisearch_prestashop');;
+        $this->module = \Module::getInstanceByName('meilisearchprestashop');
     }
 
     public function runQuery(ProductSearchContext $context, ProductSearchQuery $query)
@@ -31,6 +33,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $allProducts = $result['allProducts'];
         $products = $result['products']; // tableau de produits format PrestaShop
         $total = $result['total'];
+        $allProductsWithoutFilters = $result['allProductsWithoutFilters'];
 
         $resultObject = new ProductSearchResult();
         $resultObject->setProducts($products);
@@ -40,13 +43,15 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
         $activeFilters = explode('|', $query->getEncodedFacets());
 
-        $categoryfilters = $this->module->getSearchProductsFacets($allProducts, $activeFilters);
+        $categoryfilters = $this->module->getSearchProductsFacets($allProductsWithoutFilters, $activeFilters);
 
         if (sizeof($categoryfilters->getFacets())) {
             $resultObject->setFacetCollection(
                 $categoryfilters //C'est ici qu'on assigne les filtres de notre fonction
             );
         }
+        // echo '<pre>';
+        // exit(print_r($categoryfilters, true));
         $resultObject->setEncodedFacets(
             $query->getEncodedFacets()
         );
@@ -67,7 +72,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $field = $sortOrder->getField();
 
 
-        $meiliUrl = Configuration::get('MEILISEARCH_PRESTASHOP_URL') . 'indexes/products_'.$iso_lang.'/search';
+        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL') . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_lang.'/search';
 
         $data = [
             'q' => $search,
@@ -87,48 +92,62 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $filtersArray = explode('|', $filters);
         $data['filter'] = [];
 
+        
+        $groupedFilters = []; // Regrouper par type de facet
+
         foreach ($filtersArray as $filterString) {
             $filter = explode('-', $filterString);
 
             if (count($filter) !== 2) {
-                continue; // Format inattendu, on skip
+                continue; // Format inattendu
             }
 
             list($facetType, $value) = $filter;
 
             switch ($facetType) {
                 case 'manu':
-                    $data['filter'][] = 'id_manufacturer = ' . (int)$value;
+                    $groupedFilters['manu'][] = 'id_manufacturer = ' . (int)$value;
                     break;
 
                 case 'avail':
                     if ($value === 'stock') {
-                        $data['filter'][] = 'quantity >= 1';
+                        $groupedFilters['avail'][] = 'quantity >= 1';
                     } elseif ($value === 'available') {
-                        $data['filter'][] = 'available_for_order = 1';
+                        $groupedFilters['avail'][] = 'available_for_order = 1';
                     }
                     break;
 
                 case 'technology':
-                    // Meilisearch : recherche exacte dans tableau string
-                    $data['filter'][] = '"feature_values" = "7-' . (int)$value . '"';
+                    $groupedFilters['technology'][] = '"feature_values" = "7-' . (int)$value . '"';
                     break;
 
                 case 'compatibility':
-                    $data['filter'][] = '"feature_values" = "31-' . (int)$value . '"';
+                    $groupedFilters['compatibility'][] = '"feature_values" = "31-' . (int)$value . '"';
                     break;
 
                 case 'type':
-                    $data['filter'][] = '"feature_values" = "6-' . (int)$value . '"';
+                    $groupedFilters['type'][] = '"feature_values" = "6-' . (int)$value . '"';
                     break;
 
                 case 'function':
-                    $data['filter'][] = '"feature_values" = "12-' . (int)$value . '"';
+                    $groupedFilters['function'][] = '"feature_values" = "12-' . (int)$value . '"';
                     break;
 
                 default:
-                    // Si jamais tu veux gérer d'autres filtres un jour
                     break;
+            }
+        }
+
+        // Construction du tableau final
+        $data['filter'] = [];
+        $dataNoFilters = $data;
+        foreach ($groupedFilters as $filtersOfType) {
+            if (count($filtersOfType) === 1) {
+                // Juste un filtre → pas besoin de sous-tableau
+                $data['filter'][] = $filtersOfType[0];
+            } else {
+                // Plusieurs filtres du même type → OU implicite
+                $data['filter'][] = $filtersOfType;
             }
         }
 
@@ -147,11 +166,27 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         if(!key_exists(0, $productsChunk)){
             $productsChunk[0] = [];
         }
-        
+
+        $cookie = $context->cookie;
+
+        if((!isset($cookie->meilisearch_id) || !isset($cookie->meilisearch_query) || $cookie->meilisearch_query != $search) && !empty($search)) {
+            $newSearch = new MeilisearchStatssearch();
+            $newSearch->query = mb_strtolower($search);
+            $newSearch->nb_results = $response->estimatedTotalHits;
+            $newSearch->id_customer = isset($context->customer) ? $context->customer->id : null;
+            $newSearch->id_lang = $context->language->id; 
+            $newSearch->save();
+
+            $cookie->meilisearch_id = $newSearch->id;
+            $cookie->meilisearch_query = $search;
+            unset($cookie->meilisearch_product_id);
+        }
+
         return [
             'products' => $this->formatProducts($productsChunk[$page - 1]),
             'allProducts' => $this->formatProducts($response->hits),
             'total' => $response->estimatedTotalHits,
+            'allProductsWithoutFilters' => $this->formatProducts($this->module->requestCurl($meiliUrl, json_encode($dataNoFilters))->hits)
         ];
     }
 

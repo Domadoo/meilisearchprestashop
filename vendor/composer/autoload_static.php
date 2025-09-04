@@ -10,6 +10,7 @@ class ComposerStaticInitf852ef1ec52cda4434ccc0f6b75fdc4c
         'P' => 
         array (
             'PrestaShop\\Module\\MeiliSearch\\' => 30,
+            'PrestaShop\\Module\\Classes\\' => 26,
         ),
     );
 
@@ -17,6 +18,10 @@ class ComposerStaticInitf852ef1ec52cda4434ccc0f6b75fdc4c
         'PrestaShop\\Module\\MeiliSearch\\' => 
         array (
             0 => __DIR__ . '/../..' . '/src',
+        ),
+        'PrestaShop\\Module\\Classes\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/classes',
         ),
     );
 

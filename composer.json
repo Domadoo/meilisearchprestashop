@@ -1,6 +1,6 @@
 
 {
-    "name": "prestashop/meilisearch_prestashop",
+    "name": "prestashop/meilisearchprestashop",
     "license": "AFL-3.0",
         "authors": [
         {
@@ -14,7 +14,8 @@
     ],
     "autoload": {
         "psr-4": {
-            "PrestaShop\\Module\\MeiliSearch\\": "src/"
+            "PrestaShop\\Module\\MeiliSearch\\": "src/",
+            "PrestaShop\\Module\\Classes\\": "classes/"
         },
         "config": {
             "prepend-autoloader": false

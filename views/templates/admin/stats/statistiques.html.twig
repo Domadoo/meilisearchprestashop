@@ -1,0 +1,127 @@
+{% extends '@PrestaShop/Admin/layout.html.twig' %}
+
+
+{% block content %}
+    <div class="row">
+        <div id="calendar" class="panel">
+            <form action="{{ path('admin_meilisearch_stats_index') }}" method="post" id="form_stats" class="calendar-form form-inline d-flex justify-content-between align-items-center">
+
+                {# Boutons de sélection jour / mois / année #}
+                <input type="hidden" name="selectedPeriod" id="selectedPeriod" value="{{ buttonClicked }}">
+                <div class="btn-group" role="group" aria-label="Calendar shortcuts">
+                    <button type="submit" name="submitDateDay" class="btn btn-outline-secondary {{ buttonClicked == 'submitDateDay' ? 'active' : '' }}">{{ 'Day'|trans({}, 'Admin.Global') }}</button>
+                    <button type="submit" name="submitDateMonth" class="btn btn-outline-secondary {{ buttonClicked == 'submitDateMonth' ? 'active' : '' }}">{{ 'Month'|trans({}, 'Admin.Global') }}</button>
+                    <button type="submit" name="submitDateYear" class="btn btn-outline-secondary {{ buttonClicked == 'submitDateYear' ? 'active' : '' }}">{{ 'Year'|trans({}, 'Admin.Global') }}</button>
+                    <button type="submit" name="submitDateDayPrev" class="btn btn-outline-secondary {{ buttonClicked == 'submitDateDayPrev' ? 'active' : '' }}">{{ 'Day'|trans({}, 'Admin.Global') }}-1</button>
+                    <button type="submit" name="submitDateMonthPrev" class="btn btn-outline-secondary {{ buttonClicked == 'submitDateMonthPrev' ? 'active' : '' }}">{{ 'Month'|trans({}, 'Admin.Global') }}-1</button>
+                    <button type="submit" name="submitDateYearPrev" class="btn btn-outline-secondary {{ buttonClicked == 'submitDateYearPrev' ? 'active' : '' }}">{{ 'Year'|trans({}, 'Admin.Global') }}-1</button>
+                    <button type="submit" name="submitDateAllTime" class="btn btn-outline-secondary {{ buttonClicked == 'submitDateAllTime' ? 'active' : '' }}">{{ 'All Time'|trans({}, 'Admin.Global') }}</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="lang" class="panel">
+            <div class="form-group">
+                <select id="lang_select" name="id_lang" class="form-control" onchange="this.form.submit();" form="form_stats">
+                        <option value="0">{{ allLanguagesText }}</option>
+                    {% for lang in languages %}
+                        <option value="{{ lang['id_lang'] }}" {{ lang['id_lang'] == selectedIdLang ? 'selected' : '' }}>{{ lang['iso_code'] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="card col card-stats-gauge">
+            <div class="card-header">
+                <h3>{{ totalSearchesText }}</h3>
+            </div>
+            <div class="card-body"> 
+                <h3>{{ totalSearches }}</h3>
+                <h4>{{ totalSearchesText }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="card col">
+            <div class="card-header">
+                <h3>{{ topSearchesText }}</h3>
+            </div>
+            <div class="card-body" id="chart-searches">
+                <svg></svg>
+            </div>
+        </div>
+        <div class="card col">
+            <div class="card-header">
+                <h3>{{ topClickedText }}</h3>
+            </div>
+            <div class="card-body" id="chart-clicks">
+                <svg></svg>
+            </div>
+        </div>
+        <div class="card col">
+            <div class="card-header">
+                <h3>{{ noResultsText }}</h3>
+            </div>
+            <div class="card-body" id="chart-no-results">
+                <svg></svg>
+            </div>
+        </div>
+    </div>
+
+    <div class= "row md-6">
+        <div class="card col card-stats-gauge">
+            <div class="card-header">
+                <h3>{{ CTRText }}</h3>
+            </div>
+            <div class="card-body">
+                <div>
+                    <h3>{{ ctrPercentages }} %</h3>
+                    <h4>{{ clickThroughRateText }}</h4>
+                </div>
+                <div id="chart-ctr">
+                    <svg></svg>
+                </div>
+            </div>
+        </div>
+        <div class="card col card-stats-gauge">
+            <div class="card-header">
+                <h3>{{ addedToCartRateText }}</h3>
+            </div>
+            <div class="card-body">
+                <div>
+                    <h3>{{ addedToCartRate }} %</h3>
+                    <h4>{{ addedToCartRateText }}</h4>
+                </div>
+                <div id="chart-added-to-cart-rate">
+                    <svg></svg>
+                </div>
+            </div>
+        </div>
+        <div class="card col card-stats-gauge">
+            <div class="card-header">
+                <h3>{{conversionRateText }}</h3>
+            </div>
+            <div class="card-body">
+                <div>
+                    <h3>{{ conversionRate }} %</h3>
+                    <h4>{{ conversionRateText }}</h4>
+                </div>
+                <div id="chart-conversion-rate">
+                    <svg></svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block stylesheets %}
+  {{ parent() }}
+  <link rel="stylesheet" href="{{ asset('../modules/meilisearchprestashop/views/css/admin/stats/statistiques.css') }}">
+{% endblock %}
+
+{% block javascripts %}
+  {{ parent() }}
+  <script src="{{ asset('../modules/meilisearchprestashop/views/js/admin/stats/statistiques.js') }}"></script>
+{% endblock %}

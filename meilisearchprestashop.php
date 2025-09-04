@@ -34,17 +34,19 @@ if (!defined('_PS_VERSION_')) {
 use PrestaShop\PrestaShop\Core\Product\Search\FacetCollection; #Collection de facettes 
 use PrestaShop\PrestaShop\Core\Product\Search\Facet; #Classe de la facette 
 use PrestaShop\PrestaShop\Core\Product\Search\Filter; #Classe des filtres 
-use PrestaShop\PrestaShop\Core\Product\Search\URLFragmentSerializer; #Pour transformer l'url 
+use PrestaShop\PrestaShop\Core\Product\Search\URLFragmentSerializer; #Pour transformer l'url
 
-class Meilisearch_prestashop extends Module
+use PrestaShop\Module\Classes\MeilisearchStatssearch;
+
+class Meilisearchprestashop extends Module
 {
     protected $config_form = false;
 
     public function __construct()
     {
-        $this->name = 'meilisearch_prestashop';
+        $this->name = 'meilisearchprestashop';
         $this->tab = 'search_filter';
-        $this->version = '1.0.1';
+        $this->version = '1.1.0';
         $this->author = 'Doudeau Adam, Johan Vivien';
         $this->need_instance = 0;
 
@@ -67,10 +69,14 @@ class Meilisearch_prestashop extends Module
      */
     public function install()
     {
+        include(dirname(__FILE__).'/sql/install.php');
+
         return parent::install() &&
             $this->registerHook('displayHeader') &&
-            $this->registerHook('actionProductSearchAfter') &&
             $this->registerHook('displaySearch') &&
+            $this->registerHook('actionCartUpdateQuantityBefore') &&
+            $this->registerHook('actionPresentProduct') &&
+            $this->registerHook('actionValidateOrder') &&
             $this->callInstallTab();
     }
 
@@ -112,6 +118,7 @@ class Meilisearch_prestashop extends Module
         if (!is_int(Tab::getIdFromClassName('AdminMeiliSearch'))) {
             $this->installTab('AdminMeiliSearch', 'MeiliSearch', 'CONFIGURE');
             $this->installTab('MeiliSearchConfigurationController', 'Configuration', 'AdminMeiliSearch', 'admin_meilisearchconfiguration_index');
+            $this->installTab('MeiliSearchStatsController', 'Statistics', 'AdminMeiliSearch', 'admin_meilisearch_stats_index');
         }
 
         return true;
@@ -129,6 +136,11 @@ class Meilisearch_prestashop extends Module
         return true;
     }
 
+    public function isUsingNewTranslationSystem()
+    {
+        return false;
+    }
+
     /**
      * Load the configuration form
      */
@@ -137,7 +149,7 @@ class Meilisearch_prestashop extends Module
         /**
          * If values have been submitted in the form, process.
          */
-        if (((bool)Tools::isSubmit('submitMeilisearch_prestashopModule')) == true) {
+        if (((bool)Tools::isSubmit('submitMeilisearchprestashopModule')) == true) {
             $this->postProcess();
         }
 
@@ -162,7 +174,7 @@ class Meilisearch_prestashop extends Module
         $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG', 0);
 
         $helper->identifier = $this->identifier;
-        $helper->submit_action = 'submitMeilisearch_prestashopModule';
+        $helper->submit_action = 'submitMeilisearchprestashopModule';
         $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false)
             . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
         $helper->token = Tools::getAdminTokenLite('AdminModules');
@@ -191,7 +203,7 @@ class Meilisearch_prestashop extends Module
                     array(
                         'type' => 'switch',
                         'label' => $this->l('Live mode'),
-                        'name' => 'MEILISEARCH_PRESTASHOP_LIVE_MODE',
+                        'name' => 'MEILISEARCHPRESTASHOP_LIVE_MODE',
                         'is_bool' => true,
                         'desc' => $this->l('Use this module in live mode'),
                         'values' => array(
@@ -212,23 +224,28 @@ class Meilisearch_prestashop extends Module
                         'type' => 'text',
                         'prefix' => '<i class="icon icon-envelope"></i>',
                         'desc' => $this->l('Enter a valid email address'),
-                        'name' => 'MEILISEARCH_PRESTASHOP_ACCOUNT_EMAIL',
+                        'name' => 'MEILISEARCHPRESTASHOP_ACCOUNT_EMAIL',
                         'label' => $this->l('Email'),
                     ),
                     array(
                         'type' => 'password',
-                        'name' => 'MEILISEARCH_PRESTASHOP_ACCOUNT_PASSWORD',
+                        'name' => 'MEILISEARCHPRESTASHOP_ACCOUNT_PASSWORD',
                         'label' => $this->l('Password'),
                     ),
                     array(
                         'type' => 'text',
-                        'name' => 'MEILISEARCH_PRESTASHOP_URL',
+                        'name' => 'MEILISEARCHPRESTASHOP_URL',
                         'label' => $this->l('URL'),
                     ),
                     array(
                         'type' => 'text',
-                        'name' => 'MEILISEARCH_PRESTASHOP_KEY',
+                        'name' => 'MEILISEARCHPRESTASHOP_KEY',
                         'label' => $this->l('KEY'),
+                    ),
+                    array(
+                        'type' => 'text',
+                        'name' => 'MEILISEARCHPRESTASHOP_PREFIX',
+                        'label' => $this->l('PREFIX'),
                     ),
                 ),
                 'submit' => array(
@@ -244,11 +261,12 @@ class Meilisearch_prestashop extends Module
     protected function getConfigFormValues()
     {
         return array(
-            'MEILISEARCH_PRESTASHOP_LIVE_MODE' => Configuration::get('MEILISEARCH_PRESTASHOP_LIVE_MODE', true),
-            'MEILISEARCH_PRESTASHOP_ACCOUNT_EMAIL' => Configuration::get('MEILISEARCH_PRESTASHOP_ACCOUNT_EMAIL', 'contact@prestashop.com'),
-            'MEILISEARCH_PRESTASHOP_ACCOUNT_PASSWORD' => Configuration::get('MEILISEARCH_PRESTASHOP_ACCOUNT_PASSWORD', null),
-            'MEILISEARCH_PRESTASHOP_URL' => Configuration::get('MEILISEARCH_PRESTASHOP_URL', null),
-            'MEILISEARCH_PRESTASHOP_KEY' => Configuration::get('MEILISEARCH_PRESTASHOP_KEY', null),
+            'MEILISEARCHPRESTASHOP_LIVE_MODE' => Configuration::get('MEILISEARCHPRESTASHOP_LIVE_MODE', true),
+            'MEILISEARCHPRESTASHOP_ACCOUNT_EMAIL' => Configuration::get('MEILISEARCHPRESTASHOP_ACCOUNT_EMAIL', 'contact@prestashop.com'),
+            'MEILISEARCHPRESTASHOP_ACCOUNT_PASSWORD' => Configuration::get('MEILISEARCHPRESTASHOP_ACCOUNT_PASSWORD', null),
+            'MEILISEARCHPRESTASHOP_URL' => Configuration::get('MEILISEARCHPRESTASHOP_URL', null),
+            'MEILISEARCHPRESTASHOP_KEY' => Configuration::get('MEILISEARCHPRESTASHOP_KEY', null),
+            'MEILISEARCHPRESTASHOP_PREFIX' => Configuration::get('MEILISEARCHPRESTASHOP_PREFIX', null),
         );
     }
 
@@ -269,41 +287,81 @@ class Meilisearch_prestashop extends Module
     }
 
     public function hookDisplayHeader(){
+
+        $this->trans('This product is no longer available.', [], 'Modules.Meilisearchprestashop.front');
+
         Media::addJsDef(['searchPlaceholder' =>  [
-            '1' => $this->l('Search an article', 'meilisearch_searchbar'),
-            '2' => $this->l('Search a product', 'meilisearch_searchbar'),
-            '3' => $this->l('Search a category', 'meilisearch_searchbar')
+            '1' => $this->l('Search an article'),
+            '2' => $this->l('Search a product'),
+            '3' => $this->l('Search a category')
         ]]);
+
+        $link = Context::getContext()->link->getModuleLink(
+            'meilisearchprestashop',
+            'meilisearch'
+        );
+
+        $cookie = $this->context->cookie;
+
+        $this->context->smarty->assign([
+            'meilisearchUrl' => $link,
+        ]);
 
         $this->context->controller->addJS($this->_path.'/views/js/front/meilisearch_searchbar.js');
         $this->context->controller->addCSS($this->_path.'/views/css/front/meilisearch_searchbar.css');
     }
 
-
-    public function hookActionProductSearchAfter($params)
+    public function hookActionPresentProduct()
     {
-        $controllerType = Dispatcher::getInstance()->getController();
-        if ($controllerType === 'meilisearch') {
-            return;
+        unset($this->context->cookie->meilisearch_query);
+        unset($this->context->cookie->meilisearch_id);
+        if(Tools::getValue('id_meilisearch_statssearch')) {
+            $id_meilisearch_statssearch = (int)Tools::getValue('id_meilisearch_statssearch');
+            $search = new MeilisearchStatssearch($id_meilisearch_statssearch);
+            if(Validate::isLoadedObject($search)) {
+                
+                $this->context->cookie->meilisearch_id = $id_meilisearch_statssearch;
+                $this->context->cookie->meilisearch_product_id = Tools::getValue('id_product');
+            }
         }
+    }
 
-        $query = Tools::getValue('s');
-        if (!$query) {
-            return;
+    public function hookActionCartUpdateQuantityBefore($params)
+    {
+        if(isset($this->context->cookie->meilisearch_id) && isset($this->context->cookie->meilisearch_product_id) 
+            && $params['product']->id == $this->context->cookie->meilisearch_product_id && $params['operator'] == 'up') {
+
+            $newSearch = new MeilisearchStatssearch($this->context->cookie->meilisearch_id);
+            if(!Validate::isLoadedObject($newSearch) || $newSearch->id_product != $this->context->cookie->meilisearch_product_id) {
+                return;
+            }
+            $newSearch->id_cart = $params['cart']->id;
+            $newSearch->save();
+
+            unset($this->context->cookie->meilisearch_id);
+            unset($this->context->cookie->meilisearch_product_id);
         }
+    }
 
-        $link = Context::getContext()->link->getModuleLink(
-            'meilisearch_prestashop',
-            'meilisearch',
-            ['s' => $query]
-        );
-
-        Tools::redirect($link);
+    public function hookActionValidateOrder($params)
+    {
+        try {
+            $listSearches = MeilisearchStatssearch::getSearchesByIdCart($params['cart']->id);
+            foreach ($listSearches as $search) {
+                $newSearch = new MeilisearchStatssearch($search['id_statssearch']);
+                if(Validate::isLoadedObject($newSearch)) {
+                    $newSearch->is_ordered = 1;
+                    $newSearch->save();
+                }
+            }
+        } catch (\Throwable $th) {
+            PrestaShopLogger::addLog('Error validation order Meilisearch : '.$th->getMessage(), 3);
+        }
     }
 
     public function requestCurl($url, $payload = null, $request = false)
     {
-        $authorization = 'Authorization: Bearer ' . Configuration::get('MEILISEARCH_PRESTASHOP_KEY');
+        $authorization = 'Authorization: Bearer ' . Configuration::get('MEILISEARCHPRESTASHOP_KEY');
         $options = array(
             CURLOPT_RETURNTRANSFER => true,     // return web page
             CURLOPT_HEADER         => false,    // don't return headers

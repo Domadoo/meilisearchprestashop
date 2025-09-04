@@ -1,19 +1,19 @@
 <?php return array(
     'root' => array(
-        'name' => 'prestashop/meilisearch_prestashop',
-        'pretty_version' => '1.0.0+no-version-set',
-        'version' => '1.0.0.0',
-        'reference' => null,
+        'name' => 'prestashop/meilisearchprestashop',
+        'pretty_version' => '1.1.x-dev',
+        'version' => '1.1.9999999.9999999-dev',
+        'reference' => '81f9dc1f17970c628b1834cf1fdc4e58408affba',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
         'dev' => true,
     ),
     'versions' => array(
-        'prestashop/meilisearch_prestashop' => array(
-            'pretty_version' => '1.0.0+no-version-set',
-            'version' => '1.0.0.0',
-            'reference' => null,
+        'prestashop/meilisearchprestashop' => array(
+            'pretty_version' => '1.1.x-dev',
+            'version' => '1.1.9999999.9999999-dev',
+            'reference' => '81f9dc1f17970c628b1834cf1fdc4e58408affba',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

@@ -1,0 +1,57 @@
+.card-body{
+    justify-content: center;
+    text-align: center;
+    align-items: center;
+}
+
+.card-stats-gauge .card-body h3{
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+    color: #1f77b4;
+}
+
+.card-body svg {
+    height: 400px;
+    width: 100%;
+}
+
+.card {
+    margin: 0.5rem 0.5rem;
+}
+
+#calendar {
+    padding: 10px;
+}
+
+#calendar .btn-group .btn {
+    border-radius: 0;
+    border: 1px solid #d1d9e0;
+    color: #6c757d;
+    background: #fff;
+}
+
+#calendar .btn-group .btn:first-child {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+}
+
+#calendar .btn-group .btn:last-child {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+#calendar .btn-primary {
+    background-color: #17a2b8;
+    color: #fff;
+    border-color: #17a2b8;
+}
+
+.active {
+    background-color: #25b9d7 !important;
+    color: #fff !important;
+}
+
+#lang {
+    padding: 10px;
+}

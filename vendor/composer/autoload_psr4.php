@@ -7,4 +7,5 @@ $baseDir = dirname($vendorDir);
 
 return array(
     'PrestaShop\\Module\\MeiliSearch\\' => array($baseDir . '/src'),
+    'PrestaShop\\Module\\Classes\\' => array($baseDir . '/classes'),
 );

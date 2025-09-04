@@ -6,14 +6,15 @@ use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchResult;
 use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
 use PrestaShop\Module\MeiliSearch\Search\MeiliSearchProductSearchProvider;
 
-class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductListingFrontController
+class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListingFrontController
 {
+    public $module;
 
     public function initContent()
     {
         parent::initContent();
-
-        $this->doProductSearch('../../../modules/meilisearch_prestashop/views/templates/front/search.tpl');
+        
+        $this->doProductSearch('../../../modules/meilisearchprestashop/views/templates/front/search.tpl');
     }
 
     public function getProductSearchQuery()
@@ -47,7 +48,8 @@ class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductList
 
     public function getListingLabel()
     {
-        return $this->trans('Search results', [], 'Modules.Meilisearchprestashop.Meilisearch');
+        $this->module = \Module::getInstanceByName('meilisearchprestashop');
+        return $this->module->l('Search results', 'meilisearch');
     }
     
     protected function doProductSearch($template, $params = [], $locale = null)
@@ -66,6 +68,29 @@ class Meilisearch_prestashopMeilisearchModuleFrontController extends ProductList
             
             $this->setTemplate($template, $params, $locale);
         }
+
+        $cookie = Context::getContext()->cookie;
+        Media::addJsDef([
+            'id_statssearch' => (int)$cookie->meilisearch_id,
+        ]);
+    }
+
+    public function setMedia()
+    {
+        parent::setMedia();
+
+        $this->module = \Module::getInstanceByName('meilisearchprestashop');
+
+        $page = Tools::getValue('page') ? Tools::getValue('page') : 1;
+        Media::addJsDef([
+            'base_url' => $this->context->link->getModuleLink($this->module->name, 'ajax', [], true),
+            'page' => $page,
+        ]);
+
+        $this->registerJavascript(
+            'meilisearch_search_js',
+            'modules/'.$this->module->name.'/views/js/front/search.js'
+        );
     }
 
 }
