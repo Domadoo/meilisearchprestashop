@@ -89,48 +89,62 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $filtersArray = explode('|', $filters);
         $data['filter'] = [];
 
+        
+        $groupedFilters = []; // Regrouper par type de facet
+
         foreach ($filtersArray as $filterString) {
             $filter = explode('-', $filterString);
 
             if (count($filter) !== 2) {
-                continue; // Format inattendu, on skip
+                continue; // Format inattendu
             }
 
             list($facetType, $value) = $filter;
 
             switch ($facetType) {
                 case 'manu':
-                    $data['filter'][] = 'id_manufacturer = ' . (int)$value;
+                    $groupedFilters['manu'][] = 'id_manufacturer = ' . (int)$value;
                     break;
 
                 case 'avail':
                     if ($value === 'stock') {
-                        $data['filter'][] = 'quantity >= 1';
+                        $groupedFilters['avail'][] = 'quantity >= 1';
                     } elseif ($value === 'available') {
-                        $data['filter'][] = 'available_for_order = 1';
+                        $groupedFilters['avail'][] = 'available_for_order = 1';
                     }
                     break;
 
                 case 'technology':
-                    // Meilisearch : recherche exacte dans tableau string
-                    $data['filter'][] = '"feature_values" = "7-' . (int)$value . '"';
+                    $groupedFilters['technology'][] = '"feature_values" = "7-' . (int)$value . '"';
                     break;
 
                 case 'compatibility':
-                    $data['filter'][] = '"feature_values" = "31-' . (int)$value . '"';
+                    $groupedFilters['compatibility'][] = '"feature_values" = "31-' . (int)$value . '"';
                     break;
 
                 case 'type':
-                    $data['filter'][] = '"feature_values" = "6-' . (int)$value . '"';
+                    $groupedFilters['type'][] = '"feature_values" = "6-' . (int)$value . '"';
                     break;
 
                 case 'function':
-                    $data['filter'][] = '"feature_values" = "12-' . (int)$value . '"';
+                    $groupedFilters['function'][] = '"feature_values" = "12-' . (int)$value . '"';
                     break;
 
                 default:
-                    // Si jamais tu veux gérer d'autres filtres un jour
                     break;
+            }
+        }
+
+        // Construction du tableau final
+        $data['filter'] = [];
+
+        foreach ($groupedFilters as $filtersOfType) {
+            if (count($filtersOfType) === 1) {
+                // Juste un filtre → pas besoin de sous-tableau
+                $data['filter'][] = $filtersOfType[0];
+            } else {
+                // Plusieurs filtres du même type → OU implicite
+                $data['filter'][] = $filtersOfType;
             }
         }
 
