@@ -33,6 +33,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $allProducts = $result['allProducts'];
         $products = $result['products']; // tableau de produits format PrestaShop
         $total = $result['total'];
+        $allProductsWithoutFilters = $result['allProductsWithoutFilters'];
 
         $resultObject = new ProductSearchResult();
         $resultObject->setProducts($products);
@@ -42,13 +43,15 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
         $activeFilters = explode('|', $query->getEncodedFacets());
 
-        $categoryfilters = $this->module->getSearchProductsFacets($allProducts, $activeFilters);
+        $categoryfilters = $this->module->getSearchProductsFacets($allProductsWithoutFilters, $activeFilters);
 
         if (sizeof($categoryfilters->getFacets())) {
             $resultObject->setFacetCollection(
                 $categoryfilters //C'est ici qu'on assigne les filtres de notre fonction
             );
         }
+        // echo '<pre>';
+        // exit(print_r($categoryfilters, true));
         $resultObject->setEncodedFacets(
             $query->getEncodedFacets()
         );
@@ -137,7 +140,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
         // Construction du tableau final
         $data['filter'] = [];
-
+        $dataNoFilters = $data;
         foreach ($groupedFilters as $filtersOfType) {
             if (count($filtersOfType) === 1) {
                 // Juste un filtre → pas besoin de sous-tableau
@@ -183,6 +186,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
             'products' => $this->formatProducts($productsChunk[$page - 1]),
             'allProducts' => $this->formatProducts($response->hits),
             'total' => $response->estimatedTotalHits,
+            'allProductsWithoutFilters' => $this->formatProducts($this->module->requestCurl($meiliUrl, json_encode($dataNoFilters))->hits)
         ];
     }
 
