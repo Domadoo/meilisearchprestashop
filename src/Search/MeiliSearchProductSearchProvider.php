@@ -139,7 +139,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         }
 
         // Construction du tableau final
-        $data['filter'] = [];
+        $data['filter'] = [['visibility = both'], ['available_for_order = true']];
         $dataNoFilters = $data;
         foreach ($groupedFilters as $filtersOfType) {
             if (count($filtersOfType) === 1) {
