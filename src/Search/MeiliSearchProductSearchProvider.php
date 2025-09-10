@@ -157,6 +157,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                 'products' => [],
                 'allProducts' => [],
                 'total' => 0,
+                'allProductsWithoutFilters' => []
             ];
         }
 
