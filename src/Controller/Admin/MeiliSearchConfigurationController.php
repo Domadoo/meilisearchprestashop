@@ -62,8 +62,6 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
                     ON (s.`id_supplier` = p.`id_supplier`)
                 WHERE pl.`id_lang` = ' . (int) $id_lang . '
                 AND product_shop.`active` = 1
-                AND product_shop.`visibility` = "both"
-                AND p.`available_for_order` = true
             ';
     
             $products = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
@@ -178,7 +176,7 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
             $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/sortable-attributes', json_encode(['name','price']), 'PUT');
             $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/ranking-rules', json_encode(["sort","words","typo","proximity","attribute","exactness"]), 'PUT');
             $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'id_category_default
-    ', 'quantity', 'feature_values']), 'PUT');
+    ', 'quantity', 'feature_values','visibility', 'available_for_order']), 'PUT');
         }
 
 
