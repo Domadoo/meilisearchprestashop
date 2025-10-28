@@ -46,7 +46,7 @@ class Meilisearchprestashop extends Module
     {
         $this->name = 'meilisearchprestashop';
         $this->tab = 'search_filter';
-        $this->version = '1.1.1';
+        $this->version = '1.1.2';
         $this->author = 'Doudeau Adam, Johan Vivien';
         $this->need_instance = 0;
 
@@ -247,6 +247,13 @@ class Meilisearchprestashop extends Module
                         'name' => 'MEILISEARCHPRESTASHOP_PREFIX',
                         'label' => $this->l('PREFIX'),
                     ),
+                    array(
+                        'col' => 3,
+                        'type' => 'text',
+                        'name' => 'MEILISEARCHPRESTASHOP_TOKEN_CRON',
+                        'desc' => $this->l('Enter a private key, for exemple').' : ' .Tools::passwdGen(32),
+                        'label' => $this->l('Token for access to the cron'),
+                    ),
                 ),
                 'submit' => array(
                     'title' => $this->l('Save'),
@@ -267,6 +274,7 @@ class Meilisearchprestashop extends Module
             'MEILISEARCHPRESTASHOP_URL' => Configuration::get('MEILISEARCHPRESTASHOP_URL', null),
             'MEILISEARCHPRESTASHOP_KEY' => Configuration::get('MEILISEARCHPRESTASHOP_KEY', null),
             'MEILISEARCHPRESTASHOP_PREFIX' => Configuration::get('MEILISEARCHPRESTASHOP_PREFIX', null),
+            'MEILISEARCHPRESTASHOP_TOKEN_CRON' => Configuration::get('MEILISEARCHPRESTASHOP_TOKEN_CRON', null)
         );
     }
 

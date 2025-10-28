@@ -22,12 +22,23 @@ function ajaxProductClick(product, index) {
 }
 
 let listProducts = document.getElementById('products');
+
 listProducts.addEventListener('click', function(event) {
-    event.preventDefault();
+    const tag = event.target.tagName.toLowerCase();
+    if (['input', 'button', 'select', 'textarea', 'label'].includes(tag)) {
+        return;
+    }
+
+    if (event.target.closest('.add-to-cart')) {
+        return;
+    }
+
     if (event.target && event.target.closest('.thumbnail-container')) {
+        event.preventDefault();
 
         let product = event.target.closest('.product').firstElementChild;
         let productsRow = document.querySelector('#js-product-list');
+
         ajaxProductClick(product, Array.from(productsRow.firstElementChild.children).indexOf(product.parentElement));
 
         let productHref = product.firstElementChild.firstElementChild.firstElementChild;
@@ -45,6 +56,5 @@ listProducts.addEventListener('click', function(event) {
 
         document.body.appendChild(form);
         form.submit();
-
     }
 });
