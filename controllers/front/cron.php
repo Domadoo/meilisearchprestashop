@@ -22,8 +22,11 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
         }
 
         if($success){
+            echo 'success';
             exit(http_response_code(200));
         }else {
+            echo 'error';
+            PrestaShopLogger::addLog($this->l('Erreur CRON lors de action : ' . Tools::getValue('action')), 3);
             exit(http_response_code(400));
         }
 
