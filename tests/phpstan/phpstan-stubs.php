@@ -51,6 +51,12 @@ namespace {
     {
         /** @var int|null */
         public $id_employee;
+        /** @var int|null */
+        public $meilisearch_id;
+        /** @var string|null */
+        public $meilisearch_query;
+        /** @var int|null */
+        public $meilisearch_product_id;
 
         /**
          * @param string $name
@@ -717,6 +723,17 @@ namespace {
         public function uninstall()
         {
             return true;
+        }
+
+        /**
+         * @param string $url
+         * @param string|null $payload
+         * @param bool|string $request
+         *
+         * @return mixed
+         */
+        public function requestCurl($url, $payload = null, $request = false)
+        {
         }
     }
 

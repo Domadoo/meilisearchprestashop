@@ -40,13 +40,15 @@ class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontControll
 
         switch ($action) {
             case 'productClick':
+                // @phpstan-ignore-next-line
                 if(isset($cookie->meilisearch_id)) {
-
+                    // @phpstan-ignore-next-line
                     $newSearch = new MeilisearchStatssearch($cookie->meilisearch_id);
                     $newSearch->id_product = Tools::getValue('id_product');
                     $newSearch->position = Tools::getValue('position');
                     $newSearch->save();
 
+                    // @phpstan-ignore-next-line
                     $cookie->meilisearch_product_id = Tools::getValue('id_product');
                     // unset($cookie->meilisearch_id);
                     // unset($cookie->meilisearch_query);

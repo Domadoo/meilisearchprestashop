@@ -51,9 +51,11 @@ class MeilisearchStatssearch extends ObjectModel
     public $id_customer;
     public $id_cart;
     public $is_ordered;
+    /** @var int|null */
     public $id_lang; // Default language ID, can be changed based on your needs
     public $date_add;
 
+    /** @var array */
     public static $definition = array(
         'table'     => 'meilisearch_statssearch',
         'primary'   => 'id_statssearch',

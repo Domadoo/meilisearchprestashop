@@ -169,6 +169,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
             }
         }
 
+        /** @var object{hits: array, estimatedTotalHits: int}|null $response */
         $response = $this->module->requestCurl($meiliUrl, json_encode($data));
         if(!$response || !isset($response->hits) || !is_array($response->hits)) {
             return [
@@ -201,11 +202,13 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
             unset($cookie->meilisearch_product_id);
         }
 
+        /** @var object{hits: array}|null $responseNoFilters */
+        $responseNoFilters = $this->module->requestCurl($meiliUrl, json_encode($dataNoFilters));
         return [
             'products' => $this->formatProducts($productsChunk[$page - 1]),
             'allProducts' => $this->formatProducts($response->hits),
             'total' => $response->estimatedTotalHits,
-            'allProductsWithoutFilters' => $this->formatProducts($this->module->requestCurl($meiliUrl, json_encode($dataNoFilters))->hits)
+            'allProductsWithoutFilters' => $this->formatProducts($responseNoFilters ? $responseNoFilters->hits : [])
         ];
     }
 

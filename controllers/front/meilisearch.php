@@ -89,6 +89,7 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
 
         $cookie = Context::getContext()->cookie;
         Media::addJsDef([
+            // @phpstan-ignore-next-line
             'id_statssearch' => (int)$cookie->meilisearch_id,
         ]);
     }

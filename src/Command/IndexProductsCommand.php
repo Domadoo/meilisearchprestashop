@@ -238,7 +238,7 @@ class IndexProductsCommand extends Command
         return 0;
     }
 
-    private function requestMeilisearch(string $url, string $payload = null, string $method = null): void
+    private function requestMeilisearch(string $url, ?string $payload = null, ?string $method = null): void
     {
         $authorization = 'Authorization: Bearer ' . Configuration::get('MEILISEARCHPRESTASHOP_KEY');
 

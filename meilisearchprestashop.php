@@ -329,7 +329,9 @@ class Meilisearchprestashop extends Module
             $search = new MeilisearchStatssearch($id_meilisearch_statssearch);
             if(Validate::isLoadedObject($search)) {
                 
+                // @phpstan-ignore-next-line
                 $this->context->cookie->meilisearch_id = $id_meilisearch_statssearch;
+                // @phpstan-ignore-next-line
                 $this->context->cookie->meilisearch_product_id = Tools::getValue('id_product');
             }
         }
@@ -406,11 +408,7 @@ class Meilisearchprestashop extends Module
         $header['errmsg']  = $errmsg;
         $header['content'] = $content;
 
-        try {
-            return json_decode($content);
-        } catch (\Throwable $th) {
-            //throw $th;
-        }
+        return json_decode($content);
     }
 
     public function getSearchProductsFacets(array $products, array $activeFilters)
@@ -498,6 +496,7 @@ class Meilisearchprestashop extends Module
                     ->setType('manufacturer')
                     ->setMagnitude($count)
                     ->setActive(in_array($filterKey, $activeFilters))
+                    // @phpstan-ignore-next-line
                     ->setNextEncodedFacets($encodedFacetsUrl);
                 $facet->addFilter($filter);
             }
@@ -529,6 +528,7 @@ class Meilisearchprestashop extends Module
                 ->setType('availability')
                 ->setMagnitude($availabilityCount['available'])
                 ->setActive(in_array($filterKey, $activeFilters))
+                // @phpstan-ignore-next-line
                 ->setNextEncodedFacets($encodedFacetsUrl);
             $facet->addFilter($filter);
 
@@ -549,6 +549,7 @@ class Meilisearchprestashop extends Module
                     ->setType('availability')
                     ->setMagnitude($availabilityCount['stock'])
                     ->setActive(in_array($filterKey, $activeFilters))
+                    // @phpstan-ignore-next-line
                     ->setNextEncodedFacets($encodedFacetsUrl);
                 $facet->addFilter($filter);
             }
@@ -625,6 +626,7 @@ class Meilisearchprestashop extends Module
                 ->setType($type)
                 ->setMagnitude($count)
                 ->setActive(in_array($filterKey, $activeFilters))
+                // @phpstan-ignore-next-line
                 ->setNextEncodedFacets($encodedFacetsUrl);
 
             $facet->addFilter($filter);
