@@ -11,8 +11,8 @@ parameters:
   level: 5
   ignoreErrors:
     # Cookie dynamic properties used for Meilisearch session tracking
-    - message: "#^Access to an undefined property Cookie\\:\\:\\$meilisearch_id\\.$#"
-    - message: "#^Access to an undefined property Cookie\\:\\:\\$meilisearch_query\\.$#"
-    - message: "#^Access to an undefined property Cookie\\:\\:\\$meilisearch_product_id\\.$#"
+    - '#^Access to an undefined property Cookie\:\:\$meilisearch_id\.$#'
+    - '#^Access to an undefined property Cookie\:\:\$meilisearch_query\.$#'
+    - '#^Access to an undefined property Cookie\:\:\$meilisearch_product_id\.$#'
     # requestCurl() is defined on the concrete Meilisearchprestashop class, not on Module base class
-    - message: "#^Call to an undefined method Module\\:\\:requestCurl\\(\\)\\.$#"
+    - '#^Call to an undefined method Module\:\:requestCurl\(\)\.$#'
