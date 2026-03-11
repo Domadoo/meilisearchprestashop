@@ -49,7 +49,7 @@ class IndexProductsCommand extends Command
 
         if (!$meiliUrl) {
             $io->error('MEILISEARCHPRESTASHOP_URL is not configured.');
-            return Command::FAILURE;
+            return 1;
         }
 
         $langFilter = $input->getOption('lang');
@@ -61,7 +61,7 @@ class IndexProductsCommand extends Command
             $languages = array_filter($languages, fn($l) => $l['iso_code'] === $langFilter);
             if (empty($languages)) {
                 $io->error(sprintf('Language "%s" not found.', $langFilter));
-                return Command::FAILURE;
+                return 1;
             }
         }
 
@@ -217,7 +217,7 @@ class IndexProductsCommand extends Command
             $io->success(sprintf('Index "%s" updated successfully.', $indexName));
         }
 
-        return Command::SUCCESS;
+        return 0;
     }
 
     private function requestMeilisearch(string $url, string $payload = null, string $method = null): void
