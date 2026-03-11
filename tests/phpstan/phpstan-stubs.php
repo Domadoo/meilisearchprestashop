@@ -1,4 +1,11 @@
 <?php
+/**
+ * 2007-2026 PrestaShop
+ *
+ * @author    Domadoo (Johan Vivien)
+ * @copyright 2007-2026 Domadoo
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License (AFL 3.0)
+ */
 
 namespace {
     /*

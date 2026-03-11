@@ -9,7 +9,7 @@
  * http://opensource.org/licenses/afl-3.0.php
  *
  * @author    Doudeau Adam, Johan Vivien
- * @copyright 2007-2025 Domadoo
+ * @copyright 2007-2026 Domadoo
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 

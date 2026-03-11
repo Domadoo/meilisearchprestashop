@@ -14,11 +14,11 @@
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 
+namespace PrestaShop\Module\MeiliSearch\Controller\Admin;
+
 if (!defined('_PS_VERSION_')) {
     exit;
 }
-
-namespace PrestaShop\Module\MeiliSearch\Controller\Admin;
 
 use PrestaShopBundle\Controller\Admin\FrameworkBundleAdminController;
 use PrestaShop\Module\Classes\MeilisearchStatssearch;

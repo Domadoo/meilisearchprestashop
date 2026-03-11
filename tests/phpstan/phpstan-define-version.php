@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Définit _PS_VERSION_ pour le bootstrap PHPStan si absent (contexte module seul).
  *

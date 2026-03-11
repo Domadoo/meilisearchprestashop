@@ -16,11 +16,11 @@
 
 declare(strict_types=1);
 
+namespace PrestaShop\Module\MeiliSearch\Command;
+
 if (!defined('_PS_VERSION_')) {
     exit;
 }
-
-namespace PrestaShop\Module\MeiliSearch\Command;
 
 use Configuration;
 use Db;
@@ -76,7 +76,7 @@ class IndexProductsCommand extends Command
         $languages = Language::getLanguages();
 
         if ($langFilter) {
-            $languages = array_filter($languages, fn($l) => $l['iso_code'] === $langFilter);
+            $languages = array_filter($languages, function ($l) use ($langFilter) { return $l['iso_code'] === $langFilter; });
             if (empty($languages)) {
                 $io->error(sprintf('Language "%s" not found.', $langFilter));
                 return 1;

@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Constantes pour PHPStan (bootstrap / analyse statique).
  *

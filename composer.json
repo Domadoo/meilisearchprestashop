@@ -1,8 +1,8 @@
-
 {
     "name": "prestashop/meilisearchprestashop",
     "license": "AFL-3.0",
-        "authors": [
+    "type": "prestashop-module",
+    "authors": [
         {
             "name": "Adam Doudeau",
             "email": "adam.doudeau1@gmail.com"
@@ -16,11 +16,13 @@
         "psr-4": {
             "PrestaShop\\Module\\MeiliSearch\\": "src/",
             "PrestaShop\\Module\\Classes\\": "classes/"
-        },
-        "config": {
-            "prepend-autoloader": false
-        },
-        "type": "prestashop-module"
+        }
+    },
+    "config": {
+        "prepend-autoloader": false,
+        "platform": {
+            "php": "7.4"
+        }
     },
     "require-dev": {
         "prestashop/php-dev-tools": "^5.0",

@@ -1,7 +1,6 @@
 <?php
-
 /**
- * 2007-2025 PrestaShop
+ * 2007-2026 PrestaShop
  *
  * NOTICE OF LICENSE
  *
@@ -20,7 +19,7 @@
  * needs please refer to http://www.prestashop.com for more information.
  *
  *  @author    PrestaShop SA <contact@prestashop.com>
- *  @copyright 2007-2025 PrestaShop SA
+ *  @copyright 2007-2026 PrestaShop SA
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  *  International Registered Trademark & Property of PrestaShop SA
  */
@@ -30,6 +29,8 @@ declare(strict_types=1);
 if (!defined('_PS_VERSION_')) {
     exit;
 }
+
+require_once __DIR__ . '/vendor/autoload.php';
 
 use PrestaShop\PrestaShop\Core\Product\Search\FacetCollection; #Collection de facettes 
 use PrestaShop\PrestaShop\Core\Product\Search\Facet; #Classe de la facette 
