@@ -191,12 +191,15 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         if((!isset($cookie->meilisearch_id) || !isset($cookie->meilisearch_query) || $cookie->meilisearch_query != $search) && !empty($search)) {
             $newSearch = new MeilisearchStatssearch();
             $newSearch->query = mb_strtolower($search);
+            // @phpstan-ignore-next-line
             $newSearch->nb_results = $response->estimatedTotalHits;
             $newSearch->id_customer = isset($context->customer) ? $context->customer->id : null;
-            $newSearch->id_lang = $context->language->id; 
+            $newSearch->id_lang = $context->language->id;
             $newSearch->save();
 
+            // @phpstan-ignore-next-line
             $cookie->meilisearch_id = $newSearch->id;
+            // @phpstan-ignore-next-line
             $cookie->meilisearch_query = $search;
             unset($cookie->meilisearch_product_id);
         }
@@ -205,6 +208,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         return [
             'products' => $this->formatProducts($productsChunk[$page - 1]),
             'allProducts' => $this->formatProducts($response->hits),
+            // @phpstan-ignore-next-line
             'total' => $response->estimatedTotalHits,
             'allProductsWithoutFilters' => $this->formatProducts($responseNoFilters ? $responseNoFilters->hits : [])
         ];

@@ -7,3 +7,9 @@ parameters:
     - '#Call to an undefined method .*Controller::l\(\)#'
     # PS 9 : LegacyControllerContext / getLanguages()
     - '#Call to method getLanguages\(\) on an unknown class .*LegacyControllerContext#'
+    # PS 9 : getInstanceByName() retourne ModuleCore|false, propriété typée Module|null
+    - '#^Property .*\:\:\$module \(Module\|null\) does not accept ModuleCore\|false\.$#'
+    # PS 9 : constructeur FrameworkBundleAdminController non reconnu comme statique
+    - '#^Call to an undefined static method PrestaShopBundle\\Controller\\Admin\\FrameworkBundleAdminController\:\:__construct\(\)\.$#'
+    # PS 9 : TranslatorInterface non reconnue (namespace Symfony différent entre PS versions)
+    - '#^Parameter \$translator of method PrestaShop\\Module\\MeiliSearch\\Search\\MeiliSearchProductSearchProvider\:\:__construct\(\) has invalid type Symfony\\Component\\Translation\\TranslatorInterface\.$#'
