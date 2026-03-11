@@ -1,0 +1,11 @@
+# Config de base pour l'action PrestaShop (paramètres uniquement, pas d'includes).
+# Pas de bootstrapFiles : ps-module-extension fournit le bootstrap PrestaShop.
+# Nos stubs (phpstan-stubs.php) ne doivent pas être chargés en CI (PrestaShop réel = conflit "class already in use").
+parameters:
+  paths:
+    - ../../../upgrade
+    - ../../../classes
+  scanFiles:
+    - ../../../meilisearchprestashop.php
+  reportUnmatchedIgnoredErrors: false
+  level: 5

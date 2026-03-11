@@ -1,3 +1,15 @@
+{*
+ * 2007-2025 PrestaShop
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License (AFL 3.0)
+ * that is bundled with this package in the file LICENSE.txt.
+ *
+ * @author    Doudeau Adam, Johan Vivien
+ * @copyright 2007-2025 Domadoo
+ * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
+ *}
 <form method="get" action="{$meilisearchUrl}" class="search-bar-wrapper">
   <div class="search-bar-container">
     <span class="search-icon">

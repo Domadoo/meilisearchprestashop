@@ -23,7 +23,12 @@
 *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
 *  International Registered Trademark & Property of PrestaShop SA
 */
-$sql = array();
+
+if (!defined('_PS_VERSION_')) {
+    exit;
+}
+
+$sql = [];
 
 $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'meilisearch_statssearch` (
     `id_statssearch` int(11) NOT NULL AUTO_INCREMENT,

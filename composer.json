@@ -21,5 +21,9 @@
             "prepend-autoloader": false
         },
         "type": "prestashop-module"
+    },
+    "require-dev": {
+        "prestashop/php-dev-tools": "^5.0",
+        "phpstan/phpstan": "^1.10"
     }
 }

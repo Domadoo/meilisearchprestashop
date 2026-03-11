@@ -1,0 +1,646 @@
+parameters:
+	ignoreErrors:
+		-
+			message: "#^Access to an undefined property MeilisearchprestashopAjaxModuleFrontController\\:\\:\\$context\\.$#"
+			count: 1
+			path: ../../controllers/front/ajax.php
+
+		-
+			message: "#^Access to an undefined property MeilisearchprestashopAjaxModuleFrontController\\:\\:\\$module\\.$#"
+			count: 1
+			path: ../../controllers/front/ajax.php
+
+		-
+			message: "#^Access to an undefined property object\\:\\:\\$meilisearch_product_id\\.$#"
+			count: 1
+			path: ../../controllers/front/ajax.php
+
+		-
+			message: "#^Call to an undefined method PrestaShop\\\\Module\\\\Classes\\\\MeilisearchStatssearch\\:\\:save\\(\\)\\.$#"
+			count: 1
+			path: ../../controllers/front/ajax.php
+
+		-
+			message: "#^Access to an undefined property MeilisearchprestashopCronModuleFrontController\\:\\:\\$module\\.$#"
+			count: 5
+			path: ../../controllers/front/cron.php
+
+		-
+			message: "#^Call to an undefined method MeilisearchprestashopCronModuleFrontController\\:\\:l\\(\\)\\.$#"
+			count: 2
+			path: ../../controllers/front/cron.php
+
+		-
+			message: "#^Call to an undefined static method Tools\\:\\:redirect\\(\\)\\.$#"
+			count: 1
+			path: ../../controllers/front/cron.php
+
+		-
+			message: "#^Call to static method addSqlAssociation\\(\\) on an unknown class Shop\\.$#"
+			count: 1
+			path: ../../controllers/front/cron.php
+
+		-
+			message: "#^Call to static method addSqlRestrictionOnLang\\(\\) on an unknown class Shop\\.$#"
+			count: 1
+			path: ../../controllers/front/cron.php
+
+		-
+			message: "#^Constant _PS_USE_SQL_SLAVE_ not found\\.$#"
+			count: 1
+			path: ../../controllers/front/cron.php
+
+		-
+			message: "#^Static method Db\\:\\:getInstance\\(\\) invoked with 1 parameter, 0 required\\.$#"
+			count: 1
+			path: ../../controllers/front/cron.php
+
+		-
+			message: "#^Static method PrestaShopLogger\\:\\:addLog\\(\\) invoked with 2 parameters, 6\\-7 required\\.$#"
+			count: 2
+			path: ../../controllers/front/cron.php
+
+		-
+			message: "#^Variable \\$success might not be defined\\.$#"
+			count: 1
+			path: ../../controllers/front/cron.php
+
+		-
+			message: "#^Access to an undefined property Context\\:\\:\\$cookie\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Access to an undefined property MeilisearchprestashopMeilisearchModuleFrontController\\:\\:\\$ajax\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Access to an undefined property MeilisearchprestashopMeilisearchModuleFrontController\\:\\:\\$context\\.$#"
+			count: 3
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Call to an undefined method MeilisearchprestashopMeilisearchModuleFrontController\\:\\:ajaxRender\\(\\)\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Call to an undefined method MeilisearchprestashopMeilisearchModuleFrontController\\:\\:getAjaxProductSearchVariables\\(\\)\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Call to an undefined method MeilisearchprestashopMeilisearchModuleFrontController\\:\\:getProductSearchVariables\\(\\)\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Call to an undefined method MeilisearchprestashopMeilisearchModuleFrontController\\:\\:getTranslator\\(\\)\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Call to an undefined method MeilisearchprestashopMeilisearchModuleFrontController\\:\\:registerJavascript\\(\\)\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Call to an undefined method MeilisearchprestashopMeilisearchModuleFrontController\\:\\:setTemplate\\(\\)\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Call to an undefined static method Module\\:\\:getInstanceByName\\(\\)\\.$#"
+			count: 2
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Call to method setPage\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchQuery\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Call to method setQueryType\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchQuery\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Call to method setResultsPerPage\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchQuery\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Call to method setSearchString\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchQuery\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Call to method setSortOrder\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchQuery\\.$#"
+			count: 2
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Call to static method addJsDef\\(\\) on an unknown class Media\\.$#"
+			count: 2
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Call to static method newFromString\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\SortOrder\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Instantiated class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchContext not found\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Instantiated class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchQuery not found\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Instantiated class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\SortOrder not found\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^MeilisearchprestashopMeilisearchModuleFrontController\\:\\:initContent\\(\\) calls parent\\:\\:initContent\\(\\) but MeilisearchprestashopMeilisearchModuleFrontController does not extend any class\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^MeilisearchprestashopMeilisearchModuleFrontController\\:\\:setMedia\\(\\) calls parent\\:\\:setMedia\\(\\) but MeilisearchprestashopMeilisearchModuleFrontController does not extend any class\\.$#"
+			count: 1
+			path: ../../controllers/front/meilisearch.php
+
+		-
+			message: "#^Access to an undefined property Context\\:\\:\\$link\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property HelperForm\\:\\:\\$allow_employee_form_lang\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property HelperForm\\:\\:\\$currentIndex\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property HelperForm\\:\\:\\$default_form_language\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property HelperForm\\:\\:\\$identifier\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property HelperForm\\:\\:\\$module\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property HelperForm\\:\\:\\$show_toolbar\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property HelperForm\\:\\:\\$submit_action\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property HelperForm\\:\\:\\$table\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property HelperForm\\:\\:\\$token\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property HelperForm\\:\\:\\$tpl_vars\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Meilisearchprestashop\\:\\:\\$_path\\.$#"
+			count: 3
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Meilisearchprestashop\\:\\:\\$author\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Meilisearchprestashop\\:\\:\\$bootstrap\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Meilisearchprestashop\\:\\:\\$context\\.$#"
+			count: 14
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Meilisearchprestashop\\:\\:\\$description\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Meilisearchprestashop\\:\\:\\$displayName\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Meilisearchprestashop\\:\\:\\$identifier\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Meilisearchprestashop\\:\\:\\$local_path\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Meilisearchprestashop\\:\\:\\$name\\.$#"
+			count: 5
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Meilisearchprestashop\\:\\:\\$need_instance\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Meilisearchprestashop\\:\\:\\$ps_versions_compliancy\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Meilisearchprestashop\\:\\:\\$tab\\.$#"
+			count: 2
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Meilisearchprestashop\\:\\:\\$table\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Meilisearchprestashop\\:\\:\\$version\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Tab\\:\\:\\$active\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Tab\\:\\:\\$class_name\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Tab\\:\\:\\$icon\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Tab\\:\\:\\$id_parent\\.$#"
+			count: 2
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Tab\\:\\:\\$module\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Tab\\:\\:\\$name\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to an undefined property Tab\\:\\:\\$route_name\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to property \\$name on an unknown class Manufacturer\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Access to property \\$value on an unknown class FeatureValue\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Call to an undefined method Meilisearchprestashop\\:\\:display\\(\\)\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Call to an undefined method Meilisearchprestashop\\:\\:trans\\(\\)\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Call to an undefined method PrestaShop\\\\Module\\\\Classes\\\\MeilisearchStatssearch\\:\\:save\\(\\)\\.$#"
+			count: 2
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Call to an undefined static method Tools\\:\\:passwdGen\\(\\)\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Call to method addFacet\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\FacetCollection\\.$#"
+			count: 6
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Call to method addFilter\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\Facet\\.$#"
+			count: 4
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Call to method setLabel\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\Facet\\.$#"
+			count: 3
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Call to method setLabel\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\Filter\\.$#"
+			count: 4
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Call to static method addJsDef\\(\\) on an unknown class Media\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Dead catch \\- Throwable is never thrown in the try block\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Instantiated class FeatureValue not found\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Instantiated class Manufacturer not found\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Instantiated class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\Facet not found\\.$#"
+			count: 3
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Instantiated class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\FacetCollection not found\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Instantiated class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\Filter not found\\.$#"
+			count: 4
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Method Meilisearchprestashop\\:\\:createFeatureFacet\\(\\) has invalid return type PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\Facet\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Parameter \\#2 \\$idLang of static method Configuration\\:\\:get\\(\\) expects int\\|null, string given\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Parameter \\#2 \\$idLang of static method Configuration\\:\\:get\\(\\) expects int\\|null, true given\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Static method PrestaShopLogger\\:\\:addLog\\(\\) invoked with 2 parameters, 6\\-7 required\\.$#"
+			count: 1
+			path: ../../meilisearchprestashop.php
+
+		-
+			message: "#^Call to static method addSqlAssociation\\(\\) on an unknown class Shop\\.$#"
+			count: 1
+			path: ../../src/Command/IndexProductsCommand.php
+
+		-
+			message: "#^Call to static method addSqlRestrictionOnLang\\(\\) on an unknown class Shop\\.$#"
+			count: 1
+			path: ../../src/Command/IndexProductsCommand.php
+
+		-
+			message: "#^Constant _PS_USE_SQL_SLAVE_ not found\\.$#"
+			count: 1
+			path: ../../src/Command/IndexProductsCommand.php
+
+		-
+			message: "#^Deprecated in PHP 8\\.4\\: Parameter \\#2 \\$payload \\(string\\) is implicitly nullable via default value null\\.$#"
+			count: 1
+			path: ../../src/Command/IndexProductsCommand.php
+
+		-
+			message: "#^Deprecated in PHP 8\\.4\\: Parameter \\#3 \\$method \\(string\\) is implicitly nullable via default value null\\.$#"
+			count: 1
+			path: ../../src/Command/IndexProductsCommand.php
+
+		-
+			message: "#^Static method Db\\:\\:getInstance\\(\\) invoked with 1 parameter, 0 required\\.$#"
+			count: 1
+			path: ../../src/Command/IndexProductsCommand.php
+
+		-
+			message: "#^Call to an undefined method PrestaShop\\\\Module\\\\MeiliSearch\\\\Controller\\\\Admin\\\\MeiliSearchConfigurationController\\:\\:addFlash\\(\\)\\.$#"
+			count: 1
+			path: ../../src/Controller/Admin/MeiliSearchConfigurationController.php
+
+		-
+			message: "#^Call to an undefined method PrestaShop\\\\Module\\\\MeiliSearch\\\\Controller\\\\Admin\\\\MeiliSearchConfigurationController\\:\\:redirectToRoute\\(\\)\\.$#"
+			count: 1
+			path: ../../src/Controller/Admin/MeiliSearchConfigurationController.php
+
+		-
+			message: "#^Call to an undefined method PrestaShop\\\\Module\\\\MeiliSearch\\\\Controller\\\\Admin\\\\MeiliSearchConfigurationController\\:\\:render\\(\\)\\.$#"
+			count: 1
+			path: ../../src/Controller/Admin/MeiliSearchConfigurationController.php
+
+		-
+			message: "#^Call to an undefined static method Module\\:\\:getInstanceByName\\(\\)\\.$#"
+			count: 1
+			path: ../../src/Controller/Admin/MeiliSearchConfigurationController.php
+
+		-
+			message: "#^Call to static method addSqlAssociation\\(\\) on an unknown class Shop\\.$#"
+			count: 1
+			path: ../../src/Controller/Admin/MeiliSearchConfigurationController.php
+
+		-
+			message: "#^Call to static method addSqlRestrictionOnLang\\(\\) on an unknown class Shop\\.$#"
+			count: 1
+			path: ../../src/Controller/Admin/MeiliSearchConfigurationController.php
+
+		-
+			message: "#^Constant _PS_USE_SQL_SLAVE_ not found\\.$#"
+			count: 1
+			path: ../../src/Controller/Admin/MeiliSearchConfigurationController.php
+
+		-
+			message: "#^PrestaShop\\\\Module\\\\MeiliSearch\\\\Controller\\\\Admin\\\\MeiliSearchConfigurationController\\:\\:__construct\\(\\) calls parent\\:\\:__construct\\(\\) but PrestaShop\\\\Module\\\\MeiliSearch\\\\Controller\\\\Admin\\\\MeiliSearchConfigurationController does not extend any class\\.$#"
+			count: 1
+			path: ../../src/Controller/Admin/MeiliSearchConfigurationController.php
+
+		-
+			message: "#^Static method Db\\:\\:getInstance\\(\\) invoked with 1 parameter, 0 required\\.$#"
+			count: 1
+			path: ../../src/Controller/Admin/MeiliSearchConfigurationController.php
+
+		-
+			message: "#^Call to an undefined method PrestaShop\\\\Module\\\\MeiliSearch\\\\Controller\\\\Admin\\\\MeiliSearchStatsController\\:\\:render\\(\\)\\.$#"
+			count: 1
+			path: ../../src/Controller/Admin/MeiliSearchStatsController.php
+
+		-
+			message: "#^Call to an undefined static method Module\\:\\:getInstanceByName\\(\\)\\.$#"
+			count: 1
+			path: ../../src/Controller/Admin/MeiliSearchStatsController.php
+
+		-
+			message: "#^Call to static method addJsDef\\(\\) on an unknown class Media\\.$#"
+			count: 1
+			path: ../../src/Controller/Admin/MeiliSearchStatsController.php
+
+		-
+			message: "#^PrestaShop\\\\Module\\\\MeiliSearch\\\\Controller\\\\Admin\\\\MeiliSearchStatsController\\:\\:__construct\\(\\) calls parent\\:\\:__construct\\(\\) but PrestaShop\\\\Module\\\\MeiliSearch\\\\Controller\\\\Admin\\\\MeiliSearchStatsController does not extend any class\\.$#"
+			count: 1
+			path: ../../src/Controller/Admin/MeiliSearchStatsController.php
+
+		-
+			message: "#^Access to an undefined property Context\\:\\:\\$cookie\\.$#"
+			count: 1
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Access to an undefined property Context\\:\\:\\$language\\.$#"
+			count: 2
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Access to an undefined property PrestaShop\\\\Module\\\\Classes\\\\MeilisearchStatssearch\\:\\:\\$id\\.$#"
+			count: 1
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Access to an undefined property object\\:\\:\\$estimatedTotalHits\\.$#"
+			count: 2
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Call to an undefined method PrestaShop\\\\Module\\\\Classes\\\\MeilisearchStatssearch\\:\\:save\\(\\)\\.$#"
+			count: 1
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Call to an undefined static method Module\\:\\:getInstanceByName\\(\\)\\.$#"
+			count: 1
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Call to method getEncodedFacets\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchQuery\\.$#"
+			count: 2
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Call to method getSortOrder\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchQuery\\.$#"
+			count: 1
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Call to method setAvailableSortOrders\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchResult\\.$#"
+			count: 1
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Call to method setCurrentSortOrder\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchResult\\.$#"
+			count: 1
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Call to method setEncodedFacets\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchResult\\.$#"
+			count: 1
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Call to method setFacetCollection\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchResult\\.$#"
+			count: 1
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Call to method setLabel\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\SortOrder\\.$#"
+			count: 5
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Call to method setProducts\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchResult\\.$#"
+			count: 1
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Call to method setTotalProductsCount\\(\\) on an unknown class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchResult\\.$#"
+			count: 1
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Instantiated class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchResult not found\\.$#"
+			count: 1
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Instantiated class PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\SortOrder not found\\.$#"
+			count: 5
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Parameter \\$context of method PrestaShop\\\\Module\\\\MeiliSearch\\\\Search\\\\MeiliSearchProductSearchProvider\\:\\:runQuery\\(\\) has invalid type PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchContext\\.$#"
+			count: 1
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Parameter \\$query of method PrestaShop\\\\Module\\\\MeiliSearch\\\\Search\\\\MeiliSearchProductSearchProvider\\:\\:getAvailableSortOrders\\(\\) has invalid type PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchQuery\\.$#"
+			count: 1
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Parameter \\$query of method PrestaShop\\\\Module\\\\MeiliSearch\\\\Search\\\\MeiliSearchProductSearchProvider\\:\\:runQuery\\(\\) has invalid type PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\ProductSearchQuery\\.$#"
+			count: 1
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Parameter \\$translator of method PrestaShop\\\\Module\\\\MeiliSearch\\\\Search\\\\MeiliSearchProductSearchProvider\\:\\:__construct\\(\\) has invalid type Symfony\\\\Component\\\\Translation\\\\TranslatorInterface\\.$#"
+			count: 1
+			path: ../../src/Search/MeiliSearchProductSearchProvider.php
+
+		-
+			message: "#^Call to an undefined static method Module\\:\\:getInstanceByName\\(\\)\\.$#"
+			count: 1
+			path: ../../upgrade/upgrade-1.1.0.php

@@ -268,8 +268,8 @@ class Meilisearchprestashop extends Module
     protected function getConfigFormValues()
     {
         return array(
-            'MEILISEARCHPRESTASHOP_LIVE_MODE' => Configuration::get('MEILISEARCHPRESTASHOP_LIVE_MODE', true),
-            'MEILISEARCHPRESTASHOP_ACCOUNT_EMAIL' => Configuration::get('MEILISEARCHPRESTASHOP_ACCOUNT_EMAIL', 'contact@prestashop.com'),
+            'MEILISEARCHPRESTASHOP_LIVE_MODE' => Configuration::get('MEILISEARCHPRESTASHOP_LIVE_MODE'),
+            'MEILISEARCHPRESTASHOP_ACCOUNT_EMAIL' => Configuration::get('MEILISEARCHPRESTASHOP_ACCOUNT_EMAIL'),
             'MEILISEARCHPRESTASHOP_ACCOUNT_PASSWORD' => Configuration::get('MEILISEARCHPRESTASHOP_ACCOUNT_PASSWORD', null),
             'MEILISEARCHPRESTASHOP_URL' => Configuration::get('MEILISEARCHPRESTASHOP_URL', null),
             'MEILISEARCHPRESTASHOP_KEY' => Configuration::get('MEILISEARCHPRESTASHOP_KEY', null),

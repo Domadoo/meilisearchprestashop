@@ -1,0 +1,40 @@
+name: Create Release
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag pour la release (ex. v1.0.14)'
+        required: true
+        type: string
+jobs:
+  create-release:
+    name: Build & Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref }}
+          fetch-depth: 0
+      - name: Build
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag="${{ github.event.inputs.tag }}"
+          else
+            tag="${GITHUB_REF#refs/tags/}"
+          fi
+          zip_path="meilisearchprestashop.zip"
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+          echo "zip_path=$zip_path" >> $GITHUB_OUTPUT
+          git archive --format=zip -o $zip_path --prefix meilisearchprestashop/ "$tag"
+      - name: Create release & upload asset
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          draft: false
+          files: ${{ steps.vars.outputs.zip_path }}
+          name: Meilisearch PrestaShop ${{ steps.vars.outputs.tag }}

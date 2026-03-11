@@ -1,0 +1,9 @@
+includes:
+    - %currentWorkingDirectory%/tests/php/phpstan/phpstan.neon
+
+parameters:
+  ignoreErrors:
+    # PS 9 / develop : contrôleurs admin, méthode l() sur classe de base non reconnue par PHPStan
+    - '#Call to an undefined method .*Controller::l\(\)#'
+    # PS 9 : LegacyControllerContext / getLanguages()
+    - '#Call to method getLanguages\(\) on an unknown class .*LegacyControllerContext#'

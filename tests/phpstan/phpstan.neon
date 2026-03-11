@@ -1,0 +1,23 @@
+includes:
+	- %currentWorkingDirectory%/vendor/prestashop/php-dev-tools/phpstan/ps-module-extension.neon
+	- %currentWorkingDirectory%/tests/phpstan/phpstan-baseline.neon
+
+parameters:
+  paths:
+    - ../../meilisearchprestashop.php
+    - ../../classes/
+    - ../../upgrade/
+    - ../../src/
+    - ../../controllers/
+  # Fichiers dépendant du core PrestaShop (analysés en CI avec le code PS)
+  excludePaths:
+    - ../../controllers/front/meilisearch.php
+    - ../../src/Controller/Admin/MeiliSearchConfigurationController.php
+    - ../../src/Controller/Admin/MeiliSearchStatsController.php
+    - ../../src/Search/MeiliSearchProductSearchProvider.php
+  bootstrapFiles:
+    - %currentWorkingDirectory%/vendor/prestashop/php-dev-tools/phpstan/bootstrap.php
+    - %currentWorkingDirectory%/tests/phpstan/phpstan-define-version.php
+    - %currentWorkingDirectory%/tests/phpstan/phpstan-stubs.php
+  reportUnmatchedIgnoredErrors: false
+  level: 5
