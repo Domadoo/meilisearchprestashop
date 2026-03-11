@@ -1,0 +1,7 @@
+services:
+  _defaults:
+    public: true
+
+  PrestaShop\Module\MeiliSearch\Command\IndexProductsCommand:
+    tags:
+      - { name: console.command }
