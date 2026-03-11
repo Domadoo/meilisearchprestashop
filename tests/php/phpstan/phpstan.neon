@@ -16,3 +16,11 @@ parameters:
     - '#^Access to an undefined property Cookie\:\:\$meilisearch_product_id\.$#'
     # requestCurl() is defined on the concrete Meilisearchprestashop class, not on Module base class
     - '#^Call to an undefined method Module\:\:requestCurl\(\)\.$#'
+    # setNextEncodedFacets() accepts string at runtime; PS stub incorrectly declares array
+    - '#^Parameter \#1 \$nextEncodedFacets of method PrestaShop\\\\PrestaShop\\\\Core\\\\Product\\\\Search\\\\Filter\:\:setNextEncodedFacets\(\) expects array, string given\.$#'
+    # $response is a stdClass from json_decode(); object shape types not supported in PS 1.7 PHPStan
+    - '#^Access to an undefined property object\:\:\$estimatedTotalHits\.$#'
+    - '#^Access to an undefined property object\:\:\$hits\.$#'
+    # Defensive null checks on Meilisearch API response
+    - '#^Negated boolean expression is always false\.$#'
+    - '#^Ternary operator condition is always true\.$#'
