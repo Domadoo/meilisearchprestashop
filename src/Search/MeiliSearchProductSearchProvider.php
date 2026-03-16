@@ -37,6 +37,9 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     private $translator;
     private $module;
 
+    public static $lastFacetDistribution = null;
+
+
     public function __construct(TranslatorInterface $translator)
     {
         $this->translator = $translator;
@@ -47,6 +50,8 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     {
         // Appelle ton index Meilisearch ici et récupère les produits :
         $result = $this->searchInMeili($query);
+
+        self::$lastFacetDistribution = $result['facets'] ?? null;
 
         $allProducts = $result['allProducts'];
         $products = $result['products']; // tableau de produits format PrestaShop
@@ -96,7 +101,8 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
             'q' => $search,
             'limit' => 9999,
             'attributesToRetrieve' => ["*"],
-            'filter' => []
+            'filter' => [],
+            'facets' => ["*"]
         ];
 
         if ($field != 'relevance') {
@@ -179,7 +185,6 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
             ];
         }
 
-        
         $productsChunk = array_chunk($response->hits, 48);
 
         if(!key_exists(0, $productsChunk)){
@@ -210,7 +215,8 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
             'allProducts' => $this->formatProducts($response->hits),
             // @phpstan-ignore-next-line
             'total' => $response->estimatedTotalHits,
-            'allProductsWithoutFilters' => $this->formatProducts($responseNoFilters ? $responseNoFilters->hits : [])
+            'allProductsWithoutFilters' => $this->formatProducts($responseNoFilters ? $responseNoFilters->hits : []),
+            'facets' => $response->facetDistribution
         ];
     }
 
