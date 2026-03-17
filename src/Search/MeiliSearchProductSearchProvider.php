@@ -26,11 +26,11 @@ use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchContext;
 use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchResult;
 use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
 use Symfony\Component\Translation\TranslatorInterface;
-use PrestaShop\PrestaShop\Adapter\SymfonyContainer;
-
 use PrestaShop\Module\Classes\MeilisearchStatssearch;
 use Configuration;
 use Context;
+use Db;
+use PrestaShopLogger;
 
 class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 {
@@ -39,96 +39,93 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
     public static $lastFacetDistribution = null;
 
-
     public function __construct(TranslatorInterface $translator)
     {
         $this->translator = $translator;
-        $this->module = \Module::getInstanceByName('meilisearchprestashop');
+        $this->module     = \Module::getInstanceByName('meilisearchprestashop');
     }
 
     public function runQuery(ProductSearchContext $context, ProductSearchQuery $query)
     {
-        // Appelle ton index Meilisearch ici et récupère les produits :
         $result = $this->searchInMeili($query);
 
         self::$lastFacetDistribution = $result['facets'] ?? null;
 
-        $allProducts = $result['allProducts'];
-        $products = $result['products']; // tableau de produits format PrestaShop
-        $total = $result['total'];
-        $allProductsWithoutFilters = $result['allProductsWithoutFilters'];
-
         $resultObject = new ProductSearchResult();
-        $resultObject->setProducts($products);
-        $resultObject->setTotalProductsCount($total);
+        $resultObject->setProducts($result['products']);
+        $resultObject->setTotalProductsCount($result['total']);
         $resultObject->setAvailableSortOrders($this->getAvailableSortOrders($query));
         $resultObject->setCurrentSortOrder($query->getSortOrder());
-
-        $activeFilters = explode('|', $query->getEncodedFacets());
-
-        $categoryfilters = $this->module->getSearchProductsFacets($allProductsWithoutFilters, $activeFilters);
-
-        if (sizeof($categoryfilters->getFacets())) {
-            $resultObject->setFacetCollection(
-                $categoryfilters //C'est ici qu'on assigne les filtres de notre fonction
-            );
-        }
-        // echo '<pre>';
-        // exit(print_r($categoryfilters, true));
-        $resultObject->setEncodedFacets(
-            $query->getEncodedFacets()
-        );
+        $resultObject->setEncodedFacets($query->getEncodedFacets());
 
         return $resultObject;
     }
 
+    private function getFeatureMap(): array
+    {
+        $idLang = (int) Context::getContext()->language->id;
+        $rows   = Db::getInstance()->executeS('
+            SELECT id_feature, name
+            FROM ' . _DB_PREFIX_ . 'feature_lang
+            WHERE id_lang = ' . $idLang
+        );
+        $map = [];
+        foreach ($rows as $row) {
+            $map[$row['id_feature']] = $this->slugify($row['name']);
+        }
+        return $map;
+    }
+
+    private function slugify(string $text): string
+    {
+        $text = strtolower(trim($text));
+        $text = preg_replace('/[^a-z0-9]+/', '_', $text);
+        return trim($text, '_');
+    }
+
     private function searchInMeili($query)
     {
-        $context = Context::getContext();
+        $context  = Context::getContext();
         $iso_lang = $context->language->iso_code;
 
-        $search = $query->getSearchString();
-        $page = $query->getPage();
-        $perPage = $query->getResultsPerPage();
-
+        $search    = $query->getSearchString();
+        $page      = $query->getPage();
+        $perPage   = $query->getResultsPerPage();
         $sortOrder = $query->getSortOrder();
-        $field = $sortOrder->getField();
+        $field     = $sortOrder->getField();
 
-
-        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL') . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_lang.'/search';
+        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL')
+            . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX')
+            . 'products_' . $iso_lang . '/search';
 
         $data = [
-            'q' => $search,
-            'limit' => 9999,
-            'attributesToRetrieve' => ["*"],
-            'filter' => [],
-            'facets' => ["*"]
+            'q'                    => $search,
+            'limit'                => 9999,
+            'attributesToRetrieve' => ['*'],
+            'filter'               => [],
+            'facets'               => ['*'],
         ];
 
-        if ($field != 'relevance') {
-            $direction = strtolower($sortOrder->getDirection()); // 'asc' ou 'desc'
-            $meiliSort = ["{$field}:{$direction}"]; // Exemple: ['price:asc']
-
-            $data['sort'] = $meiliSort;
+        if ($field !== 'relevance') {
+            $data['sort'] = [$field . ':' . strtolower($sortOrder->getDirection())];
         }
 
-        $filters = $query->getEncodedFacets();
-        $filtersArray = explode('|', $filters);
-        $data['filter'] = [];
-
-        
-        $groupedFilters = []; // Regrouper par type de facet
+        // ── Parsing des filtres ──────────────────────────────────────────────
+        $filters           = \Tools::getValue('encodedFacets', '');
+        $filtersArray      = array_filter(explode('|', $filters));
+        $featureMap        = $this->getFeatureMap();
+        $featureMapFlipped = array_flip($featureMap);
+        $groupedFilters    = [];
 
         foreach ($filtersArray as $filterString) {
-            $filter = explode('-', $filterString);
-
-            if (count($filter) !== 2) {
-                continue; // Format inattendu
+            $dashPos = strpos($filterString, '-');
+            if ($dashPos === false) {
+                continue;
             }
+            $prefix = substr($filterString, 0, $dashPos);
+            $value  = substr($filterString, $dashPos + 1);
 
-            list($facetType, $value) = $filter;
-
-            switch ($facetType) {
+            switch ($prefix) {
                 case 'manu':
                     $groupedFilters['manu'][] = 'id_manufacturer = ' . (int)$value;
                     break;
@@ -137,96 +134,92 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                     if ($value === 'stock') {
                         $groupedFilters['avail'][] = 'quantity >= 1';
                     } elseif ($value === 'available') {
-                        $groupedFilters['avail'][] = 'available_for_order = 1';
+                        $groupedFilters['avail'][] = 'available_for_order = true';
                     }
                     break;
 
-                case 'technology':
-                    $groupedFilters['technology'][] = '"feature_values" = "7-' . (int)$value . '"';
-                    break;
-
-                case 'compatibility':
-                    $groupedFilters['compatibility'][] = '"feature_values" = "31-' . (int)$value . '"';
-                    break;
-
-                case 'type':
-                    $groupedFilters['type'][] = '"feature_values" = "6-' . (int)$value . '"';
-                    break;
-
-                case 'function':
-                    $groupedFilters['function'][] = '"feature_values" = "12-' . (int)$value . '"';
+                case 'cond':
+                    $groupedFilters['cond'][] = 'condition = "' . pSQL($value) . '"';
                     break;
 
                 default:
+                    // Feature dynamique : technology-45, compatibility-4228, etc.
+                    if (isset($featureMapFlipped[$prefix])) {
+                        $featureId = $featureMapFlipped[$prefix];
+                        $groupedFilters[$prefix][] = '"feature_values" = "' . $featureId . '-' . (int)$value . '"';
+                    }
                     break;
             }
         }
 
-        // Construction du tableau final
+        // Filtres de base
         $data['filter'] = [['visibility = both'], ['available_for_order = true']];
-        $dataNoFilters = $data;
+        $dataNoFilters  = $data;
+
         foreach ($groupedFilters as $filtersOfType) {
             if (count($filtersOfType) === 1) {
-                // Juste un filtre → pas besoin de sous-tableau
                 $data['filter'][] = $filtersOfType[0];
             } else {
-                // Plusieurs filtres du même type → OU implicite
-                $data['filter'][] = $filtersOfType;
+                $data['filter'][] = $filtersOfType; // OU entre valeurs du même groupe
             }
         }
 
+        // ── Requêtes ─────────────────────────────────────────────────────────
         $response = $this->module->requestCurl($meiliUrl, json_encode($data));
-        if(!$response || !isset($response->hits) || !is_array($response->hits)) {
+
+        if (!$response || !isset($response->hits) || !is_array($response->hits)) {
             return [
-                'products' => [],
-                'allProducts' => [],
-                'total' => 0,
-                'allProductsWithoutFilters' => []
+                'products'                  => [],
+                'allProducts'               => [],
+                'total'                     => 0,
+                'allProductsWithoutFilters' => [],
+                'facets'                    => null,
             ];
         }
 
-        $productsChunk = array_chunk($response->hits, 48);
-
-        if(!key_exists(0, $productsChunk)){
+        $productsChunk = array_chunk($response->hits, $perPage);
+        if (!isset($productsChunk[0])) {
             $productsChunk[0] = [];
         }
 
+        // Stats de recherche
         $cookie = $context->cookie;
-
-        if((!isset($cookie->meilisearch_id) || !isset($cookie->meilisearch_query) || $cookie->meilisearch_query != $search) && !empty($search)) {
-            $newSearch = new MeilisearchStatssearch();
-            $newSearch->query = mb_strtolower($search);
-            // @phpstan-ignore-next-line
-            $newSearch->nb_results = $response->estimatedTotalHits;
+        if (
+            (!isset($cookie->meilisearch_id)
+            || !isset($cookie->meilisearch_query)
+            || $cookie->meilisearch_query != $search)
+            && !empty($search)
+        ) {
+            $newSearch              = new MeilisearchStatssearch();
+            $newSearch->query       = mb_strtolower($search);
+            $newSearch->nb_results  = $response->estimatedTotalHits;
             $newSearch->id_customer = isset($context->customer) ? $context->customer->id : null;
-            $newSearch->id_lang = $context->language->id;
+            $newSearch->id_lang     = $context->language->id;
             $newSearch->save();
 
-            // @phpstan-ignore-next-line
-            $cookie->meilisearch_id = $newSearch->id;
-            // @phpstan-ignore-next-line
+            $cookie->meilisearch_id    = $newSearch->id;
             $cookie->meilisearch_query = $search;
             unset($cookie->meilisearch_product_id);
         }
 
+        // Requête sans filtres pour avoir les compteurs complets dans facetDistribution
         $responseNoFilters = $this->module->requestCurl($meiliUrl, json_encode($dataNoFilters));
+
         return [
-            'products' => $this->formatProducts($productsChunk[$page - 1]),
-            'allProducts' => $this->formatProducts($response->hits),
-            // @phpstan-ignore-next-line
-            'total' => $response->estimatedTotalHits,
+            'products'                  => $this->formatProducts($productsChunk[$page - 1]),
+            'allProducts'               => $this->formatProducts($response->hits),
+            'total'                     => $response->estimatedTotalHits,
             'allProductsWithoutFilters' => $this->formatProducts($responseNoFilters ? $responseNoFilters->hits : []),
-            'facets' => $response->facetDistribution
+            'facets'                    => $response->facetDistribution,
         ];
     }
 
-    private function formatProducts($products)
+    private function formatProducts($products): array
     {
-        // Formatte les produits comme attendus par PrestaShop
         return json_decode(json_encode($products), true);
     }
 
-    public function getAvailableSortOrders(ProductSearchQuery $query)
+    public function getAvailableSortOrders(ProductSearchQuery $query): array
     {
         return [
             (new SortOrder('meilisearch', 'relevance', 'asc'))

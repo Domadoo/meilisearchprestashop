@@ -1,18 +1,4 @@
 <?php
-/**
- * 2007-2025 PrestaShop
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Academic Free License (AFL 3.0)
- * that is bundled with this package in the file LICENSE.txt.
- * It is also available through the world-wide-web at this URL:
- * http://opensource.org/licenses/afl-3.0.php
- *
- * @author    Doudeau Adam, Johan Vivien
- * @copyright 2007-2025 Domadoo
- * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
- */
 
 if (!defined('_PS_VERSION_')) {
     exit;
@@ -31,13 +17,11 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
     public function initContent()
     {
         parent::initContent();
-        
         $this->doProductSearch('../../../modules/meilisearchprestashop/views/templates/front/search.tpl');
     }
 
     public function getProductSearchQuery()
     {
-        
         $query = new ProductSearchQuery();
         $query->setQueryType('meilisearch');
         $query->setSearchString(Tools::getValue('s'));
@@ -49,6 +33,12 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
             $query->setSortOrder(SortOrder::newFromString($encodedSortOrder));
         } else {
             $query->setSortOrder(new SortOrder('meilisearch', 'relevance', 'ASC'));
+        }
+
+        // ← Transmission des filtres actifs
+        $encodedFacets = Tools::getValue('encodedFacets', '');
+        if ($encodedFacets) {
+            $query->setEncodedFacets($encodedFacets);
         }
 
         return $query;
@@ -69,47 +59,53 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
         $this->module = \Module::getInstanceByName('meilisearchprestashop');
         return $this->module->l('Search results', 'meilisearch');
     }
-    
+
     protected function doProductSearch($template, $params = [], $locale = null)
     {
-        if ($this->ajax) {
+        $isXhr = isset($_SERVER['HTTP_X_REQUESTED_WITH'])
+            && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
+        if ($isXhr) {
             ob_end_clean();
-            header('Content-Type: application/json');
+            header('Content-Type: application/json; charset=utf-8');
             $this->ajaxRender(json_encode($this->getAjaxProductSearchVariables()));
             return;
         }
 
         $variables = $this->getProductSearchVariables();
-        // getProductSearchVariables() appelle runQuery() → la propriété statique est maintenant remplie
 
+        // Récupère facetDistribution stocké par le provider après runQuery()
         $facetDistribution = MeiliSearchProductSearchProvider::$lastFacetDistribution;
+        $facets            = json_decode(json_encode($facetDistribution), true) ?? [];
+        $facetLabels       = $this->getFacetLabels();
 
-        // Convertit stdClass → tableau associatif récursif
-        $facets = json_decode(json_encode($facetDistribution), true) ?? [];
+        // Pré-groupe feature_values par id_feature pour le tpl
+        $groupedFeatureValues = [];
+        if (isset($facets['feature_values'])) {
+            foreach ($facets['feature_values'] as $key => $count) {
+                $parts     = explode('-', $key, 2);
+                $featureId = $parts[0];
+                $featureName = $facetLabels['feature_names'][$featureId] ?? 'Caractéristique';
+                $groupedFeatureValues[$featureId]['label']        = $featureName;
+                $groupedFeatureValues[$featureId]['values'][$key] = $count;
+            }
+        }
 
-// Pré-groupe les feature_values par id_feature
-$facetLabels = $this->getFacetLabels();
-$groupedFeatureValues = [];
+        // Construit la config des facettes pour le JS (entièrement dynamique)
+        $facetsConfig = $this->buildFacetsJsConfig($facets, $facetLabels);
 
-if (isset($facets['feature_values'])) {
-    foreach ($facets['feature_values'] as $key => $count) {
-        $parts = explode('-', $key); // "6-26" → ['6', '26']
-        $featureId = $parts[0];
-        $featureName = $facetLabels['feature_names'][$featureId] ?? 'Caractéristique';
+        $this->context->smarty->assign([
+            'listing'                      => $variables,
+            'meilisearch_facets'           => $facets,
+            'meilisearch_facet_labels'     => $facetLabels,
+            'meilisearch_grouped_features' => $groupedFeatureValues,
+            'open_facets'                  => ['condition', 'available_for_order', 'id_manufacturer'],
+            'current_facets_encoded'       => Tools::getValue('encodedFacets', ''),
+        ]);
 
-        $groupedFeatureValues[$featureId]['label']        = $featureName;
-        $groupedFeatureValues[$featureId]['values'][$key] = $count;
-    }
-}
-
-$this->context->smarty->assign([
-    'listing'                        => $variables,
-    'meilisearch_facets'             => $facets,
-    'meilisearch_facet_labels'       => $facetLabels,
-    'meilisearch_grouped_features'   => $groupedFeatureValues, // ← nouveau
-    'open_facets'                    => ['condition', 'available_for_order', 'id_manufacturer'],
-    'current_facets_encoded'         => Tools::getValue('encodedFacets', ''),
-]);
+        Media::addJsDef([
+            'meilisearch_facets_config' => $facetsConfig,
+        ]);
 
         $this->setTemplate($template, $params, $locale);
 
@@ -119,12 +115,89 @@ $this->context->smarty->assign([
         ]);
     }
 
+    /**
+     * Construit la config JS des facettes :
+     * Pour chaque groupe, indique comment encoder la valeur dans encodedFacets.
+     *
+     * Structure retournée :
+     * {
+     *   "id_manufacturer": { "prefix": "manu", "type": "direct" },
+     *   "available_for_order": { "prefix": "avail", "type": "map", "map": {"true": "stock", "1": "stock"} },
+     *   "feature_values": { "prefix": null, "type": "feature", "feature_map": {"7": "technology", "31": "compatibility", ...} },
+     *   "condition": { "prefix": "cond", "type": "direct" }
+     * }
+     */
+    private function buildFacetsJsConfig(array $facets, array $facetLabels): array
+    {
+        $config = [];
+
+        foreach ($facets as $groupKey => $values) {
+            switch ($groupKey) {
+                case 'id_manufacturer':
+                    $config[$groupKey] = [
+                        'prefix' => 'manu',
+                        'type'   => 'direct',
+                    ];
+                    break;
+
+                case 'available_for_order':
+                    $config[$groupKey] = [
+                        'prefix' => 'avail',
+                        'type'   => 'map',
+                        'map'    => ['true' => 'stock', '1' => 'stock', 'false' => 'unavailable'],
+                    ];
+                    break;
+
+                case 'condition':
+                    $config[$groupKey] = [
+                        'prefix' => 'cond',
+                        'type'   => 'direct',
+                    ];
+                    break;
+
+                case 'feature_values':
+                    // Construit dynamiquement le feature_map depuis les clés présentes
+                    $featureMap = [];
+                    foreach ($values as $key => $count) {
+                        $featureId = explode('-', $key, 2)[0];
+                        if (!isset($featureMap[$featureId])) {
+                            // Génère un slug depuis le nom de la feature
+                            $featureName = $facetLabels['feature_names'][$featureId] ?? 'feature';
+                            $featureMap[$featureId] = $this->slugify($featureName);
+                        }
+                    }
+                    $config[$groupKey] = [
+                        'prefix'      => null,
+                        'type'        => 'feature',
+                        'feature_map' => $featureMap,
+                    ];
+                    break;
+
+                default:
+                    // Facette inconnue : on l'encode telle quelle avec son nom comme préfixe
+                    $config[$groupKey] = [
+                        'prefix' => $groupKey,
+                        'type'   => 'direct',
+                    ];
+                    break;
+            }
+        }
+
+        return $config;
+    }
+
+    private function slugify(string $text): string
+    {
+        $text = strtolower(trim($text));
+        $text = preg_replace('/[^a-z0-9]+/', '_', $text);
+        return trim($text, '_');
+    }
+
     private function getFacetLabels(): array
     {
         $idLang = (int) $this->context->language->id;
         $labels = [];
 
-        // Fabricants
         $manufacturers = Db::getInstance()->executeS('
             SELECT id_manufacturer, name
             FROM ' . _DB_PREFIX_ . 'manufacturer
@@ -133,10 +206,9 @@ $this->context->smarty->assign([
             $labels['id_manufacturer'][$row['id_manufacturer']] = $row['name'];
         }
 
-        // Feature values + nom des features (pour regrouper)
         $rows = Db::getInstance()->executeS('
             SELECT fv.id_feature, fv.id_feature_value, fvl.value, fl.name AS feature_name
-            FROM '   . _DB_PREFIX_ . 'feature_value fv
+            FROM ' . _DB_PREFIX_ . 'feature_value fv
             LEFT JOIN ' . _DB_PREFIX_ . 'feature_value_lang fvl
                 ON fv.id_feature_value = fvl.id_feature_value
                 AND fvl.id_lang = ' . $idLang . '
@@ -159,20 +231,22 @@ $this->context->smarty->assign([
 
         $this->module = \Module::getInstanceByName('meilisearchprestashop');
 
-        $page = Tools::getValue('page') ? Tools::getValue('page') : 1;
+        $page = Tools::getValue('page') ?: 1;
+
         Media::addJsDef([
-            'base_url' => $this->context->link->getModuleLink($this->module->name, 'ajax', [], true),
-            'page' => $page,
+            'base_url'                  => $this->context->link->getModuleLink($this->module->name, 'ajax', [], true),
+            'page'                      => $page,
+            'meilisearch_search_string' => Tools::getValue('s', ''),
         ]);
 
         $this->registerJavascript(
             'meilisearch_search_js',
-            'modules/'.$this->module->name.'/views/js/front/search.js'
+            'modules/' . $this->module->name . '/views/js/front/search.js'
         );
-        
+
         $this->registerJavascript(
             'meilisearch_facets_js',
-            'modules/'.$this->module->name.'/views/js/front/meilisearch_facets.js'
+            'modules/' . $this->module->name . '/views/js/front/meilisearch_facets.js'
         );
 
         $this->registerStylesheet(
@@ -182,5 +256,4 @@ $this->context->smarty->assign([
 
         return true;
     }
-
 }
