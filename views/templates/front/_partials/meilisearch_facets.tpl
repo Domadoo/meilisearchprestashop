@@ -52,13 +52,14 @@
                 {if isset($meilisearch_facet_labels['feature_values'][$val])}
                   {assign var=val_label value=$meilisearch_facet_labels['feature_values'][$val]}
                 {/if}
-                <div class="meilisearch-facet-item{if $i > 8} meilisearch-facet-item--hidden{/if}">
+                <div class="meilisearch-facet-item{if $i > 8} meilisearch-facet-item--hidden{/if}{if $count == 0} meilisearch-facet-item--empty{/if}">
                   <input type="checkbox" id="{$input_id}" class="meilisearch-facet-checkbox"
                          name="facets[{$group_key}][]"
                          value="{$val|escape:'html':'UTF-8'}"
                          data-group="{$group_key}"
                          data-label="{$val_label|escape:'html':'UTF-8'}"
-                         data-value="{$val|escape:'html':'UTF-8'}">
+                         data-value="{$val|escape:'html':'UTF-8'}"
+                         {if $count == 0}disabled{/if}>
                   <label for="{$input_id}">
                     <span class="meilisearch-facet-name">{$val_label}</span>
                     <span class="meilisearch-facet-count">{$count}</span>
@@ -92,13 +93,14 @@
               {assign var=val_label value=$meilisearch_facet_labels[$group_key][$val]}
             {/if}
 
-            <div class="meilisearch-facet-item{if $i > 5} meilisearch-facet-item--hidden{/if}">
+            <div class="meilisearch-facet-item{if $i > 5} meilisearch-facet-item--hidden{/if}{if $count == 0} meilisearch-facet-item--empty{/if}">
               <input type="checkbox" id="{$input_id}" class="meilisearch-facet-checkbox"
                      name="facets[{$group_key}][]"
                      value="{$val|escape:'html':'UTF-8'}"
                      data-group="{$group_key}"
                      data-label="{$val_label|escape:'html':'UTF-8'}"
-                     data-value="{$val|escape:'html':'UTF-8'}">
+                     data-value="{$val|escape:'html':'UTF-8'}"
+                     {if $count == 0}disabled{/if}>
               <label for="{$input_id}">
                 <span class="meilisearch-facet-name">{$val_label}</span>
                 <span class="meilisearch-facet-count">{$count}</span>
