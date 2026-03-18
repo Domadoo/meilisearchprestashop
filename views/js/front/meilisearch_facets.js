@@ -145,28 +145,7 @@ function meilisearchApplyFilters() {
 }
 
 function meilisearchUpdateProducts(data) {
-    console.log('[Meilisearch] Réponse complète:', data);
-    console.log('[Meilisearch] Clés disponibles:', Object.keys(data));
-
-    if (data.products) {
-        console.log('[Meilisearch] Produits (data.products):', data.products);
-        console.log('[Meilisearch] Nombre de produits:', data.products.length);
-    } else {
-        console.warn('[Meilisearch] Pas de clé "products" dans la réponse');
-    }
-
-    if (data.rendered_products) {
-        // Extrait les noms de produits depuis le HTML rendu pour un log lisible
-        const tmp = document.createElement('div');
-        tmp.innerHTML = data.rendered_products;
-        const names = [...tmp.querySelectorAll('.product-title, .product-name, h3, h2')]
-            .map(el => el.textContent.trim())
-            .filter(Boolean);
-        console.log('[Meilisearch] Noms produits (depuis HTML rendu):', names);
-        console.log('[Meilisearch] Nombre de produits rendus:', names.length);
-    } else {
-        console.warn('[Meilisearch] Pas de clé "rendered_products" dans la réponse');
-    }
+    console.log('[Meilisearch] meilisearch_facets:', data.meilisearch_facets);
 
     const productList = document.querySelector('#js-product-list');
     if (productList && data.rendered_products) {
@@ -182,7 +161,47 @@ function meilisearchUpdateProducts(data) {
     if (pagination && data.rendered_pagination) {
         pagination.innerHTML = data.rendered_pagination;
     }
+
+    if (data.meilisearch_facets) {
+        meilisearchUpdateFacetCounts(data.meilisearch_facets);
+    }
 }
+
+
+/**
+ * Met à jour les compteurs affichés dans les checkboxes.
+ * Ne touche pas aux cases cochées — seulement aux .meilisearch-facet-count.
+ */
+function meilisearchUpdateFacetCounts(facets) {
+    document.querySelectorAll('.meilisearch-facet-checkbox').forEach(cb => {
+        const group = cb.dataset.group;
+        const value = cb.dataset.value;
+
+        // Trouve le compteur dans les facettes reçues
+        let newCount = null;
+
+        if (facets[group] && facets[group][value] !== undefined) {
+            newCount = facets[group][value];
+        }
+
+        // Met à jour le badge .meilisearch-facet-count dans le label associé
+        const label = document.querySelector('label[for="' + cb.id + '"]');
+        if (label) {
+            const countEl = label.querySelector('.meilisearch-facet-count');
+            if (countEl) {
+                if (newCount !== null && newCount !== undefined) {
+                    countEl.textContent = newCount;
+                    cb.closest('.meilisearch-facet-item').style.opacity = '1';
+                } else {
+                    // Filtre sans résultat → grisé mais toujours visible
+                    countEl.textContent = '0';
+                    cb.closest('.meilisearch-facet-item').style.opacity = '0.4';
+                }
+            }
+        }
+    });
+}
+
 
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.meilisearch-facet-checkbox').forEach(cb => {

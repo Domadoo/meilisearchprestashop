@@ -225,6 +225,19 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
         return $labels;
     }
 
+    protected function getAjaxProductSearchVariables()
+    {
+        $variables = parent::getAjaxProductSearchVariables();
+
+        // Injecte les facettes Meilisearch dans la réponse Ajax
+        $facetDistribution = MeiliSearchProductSearchProvider::$lastFacetDistribution;
+        $facets = json_decode(json_encode($facetDistribution), true) ?? [];
+
+        $variables['meilisearch_facets'] = $facets;
+
+        return $variables;
+    }
+
     public function setMedia()
     {
         parent::setMedia();
