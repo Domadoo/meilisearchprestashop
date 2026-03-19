@@ -15,10 +15,14 @@
     {if $group_key|in_array:$hidden_facets}{continue}{/if}
 
     {assign var=group_label value=$group_key}
-    {if $group_key == 'condition'}{assign var=group_label value='État'}
-    {elseif $group_key == 'available_for_order'}{assign var=group_label value='Disponibilité'}
-    {elseif $group_key == 'id_manufacturer'}{assign var=group_label value='Marque'}
-    {elseif $group_key == 'feature_values'}{assign var=group_label value='Caractéristiques'}
+    {if $group_key == 'condition'}
+      {assign var=group_label value={l s='Condition' mod='meilisearchprestashop'}}
+    {elseif $group_key == 'available_for_order'}
+      {assign var=group_label value={l s='Availability' mod='meilisearchprestashop'}}
+    {elseif $group_key == 'id_manufacturer'}
+      {assign var=group_label value={l s='Brand' mod='meilisearchprestashop'}}
+    {elseif $group_key == 'feature_values'}
+      {assign var=group_label value={l s='Features' mod='meilisearchprestashop'}}
     {/if}
 
     {assign var=is_open value=false}
@@ -27,12 +31,12 @@
     <div class="meilisearch-facet-group" data-facet="{$group_key|escape:'html':'UTF-8'}">
 
       <button class="meilisearch-facet-toggle{if $is_open} open{/if}" type="button"
-              aria-expanded="{if $is_open}true{else}false{/if}"
-              onclick="meilisearchToggle(this)">
+        aria-expanded="{if $is_open}true{else}false{/if}" onclick="meilisearchToggle(this)">
         <span>{$group_label}</span>
         <span class="meilisearch-facet-chevron">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+              stroke-linejoin="round" />
           </svg>
         </span>
       </button>
@@ -52,14 +56,12 @@
                 {if isset($meilisearch_facet_labels['feature_values'][$val])}
                   {assign var=val_label value=$meilisearch_facet_labels['feature_values'][$val]}
                 {/if}
-                <div class="meilisearch-facet-item{if $i > 8} meilisearch-facet-item--hidden{/if}{if $count == 0} meilisearch-facet-item--empty{/if}">
-                  <input type="checkbox" id="{$input_id}" class="meilisearch-facet-checkbox"
-                         name="facets[{$group_key}][]"
-                         value="{$val|escape:'html':'UTF-8'}"
-                         data-group="{$group_key}"
-                         data-label="{$val_label|escape:'html':'UTF-8'}"
-                         data-value="{$val|escape:'html':'UTF-8'}"
-                         {if $count == 0}disabled{/if}>
+                <div
+                  class="meilisearch-facet-item{if $i > 8} meilisearch-facet-item--hidden{/if}{if $count == 0} meilisearch-facet-item--empty{/if}">
+                  <input type="checkbox" id="{$input_id}" class="meilisearch-facet-checkbox" name="facets[{$group_key}][]"
+                    value="{$val|escape:'html':'UTF-8'}" data-group="{$group_key}"
+                    data-label="{$val_label|escape:'html':'UTF-8'}" data-value="{$val|escape:'html':'UTF-8'}"
+                    {if $count == 0}disabled{/if}>
                   <label for="{$input_id}">
                     <span class="meilisearch-facet-name">{$val_label}</span>
                     <span class="meilisearch-facet-count">{$count}</span>
@@ -83,24 +85,25 @@
 
             {assign var=val_label value=$val}
             {if $group_key == 'condition'}
-              {if $val == 'new'}{assign var=val_label value='Neuf'}
-              {elseif $val == 'refurbished'}{assign var=val_label value='Reconditionné'}
-              {elseif $val == 'used'}{assign var=val_label value='Occasion'}{/if}
+              {if $val == 'new'}{assign var=val_label value={l s='New' mod='meilisearchprestashop'}}
+              {elseif $val == 'refurbished'}{assign var=val_label value={l s='Refurbished' mod='meilisearchprestashop'}}
+              {elseif $val == 'used'}
+                {assign var=val_label value={l s='Used' mod='meilisearchprestashop'}}
+              {/if}
             {elseif $group_key == 'available_for_order'}
-              {if $val == 'true' || $val == '1'}{assign var=val_label value='En stock'}
-              {else}{assign var=val_label value='Sur commande'}{/if}
+              {if $val == 'true' || $val == '1'}{assign var=val_label value={l s='In stock' mod='meilisearchprestashop'}}
+              {else}
+                {assign var=val_label value={l s='On order' mod='meilisearchprestashop'}}
+              {/if}
             {elseif isset($meilisearch_facet_labels[$group_key][$val])}
               {assign var=val_label value=$meilisearch_facet_labels[$group_key][$val]}
             {/if}
 
-            <div class="meilisearch-facet-item{if $i > 5} meilisearch-facet-item--hidden{/if}{if $count == 0} meilisearch-facet-item--empty{/if}">
-              <input type="checkbox" id="{$input_id}" class="meilisearch-facet-checkbox"
-                     name="facets[{$group_key}][]"
-                     value="{$val|escape:'html':'UTF-8'}"
-                     data-group="{$group_key}"
-                     data-label="{$val_label|escape:'html':'UTF-8'}"
-                     data-value="{$val|escape:'html':'UTF-8'}"
-                     {if $count == 0}disabled{/if}>
+            <div
+              class="meilisearch-facet-item{if $i > 5} meilisearch-facet-item--hidden{/if}{if $count == 0} meilisearch-facet-item--empty{/if}">
+              <input type="checkbox" id="{$input_id}" class="meilisearch-facet-checkbox" name="facets[{$group_key}][]"
+                value="{$val|escape:'html':'UTF-8'}" data-group="{$group_key}" data-label="{$val_label|escape:'html':'UTF-8'}"
+                data-value="{$val|escape:'html':'UTF-8'}" {if $count == 0}disabled{/if}>
               <label for="{$input_id}">
                 <span class="meilisearch-facet-name">{$val_label}</span>
                 <span class="meilisearch-facet-count">{$count}</span>
