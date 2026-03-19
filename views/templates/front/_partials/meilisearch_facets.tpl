@@ -1,11 +1,11 @@
-{assign var=hidden_facets value=['out_of_stock', 'visibility', 'quantity']}
+{assign var=hidden_facets value=['out_of_stock', 'visibility', 'quantity', 'available_for_order']}
 
 <div class="meilisearch-facets">
 
   <div class="meilisearch-facets-toolbar">
-    <span class="meilisearch-facets-title">{l s='Filtres' mod='meilisearchprestashop'}</span>
+    <span class="meilisearch-facets-title">{l s='Filters' mod='meilisearchprestashop'}</span>
     <button class="meilisearch-btn-reset" type="button" onclick="meilisearchResetAll()">
-      {l s='Tout effacer' mod='meilisearchprestashop'}
+      {l s='Clear all' mod='meilisearchprestashop'}
     </button>
   </div>
 
@@ -17,7 +17,7 @@
     {assign var=group_label value=$group_key}
     {if $group_key == 'condition'}
       {assign var=group_label value={l s='Condition' mod='meilisearchprestashop'}}
-    {elseif $group_key == 'available_for_order'}
+    {elseif $group_key == 'availability'}
       {assign var=group_label value={l s='Availability' mod='meilisearchprestashop'}}
     {elseif $group_key == 'id_manufacturer'}
       {assign var=group_label value={l s='Brand' mod='meilisearchprestashop'}}
@@ -31,12 +31,12 @@
     <div class="meilisearch-facet-group" data-facet="{$group_key|escape:'html':'UTF-8'}">
 
       <button class="meilisearch-facet-toggle{if $is_open} open{/if}" type="button"
-        aria-expanded="{if $is_open}true{else}false{/if}" onclick="meilisearchToggle(this)">
+              aria-expanded="{if $is_open}true{else}false{/if}"
+              onclick="meilisearchToggle(this)">
         <span>{$group_label}</span>
         <span class="meilisearch-facet-chevron">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-              stroke-linejoin="round" />
+            <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </span>
       </button>
@@ -56,12 +56,14 @@
                 {if isset($meilisearch_facet_labels['feature_values'][$val])}
                   {assign var=val_label value=$meilisearch_facet_labels['feature_values'][$val]}
                 {/if}
-                <div
-                  class="meilisearch-facet-item{if $i > 8} meilisearch-facet-item--hidden{/if}{if $count == 0} meilisearch-facet-item--empty{/if}">
-                  <input type="checkbox" id="{$input_id}" class="meilisearch-facet-checkbox" name="facets[{$group_key}][]"
-                    value="{$val|escape:'html':'UTF-8'}" data-group="{$group_key}"
-                    data-label="{$val_label|escape:'html':'UTF-8'}" data-value="{$val|escape:'html':'UTF-8'}"
-                    {if $count == 0}disabled{/if}>
+                <div class="meilisearch-facet-item{if $i > 8} meilisearch-facet-item--hidden{/if}{if $count == 0} meilisearch-facet-item--empty{/if}">
+                  <input type="checkbox" id="{$input_id}" class="meilisearch-facet-checkbox"
+                         name="facets[{$group_key}][]"
+                         value="{$val|escape:'html':'UTF-8'}"
+                         data-group="{$group_key}"
+                         data-label="{$val_label|escape:'html':'UTF-8'}"
+                         data-value="{$val|escape:'html':'UTF-8'}"
+                         {if $count == 0}disabled{/if}>
                   <label for="{$input_id}">
                     <span class="meilisearch-facet-name">{$val_label}</span>
                     <span class="meilisearch-facet-count">{$count}</span>
@@ -70,7 +72,7 @@
               {/foreach}
               {if $i > 8}
                 <button type="button" class="meilisearch-btn-show-more" onclick="meilisearchShowMore(this)">
-                  + {$i - 8} {l s='de plus' mod='meilisearchprestashop'}
+                  + {$i - 8} {l s='more' mod='meilisearchprestashop'}
                 </button>
               {/if}
             </div>
@@ -87,23 +89,21 @@
             {if $group_key == 'condition'}
               {if $val == 'new'}{assign var=val_label value={l s='New' mod='meilisearchprestashop'}}
               {elseif $val == 'refurbished'}{assign var=val_label value={l s='Refurbished' mod='meilisearchprestashop'}}
-              {elseif $val == 'used'}
-                {assign var=val_label value={l s='Used' mod='meilisearchprestashop'}}
-              {/if}
-            {elseif $group_key == 'available_for_order'}
-              {if $val == 'true' || $val == '1'}{assign var=val_label value={l s='In stock' mod='meilisearchprestashop'}}
-              {else}
-                {assign var=val_label value={l s='On order' mod='meilisearchprestashop'}}
-              {/if}
+              {elseif $val == 'used'}{assign var=val_label value={l s='Used' mod='meilisearchprestashop'}}{/if}
+            {elseif $group_key == 'availability'}
+              {if $val == 'in_stock'}{assign var=val_label value={l s='In stock' mod='meilisearchprestashop'}}{/if}
             {elseif isset($meilisearch_facet_labels[$group_key][$val])}
               {assign var=val_label value=$meilisearch_facet_labels[$group_key][$val]}
             {/if}
 
-            <div
-              class="meilisearch-facet-item{if $i > 5} meilisearch-facet-item--hidden{/if}{if $count == 0} meilisearch-facet-item--empty{/if}">
-              <input type="checkbox" id="{$input_id}" class="meilisearch-facet-checkbox" name="facets[{$group_key}][]"
-                value="{$val|escape:'html':'UTF-8'}" data-group="{$group_key}" data-label="{$val_label|escape:'html':'UTF-8'}"
-                data-value="{$val|escape:'html':'UTF-8'}" {if $count == 0}disabled{/if}>
+            <div class="meilisearch-facet-item{if $i > 5} meilisearch-facet-item--hidden{/if}{if $count == 0} meilisearch-facet-item--empty{/if}">
+              <input type="checkbox" id="{$input_id}" class="meilisearch-facet-checkbox"
+                     name="facets[{$group_key}][]"
+                     value="{$val|escape:'html':'UTF-8'}"
+                     data-group="{$group_key}"
+                     data-label="{$val_label|escape:'html':'UTF-8'}"
+                     data-value="{$val|escape:'html':'UTF-8'}"
+                     {if $count == 0}disabled{/if}>
               <label for="{$input_id}">
                 <span class="meilisearch-facet-name">{$val_label}</span>
                 <span class="meilisearch-facet-count">{$count}</span>
@@ -113,7 +113,7 @@
 
           {if $i > 5}
             <button type="button" class="meilisearch-btn-show-more" onclick="meilisearchShowMore(this)">
-              + {$i - 5} {l s='de plus' mod='meilisearchprestashop'}
+              + {$i - 5} {l s='more' mod='meilisearchprestashop'}
             </button>
           {/if}
 

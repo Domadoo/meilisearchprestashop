@@ -46,7 +46,6 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
     public function runQuery(ProductSearchContext $context, ProductSearchQuery $query)
     {
-        // Force la synchro avec le vrai GET
         $encodedFacets = \Tools::getValue('encodedFacets', '');
         if ($encodedFacets) {
             $query->setEncodedFacets($encodedFacets);
@@ -106,8 +105,6 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                 case 'avail':
                     if ($value === 'stock') {
                         $groupedFilters['avail'][] = 'quantity >= 1';
-                    } elseif ($value === 'available') {
-                        $groupedFilters['avail'][] = 'available_for_order = true';
                     }
                     break;
                 case 'cond':
@@ -144,7 +141,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     {
         switch ($groupKey) {
             case 'manu':  return 'id_manufacturer';
-            case 'avail': return 'available_for_order';
+            case 'avail': return 'availability';
             case 'cond':  return 'condition';
             default:
                 if (in_array($groupKey, $featureMap)) {
@@ -158,6 +155,18 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     {
         $flipped = array_flip($featureMap);
         return $flipped[$groupKey] ?? null;
+    }
+
+    private function countInStock(array $hits): int
+    {
+        $count = 0;
+        foreach ($hits as $hit) {
+            $qty = is_object($hit) ? ($hit->quantity ?? 0) : ($hit['quantity'] ?? 0);
+            if ($qty > 0) {
+                $count++;
+            }
+        }
+        return $count;
     }
 
     private function searchInMeili($query)
@@ -200,45 +209,56 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
         if (!$response || !isset($response->hits) || !is_array($response->hits)) {
             return [
-                'products'    => [],
+                'products' => [],
                 'allProducts' => [],
-                'total'       => 0,
-                'facets'      => null,
+                'total'    => 0,
+                'facets'   => null,
             ];
         }
 
-        // Requêtes disjunctives : une par groupe actif
-        $facetsPerGroup = [];
-        foreach ($groupedFilters as $groupKey => $groupFilterLines) {
-            $filtersWithoutGroup           = array_diff_key($groupedFilters, [$groupKey => null]);
-            $dataForGroup                  = $baseData;
-            $dataForGroup['limit']         = 0;
-            $dataForGroup['filter']        = $this->buildFilterArray($filtersWithoutGroup);
-            $dataForGroup['attributesToRetrieve'] = [];
-
-            $resp = $this->module->requestCurl($meiliUrl, json_encode($dataForGroup));
-            if ($resp && isset($resp->facetDistribution)) {
-                $facetsPerGroup[$groupKey] = json_decode(json_encode($resp->facetDistribution), true);
-            }
-        }
-
-        // Fusion des facettes disjunctives
+        // Calcul manuel du stock (quantity > 0)
         $mergedFacets = json_decode(json_encode($response->facetDistribution), true) ?? [];
+        $mergedFacets['availability'] = [
+            'in_stock' => $this->countInStock($response->hits),
+        ];
 
-        foreach ($facetsPerGroup as $groupKey => $groupFacets) {
-            $meiliKey = $this->getMeiliGroupKey($groupKey, $featureMap);
+        // Requêtes disjunctives : une par groupe actif
+        foreach ($groupedFilters as $groupKey => $groupFilterLines) {
+            $filtersWithoutGroup    = array_diff_key($groupedFilters, [$groupKey => null]);
+            $dataForGroup           = $baseData;
+            $dataForGroup['filter'] = $this->buildFilterArray($filtersWithoutGroup);
 
-            if ($meiliKey === 'feature_values') {
-                $featureId = $this->getFeatureIdFromGroupKey($groupKey, $featureMap);
-                if ($featureId && isset($groupFacets['feature_values'])) {
-                    foreach ($groupFacets['feature_values'] as $fvKey => $count) {
-                        if (strpos($fvKey, $featureId . '-') === 0) {
-                            $mergedFacets['feature_values'][$fvKey] = $count;
+            if ($groupKey === 'avail') {
+                // Pour availability on a besoin des hits pour compter la quantité
+                $dataForGroup['limit']                = 9999;
+                $dataForGroup['attributesToRetrieve'] = ['quantity'];
+                $resp = $this->module->requestCurl($meiliUrl, json_encode($dataForGroup));
+                if ($resp && isset($resp->hits)) {
+                    $mergedFacets['availability'] = [
+                        'in_stock' => $this->countInStock($resp->hits),
+                    ];
+                }
+            } else {
+                $dataForGroup['limit']                = 0;
+                $dataForGroup['attributesToRetrieve'] = [];
+                $resp = $this->module->requestCurl($meiliUrl, json_encode($dataForGroup));
+                if (!$resp || !isset($resp->facetDistribution)) continue;
+
+                $respFacets = json_decode(json_encode($resp->facetDistribution), true);
+                $meiliKey   = $this->getMeiliGroupKey($groupKey, $featureMap);
+
+                if ($meiliKey === 'feature_values') {
+                    $featureId = $this->getFeatureIdFromGroupKey($groupKey, $featureMap);
+                    if ($featureId && isset($respFacets['feature_values'])) {
+                        foreach ($respFacets['feature_values'] as $fvKey => $count) {
+                            if (strpos($fvKey, $featureId . '-') === 0) {
+                                $mergedFacets['feature_values'][$fvKey] = $count;
+                            }
                         }
                     }
+                } elseif ($meiliKey && isset($respFacets[$meiliKey])) {
+                    $mergedFacets[$meiliKey] = $respFacets[$meiliKey];
                 }
-            } elseif ($meiliKey && isset($groupFacets[$meiliKey])) {
-                $mergedFacets[$meiliKey] = $groupFacets[$meiliKey];
             }
         }
 
