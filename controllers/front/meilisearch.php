@@ -385,6 +385,11 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
         $idLang = (int) $this->context->language->id;
         $labels = [];
 
+        $cache_id = 'meilisearchprestashop::getFacetLabels_' . $idLang;
+        if(Cache::isStore($cache_id)){
+            return Cache::retrieve($cache_id);
+        }
+
         $manufacturers = Db::getInstance()->executeS('
             SELECT id_manufacturer, name
             FROM ' . _DB_PREFIX_ . 'manufacturer
@@ -392,8 +397,8 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
         foreach ($manufacturers as $row) {
             $labels['id_manufacturer'][$row['id_manufacturer']] = $row['name'];
         }
-
-        $rows = Db::getInstance()->executeS('
+        
+        $rows = Db::getInstance((bool)_PS_USE_SQL_SLAVE_)->executeS('
             SELECT fv.id_feature, fv.id_feature_value, fvl.value, fl.name AS feature_name
             FROM ' . _DB_PREFIX_ . 'feature_value fv
             LEFT JOIN ' . _DB_PREFIX_ . 'feature_value_lang fvl
@@ -403,12 +408,14 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
                 ON fv.id_feature = fl.id_feature
                 AND fl.id_lang = ' . $idLang . '
         ');
+
         foreach ($rows as $row) {
             $key = $row['id_feature'] . '-' . $row['id_feature_value'];
             $labels['feature_values'][$key]              = $row['value'];
             $labels['feature_names'][$row['id_feature']] = $row['feature_name'];
         }
 
+        Cache::store($cache_id, $labels);
         return $labels;
     }
 

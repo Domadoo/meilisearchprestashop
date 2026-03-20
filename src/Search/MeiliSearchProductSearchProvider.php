@@ -68,15 +68,24 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     private function getFeatureMap(): array
     {
         $idLang = (int) Context::getContext()->language->id;
-        $rows   = Db::getInstance()->executeS('
+
+        $cache_id = 'meilisearchprestashop::getFeatureMap_' . $idLang;
+        if(Cache::isStore($cache_id)){
+            return Cache::retrieve($cache_id);
+        }
+
+        $rows   = Db::getInstance((bool)_PS_USE_SQL_SLAVE_)->executeS('
             SELECT id_feature, name
             FROM ' . _DB_PREFIX_ . 'feature_lang
             WHERE id_lang = ' . $idLang
         );
+
         $map = [];
         foreach ($rows as $row) {
             $map[$row['id_feature']] = $this->slugify($row['name']);
         }
+
+        Cache::store($cache_id, $map);
         return $map;
     }
 
