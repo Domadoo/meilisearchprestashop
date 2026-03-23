@@ -4,6 +4,49 @@
  * S'appuie sur window.meilisearch_facets_config injecté par le controller PHP.
  */
 
+// ── Loader ────────────────────────────────────────────────────────────────────
+
+function meilisearchShowLoader() {
+    const wrapper = document.querySelector('#content-wrapper');
+    const facets  = document.querySelector('.meilisearch-facets');
+
+    if (wrapper) {
+        wrapper.classList.add('is-loading');
+
+        // Crée l'overlay s'il n'existe pas encore
+        if (!wrapper.querySelector('.meilisearch-loader-overlay')) {
+            wrapper.style.position = 'relative';
+            const overlay = document.createElement('div');
+            overlay.className = 'meilisearch-loader-overlay';
+            overlay.innerHTML = '<div class="meilisearch-loader-spinner"></div>';
+            wrapper.appendChild(overlay);
+        } else {
+            wrapper.querySelector('.meilisearch-loader-overlay').classList.remove('hidden');
+        }
+    }
+
+    if (facets) {
+        facets.classList.add('is-loading');
+    }
+}
+
+function meilisearchHideLoader() {
+    const wrapper = document.querySelector('#content-wrapper');
+    const facets  = document.querySelector('.meilisearch-facets');
+
+    if (wrapper) {
+        wrapper.classList.remove('is-loading');
+        const overlay = wrapper.querySelector('.meilisearch-loader-overlay');
+        if (overlay) overlay.classList.add('hidden');
+    }
+
+    if (facets) {
+        facets.classList.remove('is-loading');
+    }
+}
+
+// ── Accordion ─────────────────────────────────────────────────────────────────
+
 function meilisearchToggle(btn) {
     btn.classList.toggle('open');
     btn.setAttribute('aria-expanded', btn.classList.contains('open'));
@@ -17,6 +60,8 @@ function meilisearchShowMore(btn) {
     });
     btn.style.display = 'none';
 }
+
+// ── Tags actifs ───────────────────────────────────────────────────────────────
 
 function meilisearchSyncTags() {
     const container = document.getElementById('meilisearch-active-tags');
@@ -47,6 +92,8 @@ function meilisearchResetAll() {
     meilisearchSyncTags();
     meilisearchApplyFilters();
 }
+
+// ── Encodage des filtres ──────────────────────────────────────────────────────
 
 function meilisearchBuildEncodedFacets() {
     const config = window.meilisearch_facets_config || {};
@@ -87,6 +134,8 @@ function meilisearchBuildEncodedFacets() {
     return parts.join('|');
 }
 
+// ── Requête Ajax ──────────────────────────────────────────────────────────────
+
 function meilisearchApplyFilters() {
     const encoded  = meilisearchBuildEncodedFacets();
     const fetchUrl = new URL(window.location.href);
@@ -108,6 +157,8 @@ function meilisearchApplyFilters() {
         cleanUrl.searchParams.delete('encodedFacets');
     }
 
+    meilisearchShowLoader();
+
     fetch(fetchUrl.toString(), {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
@@ -123,23 +174,50 @@ function meilisearchApplyFilters() {
     })
     .catch(err => {
         console.error('[Meilisearch] Fetch error:', err);
+    })
+    .finally(() => {
+        meilisearchHideLoader();
     });
 }
 
+// ── Mise à jour du DOM ────────────────────────────────────────────────────────
+
 function meilisearchUpdateProducts(data) {
+    // Mise à jour du listing produits
     const productList = document.querySelector('#js-product-list');
     if (productList && data.rendered_products) {
         productList.innerHTML = data.rendered_products;
     }
 
-    const productListTop = document.querySelector('#js-product-list-top');
-    if (productListTop && data.rendered_products_top) {
-        productListTop.innerHTML = data.rendered_products_top;
+    // Mise à jour du compteur uniquement — pas tout le bloc top
+    // pour éviter le décalage de mise en page
+    if (data.products) {
+        const totalCount = data.products.length;
+
+        // Cherche le compteur dans le DOM — adapte le sélecteur à ton thème
+        const counter = document.querySelector('#js-product-list-top .total-products p');
+        if (counter) {
+            // Reconstruit le texte avec le bon total
+            // PrestaShop utilise data.pagination.total_items pour le vrai total
+            const total = data.pagination && data.pagination.total_items
+                ? data.pagination.total_items
+                : totalCount;
+            counter.innerHTML = total > 1
+                ? 'There are <span id="js-product-list-top">' + total + '</span> products.'
+                : 'There is <span>' + total + '</span> product.';
+        }
     }
 
-    const pagination = document.querySelector('.pagination');
-    if (pagination && data.rendered_pagination) {
-        pagination.innerHTML = data.rendered_pagination;
+    // Mise à jour de la pagination uniquement
+    const paginationBottom = document.querySelector('#js-product-list-bottom .pagination');
+    if (paginationBottom && data.rendered_products_bottom) {
+        // Extrait uniquement la pagination du HTML rendu
+        const tmp = document.createElement('div');
+        tmp.innerHTML = data.rendered_products_bottom;
+        const newPagination = tmp.querySelector('.pagination');
+        if (newPagination) {
+            paginationBottom.innerHTML = newPagination.innerHTML;
+        }
     }
 
     if (data.meilisearch_facets) {
@@ -147,38 +225,41 @@ function meilisearchUpdateProducts(data) {
     }
 }
 
+
 function meilisearchUpdateFacetCounts(facets) {
     document.querySelectorAll('.meilisearch-facet-checkbox').forEach(cb => {
-        const group = cb.dataset.group;
-        const value = cb.dataset.value;
-        let newCount = null;
+        const group    = cb.dataset.group;
+        const value    = cb.dataset.value;
+        const label    = document.querySelector('label[for="' + cb.id + '"]');
+        const item     = cb.closest('.meilisearch-facet-item');
+        if (!label) return;
 
+        const countEl  = label.querySelector('.meilisearch-facet-count');
+        if (!countEl) return;
+
+        let newCount = null;
         if (facets[group] && facets[group][value] !== undefined) {
             newCount = facets[group][value];
         }
 
-        const label = document.querySelector('label[for="' + cb.id + '"]');
-        if (!label) return;
+        const count = newCount !== null ? newCount : 0;
+        countEl.textContent = count;
 
-        const countEl = label.querySelector('.meilisearch-facet-count');
-        if (!countEl) return;
-
-        const item = cb.closest('.meilisearch-facet-item');
-
-        if (newCount !== null && newCount !== undefined) {
-            countEl.textContent = newCount;
-            if (item) item.style.opacity = newCount === 0 ? '0.4' : '1';
-        } else {
-            countEl.textContent = '0';
-            if (item) item.style.opacity = '0.4';
+        if (item) {
+            item.style.opacity = count === 0 ? '0.4' : '1';
+            if (count === 0 && !cb.checked) {
+                cb.disabled = true;
+                item.classList.add('meilisearch-facet-item--empty');
+            } else {
+                cb.disabled = false;
+                item.classList.remove('meilisearch-facet-item--empty');
+            }
         }
     });
 }
 
-/**
- * Au chargement, restitue l'état des filtres depuis l'URL
- * et met à jour les compteurs disjunctifs.
- */
+// ── Restauration depuis l'URL ─────────────────────────────────────────────────
+
 function meilisearchRestoreFiltersFromUrl() {
     const encoded = window.meilisearch_encoded_facets || '';
     if (!encoded) return;
@@ -222,10 +303,6 @@ function meilisearchRestoreFiltersFromUrl() {
     meilisearchRefreshFacetCounts();
 }
 
-/**
- * Requête Ajax uniquement pour mettre à jour les compteurs.
- * Utilisée au chargement de page quand des filtres sont déjà actifs.
- */
 function meilisearchRefreshFacetCounts() {
     const encoded = meilisearchBuildEncodedFacets();
     if (!encoded) return;
@@ -253,6 +330,8 @@ function meilisearchRefreshFacetCounts() {
         console.error('[Meilisearch] Fetch error refresh:', err);
     });
 }
+
+// ── Init ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', function () {
     meilisearchRestoreFiltersFromUrl();

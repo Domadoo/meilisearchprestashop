@@ -386,7 +386,7 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
         $labels = [];
 
         $cache_id = 'meilisearchprestashop::getFacetLabels_' . $idLang;
-        if(Cache::isStore($cache_id)){
+        if(Cache::isStored($cache_id)){
             return Cache::retrieve($cache_id);
         }
 

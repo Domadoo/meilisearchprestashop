@@ -59,5 +59,7 @@ class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontControll
                 # code...
                 break;
         }
+
+        return http_response_code(200);
     }
 }

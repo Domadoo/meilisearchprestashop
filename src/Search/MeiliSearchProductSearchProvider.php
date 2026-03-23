@@ -30,6 +30,7 @@ use PrestaShop\Module\Classes\MeilisearchStatssearch;
 use Configuration;
 use Context;
 use Db;
+use Cache;
 
 class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 {
@@ -70,7 +71,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $idLang = (int) Context::getContext()->language->id;
 
         $cache_id = 'meilisearchprestashop::getFeatureMap_' . $idLang;
-        if(Cache::isStore($cache_id)){
+        if(Cache::isStored($cache_id)){
             return Cache::retrieve($cache_id);
         }
 
