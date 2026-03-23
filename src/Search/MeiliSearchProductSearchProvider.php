@@ -323,6 +323,10 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                 ->setLabel($this->translator->trans('Price, low to high', [], 'Shop.Theme.Catalog')),
             (new SortOrder('meilisearch', 'price', 'desc'))
                 ->setLabel($this->translator->trans('Price, high to low', [], 'Shop.Theme.Catalog')),
+            (new SortOrder('meilisearch', 'date_add', 'desc'))
+                ->setLabel($this->translator->trans('Newest first', [], 'Shop.Theme.Catalog')),
+            (new SortOrder('meilisearch', 'quantity', 'desc'))
+                ->setLabel($this->translator->trans('Quantity', [], 'Shop.Theme.Catalog')),
         ];
     }
 }

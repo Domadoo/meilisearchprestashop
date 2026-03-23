@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 2007-2025 PrestaShop
  *
@@ -23,16 +24,15 @@ use PrestaShop\Module\Classes\MeilisearchStatssearch;
 class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontController
 {
     public function __construct()
-	{
-		parent::__construct();
-	}
+    {
+        parent::__construct();
+    }
     public function postProcess()
     {
 
         $token = Tools::getValue('token');
-        if(!$token == 1)
-        {
-            die($this->module->l('Access denied','ajax'));
+        if (!$token == 1) {
+            die($this->module->l('Access denied', 'ajax'));
         }
         $action = Tools::getValue('action');
         $cookie = $this->context->cookie;
@@ -41,20 +41,28 @@ class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontControll
         switch ($action) {
             case 'productClick':
                 // @phpstan-ignore-next-line
-                if(isset($cookie->meilisearch_id)) {
-                    // @phpstan-ignore-next-line
-                    $newSearch = new MeilisearchStatssearch($cookie->meilisearch_id);
-                    $newSearch->id_product = Tools::getValue('id_product');
-                    $newSearch->position = Tools::getValue('position');
-                    $newSearch->save();
+                if (isset($cookie->meilisearch_id)) {
+                    try {
+                        // @phpstan-ignore-next-line
+                        $newSearch = new MeilisearchStatssearch($cookie->meilisearch_id);
+                        $newSearch->id_product = Tools::getValue('id_product');
+                        $newSearch->position = Tools::getValue('position');
+                        $newSearch->save();
 
-                    // @phpstan-ignore-next-line
-                    $cookie->meilisearch_product_id = Tools::getValue('id_product');
-                    // unset($cookie->meilisearch_id);
-                    // unset($cookie->meilisearch_query);
+                        // @phpstan-ignore-next-line
+                        $cookie->meilisearch_product_id = Tools::getValue('id_product');
+                    } catch (\Exception $e) {
+                        // Tracking non-critique, on logge sans planter
+                        PrestaShopLogger::addLog(
+                            'Meilisearch productClick error: ' . $e->getMessage(),
+                            2,
+                            null,
+                            'MeilisearchStatssearch'
+                        );
+                    }
                 }
                 break;
-            
+
             default:
                 # code...
                 break;
