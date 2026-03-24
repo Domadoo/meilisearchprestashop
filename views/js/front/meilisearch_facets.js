@@ -168,6 +168,7 @@ function meilisearchApplyFilters() {
             const data = JSON.parse(text);
             meilisearchUpdateProducts(data);
             history.pushState(null, '', cleanUrl.toString());
+            meilisearchUpdateSortUrls(); 
         } catch (e) {
             console.error('[Meilisearch] JSON parse error:', e, text.substring(0, 300));
         }
@@ -331,6 +332,41 @@ function meilisearchRefreshFacetCounts() {
     });
 }
 
+function meilisearchUpdateSortUrls() {
+    const currentUrl = new URL(window.location.href);
+    const encodedFacets = currentUrl.searchParams.get('encodedFacets');
+
+    document.querySelectorAll('.js-search-link').forEach(function(link) {
+        const url = new URL(link.href);
+
+        if (encodedFacets) {
+            url.searchParams.set('encodedFacets', encodedFacets);
+        } else {
+            url.searchParams.delete('encodedFacets');
+        }
+
+        link.href = url.toString();
+    });
+}
+
+document.addEventListener('click', function(e) {
+    const link = e.target.closest('.js-search-link');
+    if (!link) return;
+
+    e.preventDefault();
+
+    const url = new URL(link.href);
+    const encodedFacets = new URL(window.location.href).searchParams.get('encodedFacets');
+
+    if (encodedFacets) {
+        url.searchParams.set('encodedFacets', encodedFacets);
+    } else {
+        url.searchParams.delete('encodedFacets');
+    }
+
+    window.location.href = url.toString();
+});
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -341,5 +377,17 @@ document.addEventListener('DOMContentLoaded', function () {
             meilisearchSyncTags();
             meilisearchApplyFilters();
         });
+    });
+
+    // ── Interception du tri ──────────────────────────────────────────
+    document.addEventListener('change', function (e) {
+        const select = e.target.closest('select[name="order"]');
+        if (!select) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const sortValue = select.value; // ex: "price:asc"
+        meilisearchApplyFiltersWithSort(sortValue);
     });
 });
