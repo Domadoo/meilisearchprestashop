@@ -191,6 +191,8 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
             }
 
             // @phpstan-ignore-next-line
+            $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/pagination', json_encode(['maxTotalHits' => 9999]), 'PATCH');
+            // @phpstan-ignore-next-line
             $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/sortable-attributes', json_encode(['name','price', 'date_add', 'quantity']), 'PUT');
             // @phpstan-ignore-next-line
             $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/ranking-rules', json_encode(["sort","words","typo","proximity","attribute","exactness"]), 'PUT');

@@ -198,7 +198,7 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
         // Requête sans aucun filtre → toutes les valeurs possibles
         $dataAll = [
             'q'      => $search,
-            'limit'  => 0,
+            'limit'  => 9999,
             'filter' => [['visibility = both'], ['available_for_order = true']],
             'facets' => ['*'],
         ];
@@ -265,7 +265,7 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
 
             $data = [
                 'q'      => $search,
-                'limit'  => 0,
+                'limit'  => 9999,
                 'filter' => $filter,
                 'facets' => ['*'],
             ];
