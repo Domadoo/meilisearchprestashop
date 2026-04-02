@@ -147,6 +147,8 @@ class Meilisearchprestashop extends Module
      */
     public function getContent()
     {
+        $this->uninstallTab();
+        $this->callInstallTab();
         $router = \PrestaShop\PrestaShop\Adapter\SymfonyContainer::getInstance()->get('router');
         Tools::redirectAdmin($router->generate('admin_meilisearch_configuration_index'));
     }

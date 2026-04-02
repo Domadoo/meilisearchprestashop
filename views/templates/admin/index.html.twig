@@ -14,17 +14,106 @@
   </ul>
 </div>
 
-<div class="card">
-  <div class="card-header">
-    <h3 class="card-header-title">{{ indexingMeilisearchText }}</h3>
+<div class="row">
+  <div class="card col">
+    <div class="card-header">
+      <h3>{{ indexingMeilisearchText }}</h3>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ path('admin_meilisearch_index_products') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('index_products') }}">
+        <button type="submit" class="btn btn-primary">
+          {{ indexingMeillisearchProductsText }}
+        </button>
+      </form>
+    </div>
   </div>
-  <div class="card-body">
-    <form method="POST" action="{{ path('admin_meilisearch_index_products') }}">
-      <input type="hidden" name="_token" value="{{ csrf_token('index_products') }}">
-      <button type="submit" class="btn btn-primary">
-        {{ indexingMeillisearchProductsText }}
-      </button>
-    </form>
+</div>
+
+<div class="row">
+  <div class="card col">
+    <div class="card-header">
+      <h3>Index Meilisearch</h3>
+    </div>
+    <div class="card-body">
+      {% if indexes is empty %}
+        <p class="text-muted">Aucun index trouvé.</p>
+      {% else %}
+        {# Formulaire suppression individuelle #}
+        <form id="single-delete-form" method="POST" action="" style="display:none">
+          <input type="hidden" name="_token" id="single-delete-token" value="">
+          <input type="hidden" name="_method" value="POST">
+        </form>
+
+        {# Formulaire bulk delete #}
+        <form id="bulk-delete-form" method="POST" action="{{ path('admin_meilisearch_index_bulk_delete') }}" style="display:none">
+          <input type="hidden" name="_token" value="{{ csrf_token('bulk_delete_indexes') }}">
+        </form>
+
+        <div class="d-flex align-items-center mb-2 px-1">
+          <select class="form-control form-control-sm w-auto mr-2" id="bulk-action-select">
+            <option value="">-- Actions groupées --</option>
+            <option value="delete">Supprimer la sélection</option>
+          </select>
+          <button type="button" class="btn btn-sm btn-outline-danger" id="bulk-action-apply">Appliquer</button>
+        </div>
+
+        <table class="table mb-0">
+          <thead>
+            <tr>
+              <th style="width:40px"><input type="checkbox" id="select-all"></th>
+              <th>UID</th>
+              <th>Documents</th>
+              <th>Créé le</th>
+              <th>Mis à jour le</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for index in indexes %}
+            <tr>
+              <td><input type="checkbox" name="uids[]" value="{{ index.uid }}" class="row-checkbox" form="bulk-delete-form"></td>
+              <td>{{ index.uid }}</td>
+              <td>{{ index.numberOfDocuments ?? '—' }}</td>
+              <td>{{ index.createdAt ? index.createdAt|slice(0, 19)|replace({'T': ' '}) : '—' }}</td>
+              <td>{{ index.updatedAt ? index.updatedAt|slice(0, 19)|replace({'T': ' '}) : '—' }}</td>
+              <td>
+                <button type="button" class="btn btn-sm btn-outline-secondary">Modifier</button>
+                <button type="button" class="btn btn-sm btn-outline-danger"
+                  data-action="{{ path('admin_meilisearch_index_delete', {uid: index.uid}) }}"
+                  data-token="{{ csrf_token('delete_index_' ~ index.uid) }}"
+                  data-uid="{{ index.uid }}"
+                  onclick="confirmDelete(this)">Supprimer</button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <script>
+          function confirmDelete(btn) {
+            if (!confirm('Supprimer l\'index « ' + btn.dataset.uid + ' » ?')) return;
+            var form = document.getElementById('single-delete-form');
+            form.action = btn.dataset.action;
+            document.getElementById('single-delete-token').value = btn.dataset.token;
+            form.submit();
+          }
+
+          document.getElementById('select-all').addEventListener('change', function () {
+            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = this.checked);
+          });
+
+          document.getElementById('bulk-action-apply').addEventListener('click', function () {
+            if (document.getElementById('bulk-action-select').value !== 'delete') return;
+            var checked = document.querySelectorAll('.row-checkbox:checked');
+            if (!checked.length) return;
+            if (confirm('Supprimer les ' + checked.length + ' index sélectionné(s) ?')) {
+              document.getElementById('bulk-delete-form').submit();
+            }
+          });
+        </script>
+      {% endif %}
+    </div>
   </div>
 </div>
 {% endblock %}

@@ -20,6 +20,7 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use PrestaShopBundle\Security\Annotation\AdminSecurity;
@@ -42,7 +43,26 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
 
     public function indexAction()
     {
-        return $this->render('@Modules/meilisearchprestashop/views/templates/admin/index.html.twig', $this->getTranslatedText());
+        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
+        $indexes = [];
+
+        if ($meiliUrl) {
+            $response = $this->module->requestCurl($meiliUrl . 'indexes?limit=100');
+            $stats = $this->module->requestCurl($meiliUrl . 'stats');
+            $indexStats = ($stats && isset($stats->indexes)) ? (array) $stats->indexes : [];
+
+            if ($response && isset($response->results)) {
+                foreach ($response->results as $index) {
+                    $index->numberOfDocuments = isset($indexStats[$index->uid]) ? $indexStats[$index->uid]->numberOfDocuments : null;
+                    $indexes[] = $index;
+                }
+            }
+        }
+
+        return $this->render('@Modules/meilisearchprestashop/views/templates/admin/index.html.twig', array_merge(
+            $this->getTranslatedText(),
+            ['indexes' => $indexes]
+        ));
     }
 
     public function getTranslatedText()
@@ -51,6 +71,29 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             'indexingMeilisearchText' => $this->module->l('Meilisearch indexing', 'meilisearchindexcontroller'),
             'indexingMeillisearchProductsText' => $this->module->l('Index products in Meilisearch', 'meilisearchindexcontroller'),
         );
+    }
+
+    public function deleteAction($uid)
+    {
+        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
+        $this->module->requestCurl($meiliUrl . 'indexes/' . $uid, null, 'DELETE');
+        $this->addFlash('success', sprintf('Index "%s" supprimé.', $uid));
+
+        return $this->redirectToRoute('admin_meilisearch_index_index');
+    }
+
+    public function bulkDeleteAction(Request $request)
+    {
+        $uids = (array) $request->request->get('uids', []);
+        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
+
+        foreach ($uids as $uid) {
+            $this->module->requestCurl($meiliUrl . 'indexes/' . $uid, null, 'DELETE');
+        }
+
+        $this->addFlash('success', sprintf('%d index supprimé(s).', count($uids)));
+
+        return $this->redirectToRoute('admin_meilisearch_index_index');
     }
 
     public function indexProductsAction()
