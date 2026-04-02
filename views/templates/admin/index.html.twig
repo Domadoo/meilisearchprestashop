@@ -45,14 +45,25 @@
           <input type="hidden" name="_method" value="POST">
         </form>
 
+        {# Formulaire flush individuel #}
+        <form id="single-flush-form" method="POST" action="" style="display:none">
+          <input type="hidden" name="_token" id="single-flush-token" value="">
+        </form>
+
         {# Formulaire bulk delete #}
         <form id="bulk-delete-form" method="POST" action="{{ path('admin_meilisearch_index_bulk_delete') }}" style="display:none">
           <input type="hidden" name="_token" value="{{ csrf_token('bulk_delete_indexes') }}">
         </form>
 
+        {# Formulaire bulk flush #}
+        <form id="bulk-flush-form" method="POST" action="{{ path('admin_meilisearch_index_bulk_flush') }}" style="display:none">
+          <input type="hidden" name="_token" value="{{ csrf_token('bulk_flush_indexes') }}">
+        </form>
+
         <div class="d-flex align-items-center mb-2 px-1">
           <select class="form-control form-control-sm w-auto mr-2" id="bulk-action-select">
             <option value="">-- Actions groupées --</option>
+            <option value="flush">Vider la sélection</option>
             <option value="delete">Supprimer la sélection</option>
           </select>
           <button type="button" class="btn btn-sm btn-outline-danger" id="bulk-action-apply">Appliquer</button>
@@ -79,6 +90,11 @@
               <td>{{ index.updatedAt ? index.updatedAt|slice(0, 19)|replace({'T': ' '}) : '—' }}</td>
               <td>
                 <button type="button" class="btn btn-sm btn-outline-secondary">Modifier</button>
+                <button type="button" class="btn btn-sm btn-outline-warning"
+                  data-action="{{ path('admin_meilisearch_index_flush', {uid: index.uid}) }}"
+                  data-token="{{ csrf_token('flush_index_' ~ index.uid) }}"
+                  data-uid="{{ index.uid }}"
+                  onclick="confirmFlush(this)">Vider</button>
                 <button type="button" class="btn btn-sm btn-outline-danger"
                   data-action="{{ path('admin_meilisearch_index_delete', {uid: index.uid}) }}"
                   data-token="{{ csrf_token('delete_index_' ~ index.uid) }}"
@@ -91,6 +107,14 @@
         </table>
 
         <script>
+          function confirmFlush(btn) {
+            if (!confirm('Vider l\'index « ' + btn.dataset.uid + ' » (supprimer tous les documents) ?')) return;
+            var form = document.getElementById('single-flush-form');
+            form.action = btn.dataset.action;
+            document.getElementById('single-flush-token').value = btn.dataset.token;
+            form.submit();
+          }
+
           function confirmDelete(btn) {
             if (!confirm('Supprimer l\'index « ' + btn.dataset.uid + ' » ?')) return;
             var form = document.getElementById('single-delete-form');
@@ -104,11 +128,26 @@
           });
 
           document.getElementById('bulk-action-apply').addEventListener('click', function () {
-            if (document.getElementById('bulk-action-select').value !== 'delete') return;
+            var action = document.getElementById('bulk-action-select').value;
             var checked = document.querySelectorAll('.row-checkbox:checked');
-            if (!checked.length) return;
-            if (confirm('Supprimer les ' + checked.length + ' index sélectionné(s) ?')) {
-              document.getElementById('bulk-delete-form').submit();
+            if (!action || !checked.length) return;
+
+            var messages = {
+              flush: 'Vider les ' + checked.length + ' index sélectionné(s) (supprimer tous leurs documents) ?',
+              delete: 'Supprimer les ' + checked.length + ' index sélectionné(s) ?'
+            };
+            var forms = { flush: 'bulk-flush-form', delete: 'bulk-delete-form' };
+
+            if (confirm(messages[action])) {
+              var form = document.getElementById(forms[action]);
+              checked.forEach(function (cb) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'uids[]';
+                input.value = cb.value;
+                form.appendChild(input);
+              });
+              form.submit();
             }
           });
         </script>

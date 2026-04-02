@@ -22,6 +22,18 @@ admin_meilisearch_index_bulk_delete:
   defaults:
     _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchIndexController::bulkDeleteAction'
 
+admin_meilisearch_index_flush:
+  path: /admin/meilisearch/index/{uid}/flush
+  methods: [POST]
+  defaults:
+    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchIndexController::flushAction'
+
+admin_meilisearch_index_bulk_flush:
+  path: /admin/meilisearch/index/bulk-flush
+  methods: [POST]
+  defaults:
+    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchIndexController::bulkFlushAction'
+
 admin_meilisearch_configuration_index:
   path: /admin/meilisearch/configuration
   methods: [GET, POST]

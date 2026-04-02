@@ -82,6 +82,29 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
         return $this->redirectToRoute('admin_meilisearch_index_index');
     }
 
+    public function flushAction($uid)
+    {
+        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
+        $this->module->requestCurl($meiliUrl . 'indexes/' . $uid . '/documents', null, 'DELETE');
+        $this->addFlash('success', sprintf('Documents de l\'index "%s" supprimés.', $uid));
+
+        return $this->redirectToRoute('admin_meilisearch_index_index');
+    }
+
+    public function bulkFlushAction(Request $request)
+    {
+        $uids = (array) $request->request->get('uids', []);
+        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
+
+        foreach ($uids as $uid) {
+            $this->module->requestCurl($meiliUrl . 'indexes/' . $uid . '/documents', null, 'DELETE');
+        }
+
+        $this->addFlash('success', sprintf('%d index vidé(s).', count($uids)));
+
+        return $this->redirectToRoute('admin_meilisearch_index_index');
+    }
+
     public function bulkDeleteAction(Request $request)
     {
         $uids = (array) $request->request->get('uids', []);
