@@ -116,11 +116,11 @@ class Meilisearchprestashop extends Module
 
     public function callInstallTab()
     {
-        if (!is_int(Tab::getIdFromClassName('AdminMeiliSearch'))) {
-            $this->installTab('AdminMeiliSearch', 'MeiliSearch', 'CONFIGURE');
-            $this->installTab('MeiliSearchConfigurationController', 'Configuration', 'AdminMeiliSearch', 'admin_meilisearchconfiguration_index');
-            $this->installTab('MeiliSearchStatsController', 'Statistics', 'AdminMeiliSearch', 'admin_meilisearch_stats_index');
-        }
+        $this->installTab('AdminMeiliSearch', 'MeiliSearch', 'CONFIGURE');
+        $this->installTab('AdminMeiliSearchParent', 'MeiliSearch', 'AdminMeiliSearch');
+        $this->installTab('MeiliSearchConfigurationController', 'Settings', 'AdminMeiliSearchParent', 'admin_meilisearch_configuration_index');
+        $this->installTab('MeiliSearchIndexController', 'Index', 'AdminMeiliSearchParent', 'admin_meilisearch_index_index');
+        $this->installTab('MeiliSearchStatsController', 'Statistics', 'AdminMeiliSearch', 'admin_meilisearch_stats_index');
 
         return true;
     }
@@ -143,152 +143,12 @@ class Meilisearchprestashop extends Module
     }
 
     /**
-     * Load the configuration form
+     * Redirect to the dedicated Settings controller.
      */
     public function getContent()
     {
-        /**
-         * If values have been submitted in the form, process.
-         */
-        if (((bool)Tools::isSubmit('submitMeilisearchprestashopModule')) == true) {
-            $this->postProcess();
-        }
-
-        $this->context->smarty->assign('module_dir', $this->_path);
-
-        $output = $this->context->smarty->fetch($this->local_path . 'views/templates/admin/configure.tpl');
-
-        return $output . $this->renderForm();
-    }
-
-    /**
-     * Create the form that will be displayed in the configuration of your module.
-     */
-    protected function renderForm()
-    {
-        $helper = new HelperForm();
-
-        $helper->show_toolbar = false;
-        $helper->table = $this->table;
-        $helper->module = $this;
-        $helper->default_form_language = $this->context->language->id;
-        $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG', 0);
-
-        $helper->identifier = $this->identifier;
-        $helper->submit_action = 'submitMeilisearchprestashopModule';
-        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false)
-            . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
-        $helper->token = Tools::getAdminTokenLite('AdminModules');
-
-        $helper->tpl_vars = array(
-            'fields_value' => $this->getConfigFormValues(), /* Add values for your inputs */
-            'languages' => $this->context->controller->getLanguages(),
-            'id_language' => $this->context->language->id,
-        );
-
-        return $helper->generateForm(array($this->getConfigForm()));
-    }
-
-    /**
-     * Create the structure of your form.
-     */
-    protected function getConfigForm()
-    {
-        return array(
-            'form' => array(
-                'legend' => array(
-                    'title' => $this->l('Settings'),
-                    'icon' => 'icon-cogs',
-                ),
-                'input' => array(
-                    array(
-                        'type' => 'switch',
-                        'label' => $this->l('Live mode'),
-                        'name' => 'MEILISEARCHPRESTASHOP_LIVE_MODE',
-                        'is_bool' => true,
-                        'desc' => $this->l('Use this module in live mode'),
-                        'values' => array(
-                            array(
-                                'id' => 'active_on',
-                                'value' => true,
-                                'label' => $this->l('Enabled')
-                            ),
-                            array(
-                                'id' => 'active_off',
-                                'value' => false,
-                                'label' => $this->l('Disabled')
-                            )
-                        ),
-                    ),
-                    array(
-                        'col' => 3,
-                        'type' => 'text',
-                        'prefix' => '<i class="icon icon-envelope"></i>',
-                        'desc' => $this->l('Enter a valid email address'),
-                        'name' => 'MEILISEARCHPRESTASHOP_ACCOUNT_EMAIL',
-                        'label' => $this->l('Email'),
-                    ),
-                    array(
-                        'type' => 'password',
-                        'name' => 'MEILISEARCHPRESTASHOP_ACCOUNT_PASSWORD',
-                        'label' => $this->l('Password'),
-                    ),
-                    array(
-                        'type' => 'text',
-                        'name' => 'MEILISEARCHPRESTASHOP_URL',
-                        'label' => $this->l('URL'),
-                    ),
-                    array(
-                        'type' => 'text',
-                        'name' => 'MEILISEARCHPRESTASHOP_KEY',
-                        'label' => $this->l('KEY'),
-                    ),
-                    array(
-                        'type' => 'text',
-                        'name' => 'MEILISEARCHPRESTASHOP_PREFIX',
-                        'label' => $this->l('PREFIX'),
-                    ),
-                    array(
-                        'col' => 3,
-                        'type' => 'text',
-                        'name' => 'MEILISEARCHPRESTASHOP_TOKEN_CRON',
-                        'desc' => $this->l('Enter a private key, for exemple').' : ' .Tools::passwdGen(32),
-                        'label' => $this->l('Token for access to the cron'),
-                    ),
-                ),
-                'submit' => array(
-                    'title' => $this->l('Save'),
-                ),
-            ),
-        );
-    }
-
-    /**
-     * Set values for the inputs.
-     */
-    protected function getConfigFormValues()
-    {
-        return array(
-            'MEILISEARCHPRESTASHOP_LIVE_MODE' => Configuration::get('MEILISEARCHPRESTASHOP_LIVE_MODE'),
-            'MEILISEARCHPRESTASHOP_ACCOUNT_EMAIL' => Configuration::get('MEILISEARCHPRESTASHOP_ACCOUNT_EMAIL'),
-            'MEILISEARCHPRESTASHOP_ACCOUNT_PASSWORD' => Configuration::get('MEILISEARCHPRESTASHOP_ACCOUNT_PASSWORD', null),
-            'MEILISEARCHPRESTASHOP_URL' => Configuration::get('MEILISEARCHPRESTASHOP_URL', null),
-            'MEILISEARCHPRESTASHOP_KEY' => Configuration::get('MEILISEARCHPRESTASHOP_KEY', null),
-            'MEILISEARCHPRESTASHOP_PREFIX' => Configuration::get('MEILISEARCHPRESTASHOP_PREFIX', null),
-            'MEILISEARCHPRESTASHOP_TOKEN_CRON' => Configuration::get('MEILISEARCHPRESTASHOP_TOKEN_CRON', null)
-        );
-    }
-
-    /**
-     * Save form data.
-     */
-    protected function postProcess()
-    {
-        $form_values = $this->getConfigFormValues();
-
-        foreach (array_keys($form_values) as $key) {
-            Configuration::updateValue($key, Tools::getValue($key));
-        }
+        $router = \PrestaShop\PrestaShop\Adapter\SymfonyContainer::getInstance()->get('router');
+        Tools::redirectAdmin($router->generate('admin_meilisearch_configuration_index'));
     }
 
     public function hookDisplaySearch(){

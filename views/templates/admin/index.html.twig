@@ -1,17 +1,30 @@
 {% extends '@PrestaShop/Admin/layout.html.twig' %}
 
+{% block pageTitle %}Indexation{% endblock %}
+
 {% block content %}
-  <div class="card">
-    <div class="card-header">
-      <h3>{{ indexingMeilisearchText }}</h3>
-    </div>
-    <div class="card-body">
-      <form method="POST" action="{{ path('admin_meilisearchconfiguration_index_products') }}">
-        <input type="hidden" name="_token" value="{{ csrf_token('index_products') }}">
-        <button type="submit" class="btn btn-primary">
-          {{ indexingMeillisearchProductsText }}
-        </button>
-      </form>
-    </div>
+<div class="nav-tabs-custom mb-3">
+  <ul class="nav nav-tabs" role="tablist">
+    <li class="nav-item">
+      <a class="nav-link" href="{{ path('admin_meilisearch_configuration_index') }}">Settings</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link active" href="{{ path('admin_meilisearch_index_index') }}">Indexation</a>
+    </li>
+  </ul>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-header-title">{{ indexingMeilisearchText }}</h3>
   </div>
+  <div class="card-body">
+    <form method="POST" action="{{ path('admin_meilisearch_index_products') }}">
+      <input type="hidden" name="_token" value="{{ csrf_token('index_products') }}">
+      <button type="submit" class="btn btn-primary">
+        {{ indexingMeillisearchProductsText }}
+      </button>
+    </form>
+  </div>
+</div>
 {% endblock %}
