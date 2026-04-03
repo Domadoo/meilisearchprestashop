@@ -289,6 +289,19 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
                     }
                     break;
 
+                case 'cat':
+                    if (isset($allFacets['id_category_default'])) {
+                        $mergedFacets['id_category_default'] = array_fill_keys(
+                            array_keys($allFacets['id_category_default']), 0
+                        );
+                        if (isset($respFacets['id_category_default'])) {
+                            foreach ($respFacets['id_category_default'] as $k => $v) {
+                                $mergedFacets['id_category_default'][$k] = $v;
+                            }
+                        }
+                    }
+                    break;
+
                 case 'cond':
                     if (isset($allFacets['condition'])) {
                         $mergedFacets['condition'] = array_fill_keys(
@@ -346,6 +359,9 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
                         'map'    => ['in_stock' => 'stock'],
                     ];
                     break;
+                case 'id_category_default':
+                    $config[$groupKey] = ['prefix' => 'cat', 'type' => 'direct'];
+                    break;
                 case 'condition':
                     $config[$groupKey] = ['prefix' => 'cond', 'type' => 'direct'];
                     break;
@@ -397,6 +413,18 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
         foreach ($manufacturers as $row) {
             $labels['id_manufacturer'][$row['id_manufacturer']] = $row['name'];
         }
+
+        $categories = Db::getInstance((bool)_PS_USE_SQL_SLAVE_)->executeS('
+            SELECT c.id_category, cl.name
+            FROM ' . _DB_PREFIX_ . 'category c
+            LEFT JOIN ' . _DB_PREFIX_ . 'category_lang cl
+                ON c.id_category = cl.id_category
+                AND cl.id_lang = ' . $idLang . '
+        ');
+        foreach ($categories as $row) {
+            $labels['id_category_default'][$row['id_category']] = $row['name'];
+        }
+        // Note : les labels sont mis en cache via Cache::store($cache_id, ...) plus bas
         
         $rows = Db::getInstance((bool)_PS_USE_SQL_SLAVE_)->executeS('
             SELECT fv.id_feature, fv.id_feature_value, fvl.value, fl.name AS feature_name

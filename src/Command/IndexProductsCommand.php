@@ -217,8 +217,13 @@ class IndexProductsCommand extends Command
 
             // Settings
             $this->requestMeilisearch(
+                $meiliUrl . 'indexes/' . $indexName . '/settings/pagination',
+                json_encode(['maxTotalHits' => 9999]),
+                'PATCH'
+            );
+            $this->requestMeilisearch(
                 $meiliUrl . 'indexes/' . $indexName . '/settings/sortable-attributes',
-                json_encode(['name', 'price']),
+                json_encode(['name', 'price', 'date_add', 'quantity']),
                 'PUT'
             );
             $this->requestMeilisearch(
