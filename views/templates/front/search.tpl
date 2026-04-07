@@ -31,17 +31,21 @@
 
 {block name='content'}
   {block name='product_facets'}
-    <div id="left-column" class="col-xs-12 col-sm-4 col-md-3">
-      {include file='module:meilisearchprestashop/views/templates/front/_partials/meilisearch_facets.tpl'}
-    </div>
+    {if $listing.products|count}
+      <div id="left-column" class="col-xs-12 col-sm-4 col-md-3">
+        {include file='module:meilisearchprestashop/views/templates/front/_partials/meilisearch_facets.tpl'}
+      </div>
+    {/if}
   {/block}
 
-  <div id="content-wrapper" class="js-content-wrapper left-column col-xs-12 col-sm-8 col-md-9">
+  <div id="content-wrapper" class="js-content-wrapper {if $listing.products|count}left-column col-xs-12 col-sm-8 col-md-9{else}col-xs-12{/if}">
 
     <section id="main">
 
       {block name='product_list_header'}
-        <h1 id="js-product-list-header" class="h2">{$listing.label|escape:'html':'UTF-8'}</h1>
+        {if $listing.products|count}
+          <h1 id="js-product-list-header" class="h2">{$listing.label|escape:'html':'UTF-8'}</h1>
+        {/if}
       {/block}
 
       {block name='subcategory_list'}
