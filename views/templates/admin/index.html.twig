@@ -26,6 +26,22 @@
           {{ indexingMeillisearchProductsText }}
         </button>
       </form>
+      <hr>
+      <form method="POST" action="" id="reindex-lang-form" class="form-inline mt-2">
+        <input type="hidden" name="_token" id="reindex-lang-token" value="">
+        <select name="_lang" class="form-control form-control-sm mr-2" id="reindex-lang-select">
+          <option value="">-- Choisir une langue --</option>
+          {% for lang in languages %}
+            {% set uid = lang.iso_code %}
+            <option
+              value="{{ uid }}"
+              data-action="{{ path('admin_meilisearch_index_reindex_language', {uid: uid}) }}"
+              data-token="{{ csrf_token('reindex_index_' ~ uid) }}"
+            >{{ lang.name }} ({{ lang.iso_code }})</option>
+          {% endfor %}
+        </select>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="reindex-lang-btn">Réindexer cette langue</button>
+      </form>
     </div>
   </div>
 </div>
@@ -60,9 +76,20 @@
           <input type="hidden" name="_token" value="{{ csrf_token('bulk_flush_indexes') }}">
         </form>
 
+        {# Formulaire bulk reindex #}
+        <form id="bulk-reindex-form" method="POST" action="{{ path('admin_meilisearch_index_bulk_reindex') }}" style="display:none">
+          <input type="hidden" name="_token" value="{{ csrf_token('bulk_reindex_indexes') }}">
+        </form>
+
+        {# Formulaire réindexation individuelle #}
+        <form id="single-reindex-form" method="POST" action="" style="display:none">
+          <input type="hidden" name="_token" id="single-reindex-token" value="">
+        </form>
+
         <div class="d-flex align-items-center mb-2 px-1">
           <select class="form-control form-control-sm w-auto mr-2" id="bulk-action-select">
             <option value="">-- Actions groupées --</option>
+            <option value="reindex">Réindexer la sélection</option>
             <option value="flush">Vider la sélection</option>
             <option value="delete">Supprimer la sélection</option>
           </select>
@@ -89,7 +116,12 @@
               <td>{{ index.createdAt ? index.createdAt|slice(0, 19)|replace({'T': ' '}) : '—' }}</td>
               <td>{{ index.updatedAt ? index.updatedAt|slice(0, 19)|replace({'T': ' '}) : '—' }}</td>
               <td>
-                <button type="button" class="btn btn-sm btn-outline-secondary">Modifier</button>
+                <a href="{{ path('admin_meilisearch_index_settings', {uid: index.uid}) }}" class="btn btn-sm btn-outline-secondary">Modifier</a>
+                <button type="button" class="btn btn-sm btn-outline-primary"
+                  data-action="{{ path('admin_meilisearch_index_reindex_language', {uid: index.uid}) }}"
+                  data-token="{{ csrf_token('reindex_index_' ~ index.uid) }}"
+                  data-uid="{{ index.uid }}"
+                  onclick="confirmReindex(this)">Réindexer</button>
                 <button type="button" class="btn btn-sm btn-outline-warning"
                   data-action="{{ path('admin_meilisearch_index_flush', {uid: index.uid}) }}"
                   data-token="{{ csrf_token('flush_index_' ~ index.uid) }}"
@@ -107,6 +139,14 @@
         </table>
 
         <script>
+          function confirmReindex(btn) {
+            if (!confirm('Réindexer l\'index « ' + btn.dataset.uid + ' » (remplace tous les documents) ?')) return;
+            var form = document.getElementById('single-reindex-form');
+            form.action = btn.dataset.action;
+            document.getElementById('single-reindex-token').value = btn.dataset.token;
+            form.submit();
+          }
+
           function confirmFlush(btn) {
             if (!confirm('Vider l\'index « ' + btn.dataset.uid + ' » (supprimer tous les documents) ?')) return;
             var form = document.getElementById('single-flush-form');
@@ -133,10 +173,11 @@
             if (!action || !checked.length) return;
 
             var messages = {
+              reindex: 'Réindexer les ' + checked.length + ' index sélectionné(s) ?',
               flush: 'Vider les ' + checked.length + ' index sélectionné(s) (supprimer tous leurs documents) ?',
               delete: 'Supprimer les ' + checked.length + ' index sélectionné(s) ?'
             };
-            var forms = { flush: 'bulk-flush-form', delete: 'bulk-delete-form' };
+            var forms = { reindex: 'bulk-reindex-form', flush: 'bulk-flush-form', delete: 'bulk-delete-form' };
 
             if (confirm(messages[action])) {
               var form = document.getElementById(forms[action]);
@@ -155,4 +196,17 @@
     </div>
   </div>
 </div>
+
+<script>
+  document.getElementById('reindex-lang-btn').addEventListener('click', function () {
+    var select = document.getElementById('reindex-lang-select');
+    var opt = select.options[select.selectedIndex];
+    if (!opt.value) { alert('Veuillez choisir une langue.'); return; }
+    if (!confirm('Réindexer la langue « ' + opt.text + ' » ?')) return;
+    var form = document.getElementById('reindex-lang-form');
+    form.action = opt.dataset.action;
+    document.getElementById('reindex-lang-token').value = opt.dataset.token;
+    form.submit();
+  });
+</script>
 {% endblock %}
