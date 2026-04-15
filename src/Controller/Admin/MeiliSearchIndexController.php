@@ -275,6 +275,18 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             $productFeatureValues[$idProduct][] = $featureKey;
         }
 
+        $categoriesSql = '
+            SELECT id_product, id_category
+            FROM `' . _DB_PREFIX_ . 'category_product`
+            WHERE id_product IN (' . $productIdsStr . ')
+        ';
+        $categoryResults = Db::getInstance()->executeS($categoriesSql);
+
+        $productCategoryIds = [];
+        foreach ($categoryResults as $row) {
+            $productCategoryIds[(int)$row['id_product']][] = (int)$row['id_category'];
+        }
+
         foreach ($products as &$product) {
             foreach ($typeMap as $field => $type) {
                 if (array_key_exists($field, $product) && $product[$field] !== null) {
@@ -293,6 +305,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             }
             $id = $product['id_product'];
             $product['feature_values'] = $productFeatureValues[$id] ?? [];
+            $product['ids_category'] = $productCategoryIds[$id] ?? [];
         }
         unset($product);
 
@@ -311,6 +324,6 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
         $this->module->requestCurl($meiliUrl . 'indexes/' . $indexUid . '/settings/pagination', json_encode(['maxTotalHits' => 9999]), 'PATCH');
         $this->module->requestCurl($meiliUrl . 'indexes/' . $indexUid . '/settings/sortable-attributes', json_encode(['name', 'price', 'date_add', 'quantity']), 'PUT');
         $this->module->requestCurl($meiliUrl . 'indexes/' . $indexUid . '/settings/ranking-rules', json_encode(['sort', 'words', 'typo', 'proximity', 'attribute', 'exactness']), 'PUT');
-        $this->module->requestCurl($meiliUrl . 'indexes/' . $indexUid . '/settings/filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'id_category_default', 'quantity', 'feature_values', 'visibility', 'available_for_order']), 'PUT');
+        $this->module->requestCurl($meiliUrl . 'indexes/' . $indexUid . '/settings/filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'ids_category', 'quantity', 'feature_values', 'visibility', 'available_for_order']), 'PUT');
     }
 }

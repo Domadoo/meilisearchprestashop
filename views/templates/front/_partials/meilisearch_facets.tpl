@@ -21,7 +21,7 @@
       {assign var=group_label value={l s='Availability' mod='meilisearchprestashop'}}
     {elseif $group_key == 'id_manufacturer'}
       {assign var=group_label value={l s='Brand' mod='meilisearchprestashop'}}
-    {elseif $group_key == 'id_category_default'}
+    {elseif $group_key == 'ids_category'}
       {assign var=group_label value={l s='Category' mod='meilisearchprestashop'}}
     {elseif $group_key == 'feature_values'}
       {assign var=group_label value={l s='Features' mod='meilisearchprestashop'}}

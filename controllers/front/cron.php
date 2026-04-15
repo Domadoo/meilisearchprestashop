@@ -130,29 +130,42 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
             // Récupère les IDs produits
             $productIds = array_column($products, 'id_product');
             $productIdsStr = implode(',', array_map('intval', $productIds));
-    
+
             // Récupération des features
             $featuresSql = '
                 SELECT id_product, id_feature, id_feature_value
                 FROM `'._DB_PREFIX_.'feature_product`
                 WHERE id_product IN (' . $productIdsStr . ')
             ';
-    
+
             $featureResults = Db::getInstance()->executeS($featuresSql);
-    
+
             // Structure à plat : [id_product => [ "2-36", "2-60", ... ]]
             $productFeatureValues = [];
             foreach ($featureResults as $row) {
                 $idProduct = (int)$row['id_product'];
                 $featureKey = (int)$row['id_feature'] . '-' . (int)$row['id_feature_value'];
-    
+
                 if (!isset($productFeatureValues[$idProduct])) {
                     $productFeatureValues[$idProduct] = [];
                 }
-    
+
                 $productFeatureValues[$idProduct][] = $featureKey;
             }
-            
+
+            // Récupération de toutes les catégories de chaque produit
+            $categoriesSql = '
+                SELECT id_product, id_category
+                FROM `'._DB_PREFIX_.'category_product`
+                WHERE id_product IN (' . $productIdsStr . ')
+            ';
+            $categoryResults = Db::getInstance()->executeS($categoriesSql);
+
+            $productCategoryIds = [];
+            foreach ($categoryResults as $row) {
+                $productCategoryIds[(int)$row['id_product']][] = (int)$row['id_category'];
+            }
+
             foreach ($products as &$product) {
                 foreach ($typeMap as $field => $type) {
                     if (array_key_exists($field, $product) && $product[$field] !== null) {
@@ -171,6 +184,7 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
                 }
                 $id = $product['id_product'];
                 $product['feature_values'] = $productFeatureValues[$id] ?? [];
+                $product['ids_category'] = $productCategoryIds[$id] ?? [];
             }
             unset($product);
     
@@ -197,8 +211,7 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
             // @phpstan-ignore-next-line
             $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/ranking-rules', json_encode(["sort","words","typo","proximity","attribute","exactness"]), 'PUT');
             // @phpstan-ignore-next-line
-            $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'id_category_default
-    ', 'quantity', 'feature_values','visibility', 'available_for_order']), 'PUT');
+            $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'ids_category', 'quantity', 'feature_values', 'visibility', 'available_for_order']), 'PUT');
         }
 
 

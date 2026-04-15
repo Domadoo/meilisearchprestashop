@@ -183,6 +183,9 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
                         $groupedFilters['avail'][] = 'quantity >= 1';
                     }
                     break;
+                case 'cat':
+                    $groupedFilters['cat'][] = 'ids_category = ' . (int)$value;
+                    break;
                 case 'cond':
                     $groupedFilters['cond'][] = 'condition = "' . pSQL($value) . '"';
                     break;
@@ -290,13 +293,13 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
                     break;
 
                 case 'cat':
-                    if (isset($allFacets['id_category_default'])) {
-                        $mergedFacets['id_category_default'] = array_fill_keys(
-                            array_keys($allFacets['id_category_default']), 0
+                    if (isset($allFacets['ids_category'])) {
+                        $mergedFacets['ids_category'] = array_fill_keys(
+                            array_keys($allFacets['ids_category']), 0
                         );
-                        if (isset($respFacets['id_category_default'])) {
-                            foreach ($respFacets['id_category_default'] as $k => $v) {
-                                $mergedFacets['id_category_default'][$k] = $v;
+                        if (isset($respFacets['ids_category'])) {
+                            foreach ($respFacets['ids_category'] as $k => $v) {
+                                $mergedFacets['ids_category'][$k] = $v;
                             }
                         }
                     }
@@ -359,7 +362,7 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
                         'map'    => ['in_stock' => 'stock'],
                     ];
                     break;
-                case 'id_category_default':
+                case 'ids_category':
                     $config[$groupKey] = ['prefix' => 'cat', 'type' => 'direct'];
                     break;
                 case 'condition':
@@ -412,6 +415,15 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
         ');
         foreach ($manufacturers as $row) {
             $labels['id_manufacturer'][$row['id_manufacturer']] = $row['name'];
+        }
+
+        $categories = Db::getInstance((bool)_PS_USE_SQL_SLAVE_)->executeS('
+            SELECT id_category, name
+            FROM ' . _DB_PREFIX_ . 'category_lang
+            WHERE id_lang = ' . $idLang . '
+        ');
+        foreach ($categories as $row) {
+            $labels['ids_category'][$row['id_category']] = $row['name'];
         }
         
         $rows = Db::getInstance((bool)_PS_USE_SQL_SLAVE_)->executeS('

@@ -178,7 +178,20 @@ class IndexProductsCommand extends Command
                 $productFeatureValues[$idProduct][] = $featureKey;
             }
 
-            // Cast types and add feature_values
+            // Catégories de chaque produit
+            $categoriesSql = '
+                SELECT id_product, id_category
+                FROM `' . _DB_PREFIX_ . 'category_product`
+                WHERE id_product IN (' . $productIdsStr . ')
+            ';
+            $categoryResults = Db::getInstance()->executeS($categoriesSql);
+
+            $productCategoryIds = [];
+            foreach ($categoryResults as $row) {
+                $productCategoryIds[(int)$row['id_product']][] = (int)$row['id_category'];
+            }
+
+            // Cast types and add feature_values / ids_category
             foreach ($products as &$product) {
                 foreach ($typeMap as $field => $type) {
                     if (array_key_exists($field, $product) && $product[$field] !== null) {
@@ -190,6 +203,7 @@ class IndexProductsCommand extends Command
                     }
                 }
                 $product['feature_values'] = $productFeatureValues[$product['id_product']] ?? [];
+                $product['ids_category'] = $productCategoryIds[$product['id_product']] ?? [];
             }
             unset($product);
 
@@ -233,7 +247,7 @@ class IndexProductsCommand extends Command
             );
             $this->requestMeilisearch(
                 $meiliUrl . 'indexes/' . $indexName . '/settings/filterable-attributes',
-                json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'id_category_default', 'quantity', 'feature_values', 'visibility', 'available_for_order']),
+                json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'ids_category', 'quantity', 'feature_values', 'visibility', 'available_for_order']),
                 'PUT'
             );
 

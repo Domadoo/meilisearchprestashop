@@ -118,7 +118,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                     }
                     break;
                 case 'cat':
-                    $groupedFilters['cat'][] = 'id_category_default = ' . (int)$value;
+                    $groupedFilters['cat'][] = 'ids_category = ' . (int)$value;
                     break;
                 case 'cond':
                     $groupedFilters['cond'][] = 'condition = "' . pSQL($value) . '"';
@@ -155,7 +155,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         switch ($groupKey) {
             case 'manu':  return 'id_manufacturer';
             case 'avail': return 'availability';
-            case 'cat':   return 'id_category_default';
+            case 'cat':   return 'ids_category';
             case 'cond':  return 'condition';
             default:
                 if (in_array($groupKey, $featureMap)) {
