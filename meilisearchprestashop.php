@@ -75,6 +75,7 @@ class Meilisearchprestashop extends Module
         return parent::install() &&
             $this->registerHook('displayHeader') &&
             $this->registerHook('displaySearch') &&
+            $this->registerHook('displayLeftColumn') &&
             $this->registerHook('actionCartUpdateQuantityBefore') &&
             $this->registerHook('actionPresentProduct') &&
             $this->registerHook('actionValidateOrder') &&
@@ -154,6 +155,9 @@ class Meilisearchprestashop extends Module
     }
 
     public function hookDisplaySearch(){
+        $this->context->smarty->assign([
+            'search_string' => Tools::getValue('s', Tools::getValue('search_query', '')),
+        ]);
         return $this->display(__FILE__, 'meilisearch_searchbar.tpl');
     }
 
@@ -178,8 +182,12 @@ class Meilisearchprestashop extends Module
             'meilisearchUrl' => $link,
         ]);
 
-        $this->context->controller->addJS($this->_path.'/views/js/front/meilisearch_searchbar.js');
-        $this->context->controller->addCSS($this->_path.'/views/css/front/meilisearch_searchbar.css');
+        $this->context->controller->addJS($this->_path.'views/js/front/meilisearch_searchbar.js');
+        $this->context->controller->addCSS($this->_path.'views/css/front/meilisearch_searchbar.css');
+    }
+
+    public function hookDisplayLeftColumn(){
+
     }
 
     public function hookActionPresentProduct()

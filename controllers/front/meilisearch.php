@@ -289,6 +289,19 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
                     }
                     break;
 
+                case 'cat':
+                    if (isset($allFacets['id_category_default'])) {
+                        $mergedFacets['id_category_default'] = array_fill_keys(
+                            array_keys($allFacets['id_category_default']), 0
+                        );
+                        if (isset($respFacets['id_category_default'])) {
+                            foreach ($respFacets['id_category_default'] as $k => $v) {
+                                $mergedFacets['id_category_default'][$k] = $v;
+                            }
+                        }
+                    }
+                    break;
+
                 case 'cond':
                     if (isset($allFacets['condition'])) {
                         $mergedFacets['condition'] = array_fill_keys(
@@ -345,6 +358,9 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
                         'type'   => 'map',
                         'map'    => ['in_stock' => 'stock'],
                     ];
+                    break;
+                case 'id_category_default':
+                    $config[$groupKey] = ['prefix' => 'cat', 'type' => 'direct'];
                     break;
                 case 'condition':
                     $config[$groupKey] = ['prefix' => 'cond', 'type' => 'direct'];
