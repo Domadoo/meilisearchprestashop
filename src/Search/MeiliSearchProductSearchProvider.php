@@ -39,6 +39,9 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
     public static $lastFacetDistribution = null;
 
+    /** @var array Filtres de contexte non-utilisateur (ex: page catégorie, fabricant) */
+    public static $contextFilters = [];
+
     public function __construct(TranslatorInterface $translator)
     {
         $this->translator = $translator;
@@ -138,6 +141,10 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     private function buildFilterArray(array $groupedFilters): array
     {
         $filter = [['visibility = both'], ['available_for_order = true']];
+
+        foreach (self::$contextFilters as $contextFilter) {
+            $filter[] = $contextFilter;
+        }
 
         foreach ($groupedFilters as $filtersOfType) {
             if (count($filtersOfType) === 1) {
@@ -300,6 +307,8 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
             $cookie->meilisearch_query = $search;
             unset($cookie->meilisearch_product_id);
         }
+
+        self::$contextFilters = [];
 
         return [
             'products'    => $this->formatProducts($productsChunk[$page - 1]),

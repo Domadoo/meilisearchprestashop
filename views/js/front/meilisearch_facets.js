@@ -137,9 +137,10 @@ function meilisearchBuildEncodedFacets() {
 // ── Requête Ajax ──────────────────────────────────────────────────────────────
 
 function meilisearchApplyFilters() {
-    const encoded  = meilisearchBuildEncodedFacets();
-    const fetchUrl = new URL(window.location.href);
-    const cleanUrl = new URL(window.location.href);
+    const encoded      = meilisearchBuildEncodedFacets();
+    const baseAjaxUrl  = window.meilisearch_listing_ajax_url || window.location.href;
+    const fetchUrl     = new URL(baseAjaxUrl);
+    const cleanUrl     = new URL(window.location.href);
 
     fetchUrl.searchParams.set('ajax', '1');
     fetchUrl.searchParams.set('page', '1');
@@ -308,7 +309,7 @@ function meilisearchRefreshFacetCounts() {
     const encoded = meilisearchBuildEncodedFacets();
     if (!encoded) return;
 
-    const url = new URL(window.location.href);
+    const url = new URL(window.meilisearch_listing_ajax_url || window.location.href);
     url.searchParams.set('ajax', '1');
     url.searchParams.set('page', '1');
     url.searchParams.set('encodedFacets', encoded);
@@ -370,6 +371,9 @@ document.addEventListener('click', function(e) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', function () {
+    // Les pages listing ont leur propre init dans meilisearch_listing.js
+    if (window.meilisearch_listing_context) return;
+
     meilisearchRestoreFiltersFromUrl();
 
     document.querySelectorAll('.meilisearch-facet-checkbox').forEach(cb => {

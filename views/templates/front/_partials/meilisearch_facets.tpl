@@ -1,4 +1,8 @@
-{assign var=hidden_facets value=['out_of_stock', 'visibility', 'quantity', 'available_for_order']}
+{if isset($meilisearch_hidden_facets) && $meilisearch_hidden_facets|@count > 0}
+  {assign var=hidden_facets value=$meilisearch_hidden_facets}
+{else}
+  {assign var=hidden_facets value=['out_of_stock', 'visibility', 'quantity', 'available_for_order']}
+{/if}
 
 <div class="meilisearch-facets">
 

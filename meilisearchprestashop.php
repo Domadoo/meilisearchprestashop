@@ -32,16 +32,25 @@ if (!defined('_PS_VERSION_')) {
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-use PrestaShop\PrestaShop\Core\Product\Search\FacetCollection; #Collection de facettes 
-use PrestaShop\PrestaShop\Core\Product\Search\Facet; #Classe de la facette 
-use PrestaShop\PrestaShop\Core\Product\Search\Filter; #Classe des filtres 
+use PrestaShop\PrestaShop\Core\Product\Search\FacetCollection; #Collection de facettes
+use PrestaShop\PrestaShop\Core\Product\Search\Facet; #Classe de la facette
+use PrestaShop\PrestaShop\Core\Product\Search\Filter; #Classe des filtres
 use PrestaShop\PrestaShop\Core\Product\Search\URLFragmentSerializer; #Pour transformer l'url
 
 use PrestaShop\Module\Classes\MeilisearchStatssearch;
+use PrestaShop\Module\MeiliSearch\Listing\MeilisearchListingControllerTrait;
 
 class Meilisearchprestashop extends Module
 {
+    use MeilisearchListingControllerTrait;
+
     protected $config_form = false;
+
+    /** @var array|null Cache des données de facettes pour les pages listing */
+    private $listingFacetsCache = null;
+
+    /** Pages de listing gérées par Meilisearch */
+    private const LISTING_PAGES = ['category', 'manufacturer', 'new-products', 'best-sales'];
 
     public function __construct()
     {
@@ -162,7 +171,7 @@ class Meilisearchprestashop extends Module
     }
 
     public function hookDisplayHeader(){
-        
+
         $this->trans('This product is no longer available.', [], 'Modules.Meilisearchprestashop.front');
 
         Media::addJsDef(['searchPlaceholder' =>  [
@@ -176,18 +185,79 @@ class Meilisearchprestashop extends Module
             'meilisearch'
         );
 
-        $cookie = $this->context->cookie;
-
         $this->context->smarty->assign([
             'meilisearchUrl' => $link,
         ]);
 
         $this->context->controller->addJS($this->_path.'views/js/front/meilisearch_searchbar.js');
         $this->context->controller->addCSS($this->_path.'views/css/front/meilisearch_searchbar.css');
+
+        // Injection pour les pages de listing (catégorie, fabricant, nouveaux, meilleures ventes)
+        $phpSelf = $this->context->controller->php_self ?? '';
+        if (!in_array($phpSelf, self::LISTING_PAGES)) {
+            return;
+        }
+
+        $facetsData = $this->getListingFacetsData($phpSelf);
+        if (!$facetsData) {
+            return;
+        }
+
+        $listingAjaxUrl = $this->context->link->getModuleLink($this->name, 'listing', [], true);
+        $context = $this->buildListingContext($phpSelf);
+
+        // Pré-charge les paramètres dans l'URL courante pour l'ajax listing
+        if ($context['id']) {
+            $listingAjaxUrl .= '?' . $context['param'] . '=' . $context['id'];
+        } else {
+            $listingAjaxUrl .= '?page_type=' . urlencode($phpSelf);
+        }
+
+        Media::addJsDef([
+            'meilisearch_listing_ajax_url' => $listingAjaxUrl,
+            'meilisearch_listing_context'  => $context,
+            'meilisearch_facets_config'    => $facetsData['js_config'],
+            'meilisearch_encoded_facets'   => Tools::getValue('encodedFacets', ''),
+        ]);
+
+        $this->context->controller->registerJavascript(
+            'meilisearch_facets_js',
+            'modules/' . $this->name . '/views/js/front/meilisearch_facets.js'
+        );
+        $this->context->controller->registerJavascript(
+            'meilisearch_listing_js',
+            'modules/' . $this->name . '/views/js/front/meilisearch_listing.js'
+        );
+        $this->context->controller->registerStylesheet(
+            'meilisearch_facets_css',
+            'modules/' . $this->name . '/views/css/front/meilisearch_facets.css'
+        );
     }
 
-    public function hookDisplayLeftColumn(){
+    public function hookDisplayLeftColumn()
+    {
+        $phpSelf = $this->context->controller->php_self ?? '';
+        if (!in_array($phpSelf, self::LISTING_PAGES)) {
+            return '';
+        }
 
+        $facetsData = $this->getListingFacetsData($phpSelf);
+        if (!$facetsData) {
+            return '';
+        }
+
+        $encodedFacets = Tools::getValue('encodedFacets', '');
+
+        $this->context->smarty->assign([
+            'meilisearch_facets'           => $facetsData['facets'],
+            'meilisearch_facet_labels'     => $facetsData['facet_labels'],
+            'meilisearch_grouped_features' => $facetsData['grouped_features'],
+            'meilisearch_hidden_facets'    => $facetsData['hidden_facets'],
+            'open_facets'                  => ['condition', 'availability', 'id_manufacturer'],
+            'current_facets_encoded'       => $encodedFacets,
+        ]);
+
+        return $this->display(__FILE__, 'views/templates/front/_partials/meilisearch_facets.tpl');
     }
 
     public function hookActionPresentProduct()
@@ -198,7 +268,7 @@ class Meilisearchprestashop extends Module
             $id_meilisearch_statssearch = (int)Tools::getValue('id_meilisearch_statssearch');
             $search = new MeilisearchStatssearch($id_meilisearch_statssearch);
             if(Validate::isLoadedObject($search)) {
-                
+
                 // @phpstan-ignore-next-line
                 $this->context->cookie->meilisearch_id = $id_meilisearch_statssearch;
                 // @phpstan-ignore-next-line
@@ -209,7 +279,7 @@ class Meilisearchprestashop extends Module
 
     public function hookActionCartUpdateQuantityBefore($params)
     {
-        if(isset($this->context->cookie->meilisearch_id) && isset($this->context->cookie->meilisearch_product_id) 
+        if(isset($this->context->cookie->meilisearch_id) && isset($this->context->cookie->meilisearch_product_id)
             && $params['product']->id == $this->context->cookie->meilisearch_product_id && $params['operator'] == 'up') {
 
             $newSearch = new MeilisearchStatssearch($this->context->cookie->meilisearch_id);
@@ -239,6 +309,140 @@ class Meilisearchprestashop extends Module
             PrestaShopLogger::addLog('Error validation order Meilisearch : '.$th->getMessage(), 3);
         }
     }
+
+    // ── Helpers pages listing ─────────────────────────────────────────────────
+
+    /**
+     * Retourne les données de facettes pour les pages listing (avec cache interne).
+     * Appelé dans hookDisplayHeader et hookDisplayLeftColumn.
+     */
+    private function getListingFacetsData(string $phpSelf): ?array
+    {
+        if ($this->listingFacetsCache !== null) {
+            return $this->listingFacetsCache;
+        }
+
+        $context    = $this->buildListingContext($phpSelf);
+        $isoLang    = $this->context->language->iso_code;
+        $meiliUrl   = Configuration::get('MEILISEARCHPRESTASHOP_URL')
+            . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX')
+            . 'products_' . $isoLang . '/search';
+
+        $baseFilter = [['visibility = both'], ['available_for_order = true']];
+        foreach ($context['context_filters'] as $cf) {
+            $baseFilter[] = $cf;
+        }
+
+        // Requête facettes (limit=0 = pas de produits, juste la distribution)
+        $response = $this->requestCurl($meiliUrl, json_encode([
+            'q'      => '',
+            'limit'  => 0,
+            'filter' => $baseFilter,
+            'facets' => ['*'],
+        ]));
+
+        if (!$response || !isset($response->facetDistribution)) {
+            return null;
+        }
+
+        $facets = json_decode(json_encode($response->facetDistribution), true) ?? [];
+
+        // Comptage stock en stock (estimatedTotalHits avec quantity >= 1, limit=0)
+        $stockResponse = $this->requestCurl($meiliUrl, json_encode([
+            'q'      => '',
+            'limit'  => 0,
+            'filter' => array_merge($baseFilter, ['quantity >= 1']),
+            'facets' => [],
+        ]));
+        $facets['availability'] = [
+            'in_stock' => ($stockResponse && isset($stockResponse->estimatedTotalHits))
+                ? (int)$stockResponse->estimatedTotalHits
+                : 0,
+        ];
+
+        $facetLabels  = $this->getFacetLabels();
+        $facetsConfig = $this->buildFacetsJsConfig($facets, $facetLabels);
+
+        $hiddenFacets = array_merge(
+            ['out_of_stock', 'visibility', 'quantity', 'available_for_order'],
+            $context['hide_facets']
+        );
+
+        $groupedFeatureValues = [];
+        if (isset($facets['feature_values'])) {
+            foreach ($facets['feature_values'] as $key => $count) {
+                $parts     = explode('-', $key, 2);
+                $featureId = $parts[0];
+                $groupedFeatureValues[$featureId]['label']        = $facetLabels['feature_names'][$featureId] ?? 'Feature';
+                $groupedFeatureValues[$featureId]['values'][$key] = $count;
+            }
+        }
+
+        $this->listingFacetsCache = [
+            'facets'           => $facets,
+            'facet_labels'     => $facetLabels,
+            'js_config'        => $facetsConfig,
+            'hidden_facets'    => $hiddenFacets,
+            'grouped_features' => $groupedFeatureValues,
+        ];
+
+        return $this->listingFacetsCache;
+    }
+
+    /**
+     * Retourne les informations de contexte selon le type de page.
+     */
+    private function buildListingContext(string $phpSelf): array
+    {
+        $ctrl = $this->context->controller;
+
+        switch ($phpSelf) {
+            case 'category':
+                $id = (int)Tools::getValue('id_category', $ctrl->category->id ?? 0);
+                return [
+                    'type'            => 'category',
+                    'id'              => $id,
+                    'param'           => 'id_category',
+                    'context_filters' => $id ? ['ids_category = ' . $id] : [],
+                    'hide_facets'     => ['ids_category'],
+                ];
+            case 'manufacturer':
+                $id = (int)Tools::getValue('id_manufacturer', $ctrl->manufacturer->id ?? 0);
+                return [
+                    'type'            => 'manufacturer',
+                    'id'              => $id,
+                    'param'           => 'id_manufacturer',
+                    'context_filters' => $id ? ['id_manufacturer = ' . $id] : [],
+                    'hide_facets'     => ['id_manufacturer'],
+                ];
+            case 'new-products':
+                return [
+                    'type'            => 'new-products',
+                    'id'              => 0,
+                    'param'           => 'page_type',
+                    'context_filters' => [],
+                    'hide_facets'     => [],
+                ];
+            case 'best-sales':
+                return [
+                    'type'            => 'best-sales',
+                    'id'              => 0,
+                    'param'           => 'page_type',
+                    'context_filters' => [],
+                    'hide_facets'     => [],
+                ];
+            default:
+                return [
+                    'type'            => '',
+                    'id'              => 0,
+                    'param'           => '',
+                    'context_filters' => [],
+                    'hide_facets'     => [],
+                ];
+        }
+    }
+
+    // ── cURL helper ───────────────────────────────────────────────────────────
 
     public function requestCurl($url, $payload = null, $request = false)
     {

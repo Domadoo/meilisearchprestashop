@@ -32,7 +32,7 @@
 {block name='content'}
   {block name='product_facets'}
     <div id="left-column" class="col-xs-12 col-sm-4 col-md-3">
-      {include file='module:meilisearchprestashop/views/templates/front/_partials/meilisearch_facets.tpl'}
+      {include file='module:meilisearchprestashop/views/templates/front/_partials/meilisearch_facets.tpl' meilisearch_hidden_facets=$meilisearch_hidden_facets|default:[]}
     </div>
   {/block}
 
