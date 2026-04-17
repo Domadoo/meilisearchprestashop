@@ -27,6 +27,9 @@ function upgrade_module_1_1_6($module)
 {
     $module = Module::getInstanceByName('meilisearchprestashop');
 
+    $module->uninstallTab();
+    $module->callInstallTab();
+
     return $module->registerHook('displayLeftColumn')
         && $module->registerHook('displayHeader');
 }
