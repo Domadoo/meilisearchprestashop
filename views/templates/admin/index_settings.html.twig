@@ -1,0 +1,31 @@
+{% extends '@PrestaShop/Admin/layout.html.twig' %}
+
+{% block pageTitle %}Index — {{ uid }}{% endblock %}
+
+{% block content %}
+<div class="nav-tabs-custom mb-3">
+  <ul class="nav nav-tabs" role="tablist">
+    <li class="nav-item">
+      <a class="nav-link" href="{{ path('admin_meilisearch_configuration_index') }}">Settings</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link active" href="{{ path('admin_meilisearch_index_index') }}">Indexation</a>
+    </li>
+  </ul>
+</div>
+
+<div class="mb-3">
+  <a href="{{ path('admin_meilisearch_index_index') }}" class="btn btn-outline-secondary btn-sm">
+    &larr; Retour à la liste
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>{{ uid }}</h3>
+  </div>
+  <div class="card-body">
+    <p class="text-muted">Page en cours de construction.</p>
+  </div>
+</div>
+{% endblock %}

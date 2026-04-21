@@ -1,14 +1,62 @@
-admin_meilisearchconfiguration_index:
-  path: /admin/meilisearch/configuration
+admin_meilisearch_index_index:
+  path: /admin/meilisearch/index
   methods: [GET]
   defaults:
-    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchConfigurationController::indexAction'
+    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchIndexController::indexAction'
 
-admin_meilisearchconfiguration_index_products:
+admin_meilisearch_index_products:
   path: /admin/meilisearch/index-products
   methods: [POST]
   defaults:
-    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchConfigurationController::indexProductsAction'
+    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchIndexController::indexProductsAction'
+
+admin_meilisearch_index_settings:
+  path: /admin/meilisearch/index/{uid}/settings
+  methods: [GET]
+  defaults:
+    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchIndexSettingsController::indexAction'
+
+admin_meilisearch_index_delete:
+  path: /admin/meilisearch/index/{uid}/delete
+  methods: [POST]
+  defaults:
+    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchIndexController::deleteAction'
+
+admin_meilisearch_index_bulk_delete:
+  path: /admin/meilisearch/index/bulk-delete
+  methods: [POST]
+  defaults:
+    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchIndexController::bulkDeleteAction'
+
+admin_meilisearch_index_flush:
+  path: /admin/meilisearch/index/{uid}/flush
+  methods: [POST]
+  defaults:
+    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchIndexController::flushAction'
+
+admin_meilisearch_index_bulk_flush:
+  path: /admin/meilisearch/index/bulk-flush
+  methods: [POST]
+  defaults:
+    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchIndexController::bulkFlushAction'
+
+admin_meilisearch_index_reindex_language:
+  path: /admin/meilisearch/index/{uid}/reindex
+  methods: [POST]
+  defaults:
+    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchIndexController::reindexLanguageAction'
+
+admin_meilisearch_index_bulk_reindex:
+  path: /admin/meilisearch/index/bulk-reindex
+  methods: [POST]
+  defaults:
+    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchIndexController::bulkReindexAction'
+
+admin_meilisearch_configuration_index:
+  path: /admin/meilisearch/configuration
+  methods: [GET, POST]
+  defaults:
+    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchConfigurationController::indexAction'
 
 admin_meilisearch_stats_index:
   path: /admin/meilisearch/stats

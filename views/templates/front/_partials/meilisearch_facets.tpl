@@ -1,4 +1,8 @@
-{assign var=hidden_facets value=['out_of_stock', 'visibility', 'quantity', 'available_for_order']}
+{if isset($meilisearch_hidden_facets) && $meilisearch_hidden_facets|@count > 0}
+  {assign var=hidden_facets value=$meilisearch_hidden_facets}
+{else}
+  {assign var=hidden_facets value=['out_of_stock', 'visibility', 'quantity', 'available_for_order']}
+{/if}
 
 <div class="meilisearch-facets">
 
@@ -21,7 +25,7 @@
       {assign var=group_label value={l s='Availability' mod='meilisearchprestashop'}}
     {elseif $group_key == 'id_manufacturer'}
       {assign var=group_label value={l s='Brand' mod='meilisearchprestashop'}}
-    {elseif $group_key == 'id_category_default'}
+    {elseif $group_key == 'ids_category'}
       {assign var=group_label value={l s='Category' mod='meilisearchprestashop'}}
     {elseif $group_key == 'feature_values'}
       {assign var=group_label value={l s='Features' mod='meilisearchprestashop'}}

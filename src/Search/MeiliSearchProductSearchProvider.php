@@ -39,6 +39,9 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
     public static $lastFacetDistribution = null;
 
+    /** @var array Filtres de contexte non-utilisateur (ex: page catégorie, fabricant) */
+    public static $contextFilters = [];
+
     public function __construct(TranslatorInterface $translator)
     {
         $this->translator = $translator;
@@ -118,7 +121,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                     }
                     break;
                 case 'cat':
-                    $groupedFilters['cat'][] = 'id_category_default = ' . (int)$value;
+                    $groupedFilters['cat'][] = 'ids_category = ' . (int)$value;
                     break;
                 case 'cond':
                     $groupedFilters['cond'][] = 'condition = "' . pSQL($value) . '"';
@@ -139,6 +142,10 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     {
         $filter = [['visibility = both'], ['available_for_order = true']];
 
+        foreach (self::$contextFilters as $contextFilter) {
+            $filter[] = $contextFilter;
+        }
+
         foreach ($groupedFilters as $filtersOfType) {
             if (count($filtersOfType) === 1) {
                 $filter[] = $filtersOfType[0];
@@ -155,7 +162,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         switch ($groupKey) {
             case 'manu':  return 'id_manufacturer';
             case 'avail': return 'availability';
-            case 'cat':   return 'id_category_default';
+            case 'cat':   return 'ids_category';
             case 'cond':  return 'condition';
             default:
                 if (in_array($groupKey, $featureMap)) {
@@ -300,6 +307,8 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
             $cookie->meilisearch_query = $search;
             unset($cookie->meilisearch_product_id);
         }
+
+        self::$contextFilters = [];
 
         return [
             'products'    => $this->formatProducts($productsChunk[$page - 1]),
