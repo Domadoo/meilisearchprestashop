@@ -74,17 +74,45 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
 
     public function getTranslatedText()
     {
-        return array(
-            'indexingMeilisearchText' => $this->module->l('Meilisearch indexing', 'meilisearchindexcontroller'),
-            'indexingMeillisearchProductsText' => $this->module->l('Index products in Meilisearch', 'meilisearchindexcontroller'),
-        );
+        $ctx = 'meilisearchindexcontroller';
+        return [
+            'indexingMeilisearchText'          => $this->module->l('Meilisearch indexing', $ctx),
+            'indexingMeillisearchProductsText' => $this->module->l('Index products in Meilisearch', $ctx),
+            'indexationTitle'                  => $this->module->l('Indexation', $ctx),
+            'settingsTitle'                    => $this->module->l('Settings', $ctx),
+            'chooseLanguage'                   => $this->module->l('-- Choose a language --', $ctx),
+            'reindexLanguageBtn'               => $this->module->l('Reindex this language', $ctx),
+            'noIndexFound'                     => $this->module->l('No index found.', $ctx),
+            'bulkActionsPlaceholder'           => $this->module->l('-- Bulk actions --', $ctx),
+            'bulkReindexLabel'                 => $this->module->l('Reindex selection', $ctx),
+            'bulkFlushLabel'                   => $this->module->l('Flush selection', $ctx),
+            'bulkDeleteLabel'                  => $this->module->l('Delete selection', $ctx),
+            'applyLabel'                       => $this->module->l('Apply', $ctx),
+            'colCreatedAt'                     => $this->module->l('Created at', $ctx),
+            'colUpdatedAt'                     => $this->module->l('Updated at', $ctx),
+            'colActions'                       => $this->module->l('Actions', $ctx),
+            'btnEdit'                          => $this->module->l('Edit', $ctx),
+            'btnReindex'                       => $this->module->l('Reindex', $ctx),
+            'btnFlush'                         => $this->module->l('Flush', $ctx),
+            'btnDelete'                        => $this->module->l('Delete', $ctx),
+            'confirmReindexMsg'                => $this->module->l('Reindex index "%s" (replaces all documents)?', $ctx),
+            'confirmFlushMsg'                  => $this->module->l('Flush index "%s" (delete all documents)?', $ctx),
+            'confirmDeleteMsg'                 => $this->module->l('Delete index "%s"?', $ctx),
+            'confirmBulkReindex'               => $this->module->l('Reindex the %d selected index(es)?', $ctx),
+            'confirmBulkFlush'                 => $this->module->l('Flush the %d selected index(es) (delete all documents)?', $ctx),
+            'confirmBulkDelete'                => $this->module->l('Delete the %d selected index(es)?', $ctx),
+            'pleaseChooseLang'                 => $this->module->l('Please choose a language.', $ctx),
+            'confirmReindexLang'               => $this->module->l('Reindex language "%s"?', $ctx),
+            'backToList'                       => $this->module->l('Back to list', $ctx),
+            'pageUnderConstruction'            => $this->module->l('Page under construction.', $ctx),
+        ];
     }
 
     public function deleteAction($uid)
     {
         $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
         $this->module->requestCurl($meiliUrl . 'indexes/' . $uid, null, 'DELETE');
-        $this->addFlash('success', sprintf('Index "%s" supprimé.', $uid));
+        $this->addFlash('success', sprintf($this->module->l('Index "%s" deleted.', 'meilisearchindexcontroller'), $uid));
 
         return $this->redirectToRoute('admin_meilisearch_index_index');
     }
@@ -93,7 +121,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
     {
         $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
         $this->module->requestCurl($meiliUrl . 'indexes/' . $uid . '/documents', null, 'DELETE');
-        $this->addFlash('success', sprintf('Documents de l\'index "%s" supprimés.', $uid));
+        $this->addFlash('success', sprintf($this->module->l('Documents of index "%s" deleted.', 'meilisearchindexcontroller'), $uid));
 
         return $this->redirectToRoute('admin_meilisearch_index_index');
     }
@@ -107,7 +135,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             $this->module->requestCurl($meiliUrl . 'indexes/' . $uid . '/documents', null, 'DELETE');
         }
 
-        $this->addFlash('success', sprintf('%d index vidé(s).', count($uids)));
+        $this->addFlash('success', sprintf($this->module->l('%d index(es) flushed.', 'meilisearchindexcontroller'), count($uids)));
 
         return $this->redirectToRoute('admin_meilisearch_index_index');
     }
@@ -121,7 +149,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             $this->module->requestCurl($meiliUrl . 'indexes/' . $uid, null, 'DELETE');
         }
 
-        $this->addFlash('success', sprintf('%d index supprimé(s).', count($uids)));
+        $this->addFlash('success', sprintf($this->module->l('%d index(es) deleted.', 'meilisearchindexcontroller'), count($uids)));
 
         return $this->redirectToRoute('admin_meilisearch_index_index');
     }
@@ -132,7 +160,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             $this->indexLanguage($language);
         }
 
-        $this->addFlash('success', 'Produits indexés avec succès dans Meilisearch.');
+        $this->addFlash('success', $this->module->l('Products successfully indexed in Meilisearch.', 'meilisearchindexcontroller'));
 
         return $this->redirectToRoute('admin_meilisearch_index_index');
     }
@@ -150,12 +178,12 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
         foreach (Language::getLanguages() as $language) {
             if ($language['iso_code'] === $iso_code) {
                 $this->indexLanguage($language);
-                $this->addFlash('success', sprintf('Index "%s" réindexé avec succès.', $uid));
+                $this->addFlash('success', sprintf($this->module->l('Index "%s" successfully reindexed.', 'meilisearchindexcontroller'), $uid));
                 return $this->redirectToRoute('admin_meilisearch_index_index');
             }
         }
 
-        $this->addFlash('error', sprintf('Impossible de réindexer l\'index "%s" : langue introuvable.', $uid));
+        $this->addFlash('error', sprintf($this->module->l('Unable to reindex index "%s": language not found.', 'meilisearchindexcontroller'), $uid));
 
         return $this->redirectToRoute('admin_meilisearch_index_index');
     }
@@ -178,7 +206,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             }
         }
 
-        $this->addFlash('success', sprintf('%d index réindexé(s) avec succès.', $count));
+        $this->addFlash('success', sprintf($this->module->l('%d index(es) successfully reindexed.', 'meilisearchindexcontroller'), $count));
 
         return $this->redirectToRoute('admin_meilisearch_index_index');
     }

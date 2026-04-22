@@ -45,10 +45,15 @@ class MeiliSearchIndexSettingsController extends FrameworkBundleAdminController
             $settings = $this->module->requestCurl($meiliUrl . 'indexes/' . $uid . '/settings');
         }
 
+        $ctx = 'meilisearchindexsettingscontroller';
         return $this->render('@Modules/meilisearchprestashop/views/templates/admin/index_settings.html.twig', [
-            'uid' => $uid,
-            'index' => $index,
-            'settings' => $settings,
+            'uid'                  => $uid,
+            'index'                => $index,
+            'settings'             => $settings,
+            'settingsTitle'        => $this->module->l('Settings', $ctx),
+            'indexationTitle'      => $this->module->l('Indexation', $ctx),
+            'backToList'           => $this->module->l('Back to list', $ctx),
+            'pageUnderConstruction' => $this->module->l('Page under construction.', $ctx),
         ]);
     }
 }

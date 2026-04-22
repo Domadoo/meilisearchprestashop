@@ -204,9 +204,10 @@ function meilisearchUpdateProducts(data) {
             const total = data.pagination && data.pagination.total_items
                 ? data.pagination.total_items
                 : totalCount;
+            var i18n = window.meilisearch_i18n || {};
             counter.innerHTML = total > 1
-                ? 'There are <span id="js-product-list-top">' + total + '</span> products.'
-                : 'There is <span>' + total + '</span> product.';
+                ? (i18n.products_many || 'There are %d products.').replace('%d', total)
+                : (i18n.products_one || 'There is 1 product.');
         }
     }
 
@@ -363,6 +364,43 @@ document.addEventListener('click', function(e) {
         url.searchParams.set('encodedFacets', encodedFacets);
     } else {
         url.searchParams.delete('encodedFacets');
+    }
+
+    // Sur les pages listing, les liens de pagination pointent vers listing.php (AJAX only).
+    // Il faut faire une requête AJAX et mettre à jour l'URL réelle (catégorie/fabricant),
+    // sans naviguer vers listing.php qui redirigerait vers l'accueil.
+    if (window.meilisearch_listing_context && window.meilisearch_listing_ajax_url) {
+        const page  = url.searchParams.get('page') || '1';
+        const order = url.searchParams.get('order') || '';
+
+        const fetchUrl = new URL(window.meilisearch_listing_ajax_url);
+        fetchUrl.searchParams.set('page', page);
+        if (order)         fetchUrl.searchParams.set('order', order);
+        if (encodedFacets) fetchUrl.searchParams.set('encodedFacets', encodedFacets);
+        else               fetchUrl.searchParams.delete('encodedFacets');
+
+        const browserUrl = new URL(window.location.href);
+        browserUrl.searchParams.set('page', page);
+        if (order)         browserUrl.searchParams.set('order', order);
+        else               browserUrl.searchParams.delete('order');
+        if (encodedFacets) browserUrl.searchParams.set('encodedFacets', encodedFacets);
+        else               browserUrl.searchParams.delete('encodedFacets');
+
+        meilisearchShowLoader();
+        fetch(fetchUrl.toString(), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            meilisearchUpdateProducts(data);
+            history.pushState(null, '', browserUrl.toString());
+            meilisearchUpdateSortUrls();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        })
+        .catch(function(err) { console.error('[Meilisearch] Erreur pagination listing:', err); })
+        .finally(function() { meilisearchHideLoader(); });
+
+        return;
     }
 
     window.location.href = url.toString();

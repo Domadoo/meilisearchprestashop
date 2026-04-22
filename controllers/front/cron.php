@@ -46,7 +46,7 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
             exit(http_response_code(200));
         }else {
             echo 'error';
-            PrestaShopLogger::addLog($this->l('Erreur CRON lors de action : ' . Tools::getValue('action')), 3);
+            PrestaShopLogger::addLog($this->l('CRON error for action: ', 'cron') . Tools::getValue('action'), 3);
             exit(http_response_code(400));
         }
 
