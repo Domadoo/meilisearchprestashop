@@ -102,3 +102,17 @@ $_MODULE['<{meilisearchprestashop}prestashop>meilisearchconfigurationcontroller_
 $_MODULE['<{meilisearchprestashop}prestashop>meilisearchconfigurationcontroller_4f46efb6578b87e8df1555d697628570'] = 'Enter a private key, for example:';
 $_MODULE['<{meilisearchprestashop}prestashop>meilisearchconfigurationcontroller_c9cc8cce247e49bae79f15173ce97354'] = 'Save';
 $_MODULE['<{meilisearchprestashop}prestashop>meilisearchconfigurationcontroller_4d9ac946f92f7211e40671513c72fd09'] = 'Settings saved successfully.';
+
+$_MODULE['<{meilisearchprestashop}prestashop>meilisearch_facets_f3f43e30c8c7d78c6ac0173515e57a00'] = 'Filter';
+$_MODULE['<{meilisearchprestashop}prestashop>meilisearch_facets_81aa2078d1eceede831b2976dbf32e62'] = 'Rensa alla';
+$_MODULE['<{meilisearchprestashop}prestashop>meilisearch_facets_9e2941b3c81256fac10392aaca4ccfde'] = 'Skick';
+$_MODULE['<{meilisearchprestashop}prestashop>meilisearch_facets_faeaec9eda6bc4c8cb6e1a9156a858be'] = 'Tillgänglighet';
+$_MODULE['<{meilisearchprestashop}prestashop>meilisearch_facets_1be6f9eb563f3bf85c78b4219bf09de9'] = 'Märke';
+$_MODULE['<{meilisearchprestashop}prestashop>meilisearch_facets_3adbdb3ac060038aa0e6e6c138ef9873'] = 'Kategori';
+$_MODULE['<{meilisearchprestashop}prestashop>meilisearch_facets_98f770b0af18ca763421bac22b4b6805'] = 'Egenskaper';
+$_MODULE['<{meilisearchprestashop}prestashop>meilisearch_facets_addec426932e71323700afa1911f8f1c'] = 'fler';
+$_MODULE['<{meilisearchprestashop}prestashop>meilisearch_facets_03c2e7e41ffc181a4e84080b4710e81e'] = 'Ny';
+$_MODULE['<{meilisearchprestashop}prestashop>meilisearch_facets_6da03a74721a0554b7143254225cc08a'] = 'Renoverad';
+$_MODULE['<{meilisearchprestashop}prestashop>meilisearch_facets_019d1ca7d50cc54b995f60d456435e87'] = 'Begagnad';
+$_MODULE['<{meilisearchprestashop}prestashop>meilisearch_facets_fcebe56087b9373f15514831184fa572'] = 'I lager';
+$_MODULE['<{meilisearchprestashop}prestashop>meilisearch_searchbar_13348442cc6a27032d2b4aa28b75a5d3'] = 'Sök';
