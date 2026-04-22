@@ -204,9 +204,10 @@ function meilisearchUpdateProducts(data) {
             const total = data.pagination && data.pagination.total_items
                 ? data.pagination.total_items
                 : totalCount;
+            var i18n = window.meilisearch_i18n || {};
             counter.innerHTML = total > 1
-                ? 'There are <span id="js-product-list-top">' + total + '</span> products.'
-                : 'There is <span>' + total + '</span> product.';
+                ? (i18n.products_many || 'There are %d products.').replace('%d', total)
+                : (i18n.products_one || 'There is 1 product.');
         }
     }
 

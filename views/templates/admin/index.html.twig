@@ -1,15 +1,28 @@
 {% extends '@PrestaShop/Admin/layout.html.twig' %}
 
-{% block pageTitle %}Indexation{% endblock %}
+{% block pageTitle %}{{ indexationTitle }}{% endblock %}
 
 {% block content %}
+<script>
+  var msI18n = {
+    confirmReindex: {{ confirmReindexMsg|json_encode|raw }},
+    confirmFlush: {{ confirmFlushMsg|json_encode|raw }},
+    confirmDelete: {{ confirmDeleteMsg|json_encode|raw }},
+    confirmBulkReindex: {{ confirmBulkReindex|json_encode|raw }},
+    confirmBulkFlush: {{ confirmBulkFlush|json_encode|raw }},
+    confirmBulkDelete: {{ confirmBulkDelete|json_encode|raw }},
+    pleaseChooseLang: {{ pleaseChooseLang|json_encode|raw }},
+    confirmReindexLang: {{ confirmReindexLang|json_encode|raw }}
+  };
+</script>
+
 <div class="nav-tabs-custom mb-3">
   <ul class="nav nav-tabs" role="tablist">
     <li class="nav-item">
-      <a class="nav-link" href="{{ path('admin_meilisearch_configuration_index') }}">Settings</a>
+      <a class="nav-link" href="{{ path('admin_meilisearch_configuration_index') }}">{{ settingsTitle }}</a>
     </li>
     <li class="nav-item">
-      <a class="nav-link active" href="{{ path('admin_meilisearch_index_index') }}">Indexation</a>
+      <a class="nav-link active" href="{{ path('admin_meilisearch_index_index') }}">{{ indexationTitle }}</a>
     </li>
   </ul>
 </div>
@@ -30,7 +43,7 @@
       <form method="POST" action="" id="reindex-lang-form" class="form-inline mt-2">
         <input type="hidden" name="_token" id="reindex-lang-token" value="">
         <select name="_lang" class="form-control form-control-sm mr-2" id="reindex-lang-select">
-          <option value="">-- Choisir une langue --</option>
+          <option value="">{{ chooseLanguage }}</option>
           {% for lang in languages %}
             {% set uid = lang.iso_code %}
             <option
@@ -40,7 +53,7 @@
             >{{ lang.name }} ({{ lang.iso_code }})</option>
           {% endfor %}
         </select>
-        <button type="button" class="btn btn-sm btn-outline-primary" id="reindex-lang-btn">Réindexer cette langue</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="reindex-lang-btn">{{ reindexLanguageBtn }}</button>
       </form>
     </div>
   </div>
@@ -53,7 +66,7 @@
     </div>
     <div class="card-body">
       {% if indexes is empty %}
-        <p class="text-muted">Aucun index trouvé.</p>
+        <p class="text-muted">{{ noIndexFound }}</p>
       {% else %}
         {# Formulaire suppression individuelle #}
         <form id="single-delete-form" method="POST" action="" style="display:none">
@@ -88,12 +101,12 @@
 
         <div class="d-flex align-items-center mb-2 px-1">
           <select class="form-control form-control-sm w-auto mr-2" id="bulk-action-select">
-            <option value="">-- Actions groupées --</option>
-            <option value="reindex">Réindexer la sélection</option>
-            <option value="flush">Vider la sélection</option>
-            <option value="delete">Supprimer la sélection</option>
+            <option value="">{{ bulkActionsPlaceholder }}</option>
+            <option value="reindex">{{ bulkReindexLabel }}</option>
+            <option value="flush">{{ bulkFlushLabel }}</option>
+            <option value="delete">{{ bulkDeleteLabel }}</option>
           </select>
-          <button type="button" class="btn btn-sm btn-outline-danger" id="bulk-action-apply">Appliquer</button>
+          <button type="button" class="btn btn-sm btn-outline-danger" id="bulk-action-apply">{{ applyLabel }}</button>
         </div>
 
         <table class="table mb-0">
@@ -102,9 +115,9 @@
               <th style="width:40px"><input type="checkbox" id="select-all"></th>
               <th>UID</th>
               <th>Documents</th>
-              <th>Créé le</th>
-              <th>Mis à jour le</th>
-              <th>Actions</th>
+              <th>{{ colCreatedAt }}</th>
+              <th>{{ colUpdatedAt }}</th>
+              <th>{{ colActions }}</th>
             </tr>
           </thead>
           <tbody>
@@ -116,22 +129,22 @@
               <td>{{ index.createdAt ? index.createdAt|slice(0, 19)|replace({'T': ' '}) : '—' }}</td>
               <td>{{ index.updatedAt ? index.updatedAt|slice(0, 19)|replace({'T': ' '}) : '—' }}</td>
               <td>
-                <a href="{{ path('admin_meilisearch_index_settings', {uid: index.uid}) }}" class="btn btn-sm btn-outline-secondary">Modifier</a>
+                <a href="{{ path('admin_meilisearch_index_settings', {uid: index.uid}) }}" class="btn btn-sm btn-outline-secondary">{{ btnEdit }}</a>
                 <button type="button" class="btn btn-sm btn-outline-primary"
                   data-action="{{ path('admin_meilisearch_index_reindex_language', {uid: index.uid}) }}"
                   data-token="{{ csrf_token('reindex_index_' ~ index.uid) }}"
                   data-uid="{{ index.uid }}"
-                  onclick="confirmReindex(this)">Réindexer</button>
+                  onclick="confirmReindex(this)">{{ btnReindex }}</button>
                 <button type="button" class="btn btn-sm btn-outline-warning"
                   data-action="{{ path('admin_meilisearch_index_flush', {uid: index.uid}) }}"
                   data-token="{{ csrf_token('flush_index_' ~ index.uid) }}"
                   data-uid="{{ index.uid }}"
-                  onclick="confirmFlush(this)">Vider</button>
+                  onclick="confirmFlush(this)">{{ btnFlush }}</button>
                 <button type="button" class="btn btn-sm btn-outline-danger"
                   data-action="{{ path('admin_meilisearch_index_delete', {uid: index.uid}) }}"
                   data-token="{{ csrf_token('delete_index_' ~ index.uid) }}"
                   data-uid="{{ index.uid }}"
-                  onclick="confirmDelete(this)">Supprimer</button>
+                  onclick="confirmDelete(this)">{{ btnDelete }}</button>
               </td>
             </tr>
             {% endfor %}
@@ -140,7 +153,7 @@
 
         <script>
           function confirmReindex(btn) {
-            if (!confirm('Réindexer l\'index « ' + btn.dataset.uid + ' » (remplace tous les documents) ?')) return;
+            if (!confirm(msI18n.confirmReindex.replace('%s', btn.dataset.uid))) return;
             var form = document.getElementById('single-reindex-form');
             form.action = btn.dataset.action;
             document.getElementById('single-reindex-token').value = btn.dataset.token;
@@ -148,7 +161,7 @@
           }
 
           function confirmFlush(btn) {
-            if (!confirm('Vider l\'index « ' + btn.dataset.uid + ' » (supprimer tous les documents) ?')) return;
+            if (!confirm(msI18n.confirmFlush.replace('%s', btn.dataset.uid))) return;
             var form = document.getElementById('single-flush-form');
             form.action = btn.dataset.action;
             document.getElementById('single-flush-token').value = btn.dataset.token;
@@ -156,7 +169,7 @@
           }
 
           function confirmDelete(btn) {
-            if (!confirm('Supprimer l\'index « ' + btn.dataset.uid + ' » ?')) return;
+            if (!confirm(msI18n.confirmDelete.replace('%s', btn.dataset.uid))) return;
             var form = document.getElementById('single-delete-form');
             form.action = btn.dataset.action;
             document.getElementById('single-delete-token').value = btn.dataset.token;
@@ -173,9 +186,9 @@
             if (!action || !checked.length) return;
 
             var messages = {
-              reindex: 'Réindexer les ' + checked.length + ' index sélectionné(s) ?',
-              flush: 'Vider les ' + checked.length + ' index sélectionné(s) (supprimer tous leurs documents) ?',
-              delete: 'Supprimer les ' + checked.length + ' index sélectionné(s) ?'
+              reindex: msI18n.confirmBulkReindex.replace('%d', checked.length),
+              flush: msI18n.confirmBulkFlush.replace('%d', checked.length),
+              delete: msI18n.confirmBulkDelete.replace('%d', checked.length)
             };
             var forms = { reindex: 'bulk-reindex-form', flush: 'bulk-flush-form', delete: 'bulk-delete-form' };
 
@@ -201,8 +214,8 @@
   document.getElementById('reindex-lang-btn').addEventListener('click', function () {
     var select = document.getElementById('reindex-lang-select');
     var opt = select.options[select.selectedIndex];
-    if (!opt.value) { alert('Veuillez choisir une langue.'); return; }
-    if (!confirm('Réindexer la langue « ' + opt.text + ' » ?')) return;
+    if (!opt.value) { alert(msI18n.pleaseChooseLang); return; }
+    if (!confirm(msI18n.confirmReindexLang.replace('%s', opt.text))) return;
     var form = document.getElementById('reindex-lang-form');
     form.action = opt.dataset.action;
     document.getElementById('reindex-lang-token').value = opt.dataset.token;

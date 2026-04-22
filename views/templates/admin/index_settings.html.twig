@@ -6,17 +6,17 @@
 <div class="nav-tabs-custom mb-3">
   <ul class="nav nav-tabs" role="tablist">
     <li class="nav-item">
-      <a class="nav-link" href="{{ path('admin_meilisearch_configuration_index') }}">Settings</a>
+      <a class="nav-link" href="{{ path('admin_meilisearch_configuration_index') }}">{{ settingsTitle }}</a>
     </li>
     <li class="nav-item">
-      <a class="nav-link active" href="{{ path('admin_meilisearch_index_index') }}">Indexation</a>
+      <a class="nav-link active" href="{{ path('admin_meilisearch_index_index') }}">{{ indexationTitle }}</a>
     </li>
   </ul>
 </div>
 
 <div class="mb-3">
   <a href="{{ path('admin_meilisearch_index_index') }}" class="btn btn-outline-secondary btn-sm">
-    &larr; Retour à la liste
+    &larr; {{ backToList }}
   </a>
 </div>
 
@@ -25,7 +25,7 @@
     <h3>{{ uid }}</h3>
   </div>
   <div class="card-body">
-    <p class="text-muted">Page en cours de construction.</p>
+    <p class="text-muted">{{ pageUnderConstruction }}</p>
   </div>
 </div>
 {% endblock %}

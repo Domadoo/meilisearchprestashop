@@ -216,6 +216,10 @@ class Meilisearchprestashop extends Module
             'meilisearch_listing_context'  => $context,
             'meilisearch_facets_config'    => $facetsData['js_config'],
             'meilisearch_encoded_facets'   => Tools::getValue('encodedFacets', ''),
+            'meilisearch_i18n'             => [
+                'products_many' => $this->l('There are %d products.'),
+                'products_one'  => $this->l('There is 1 product.'),
+            ],
         ]);
 
         $this->context->controller->registerJavascript(

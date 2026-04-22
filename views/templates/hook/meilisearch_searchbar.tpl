@@ -20,7 +20,7 @@
       type="text"
       name="s"
       id="search-input"
-      placeholder="Search"
+      placeholder="{l s='Search' mod='meilisearchprestashop'}"
       oninput="toggleClearButton()"
       value="{$search_string|escape:'html':'UTF-8'}"
     />

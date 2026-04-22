@@ -45,9 +45,20 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
             $this->addFlash('success', $this->module->l('Settings saved successfully.', 'meilisearchconfigurationcontroller'));
         }
 
+        $ctx = 'meilisearchconfigurationcontroller';
         return $this->render('@Modules/meilisearchprestashop/views/templates/admin/configuration.html.twig', [
-            'config'           => $this->getConfigValues(),
-            'cronTokenExample' => Tools::passwdGen(32),
+            'config'                  => $this->getConfigValues(),
+            'cronTokenExample'        => Tools::passwdGen(32),
+            'settingsTitle'           => $this->module->l('Settings', $ctx),
+            'indexationTitle'         => $this->module->l('Indexation', $ctx),
+            'urlLabel'                => $this->module->l('URL', $ctx),
+            'urlHelp'                 => $this->module->l('Meilisearch instance URL (with trailing /)', $ctx),
+            'apiKeyLabel'             => $this->module->l('API Key', $ctx),
+            'prefixLabel'             => $this->module->l('Index prefix', $ctx),
+            'prefixHelp'              => $this->module->l('Index prefix (e.g. shop1_)', $ctx),
+            'cronTokenLabel'          => $this->module->l('Cron token', $ctx),
+            'cronTokenHelp'           => $this->module->l('Enter a private key, for example:', $ctx),
+            'saveLabel'               => $this->module->l('Save', $ctx),
         ]);
     }
 
