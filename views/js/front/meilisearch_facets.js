@@ -113,11 +113,12 @@ function meilisearchBuildEncodedFacets() {
             case 'direct':
                 parts.push(conf.prefix + '-' + value);
                 break;
-            case 'map':
+            case 'map': {
                 const mapped = conf.map[value] || value;
                 parts.push(conf.prefix + '-' + mapped);
                 break;
-            case 'feature':
+            }
+            case 'feature': {
                 const dashIdx   = value.indexOf('-');
                 const featureId = value.substring(0, dashIdx);
                 const valueId   = value.substring(dashIdx + 1);
@@ -128,6 +129,7 @@ function meilisearchBuildEncodedFacets() {
                     console.warn('[Meilisearch] Feature ID non mappé:', featureId);
                 }
                 break;
+            }
         }
     });
 
@@ -283,17 +285,19 @@ function meilisearchRestoreFiltersFromUrl() {
                 case 'direct':
                     encodedValue = conf.prefix + '-' + value;
                     break;
-                case 'map':
+                case 'map': {
                     const mapped = conf.map[value] || value;
                     encodedValue = conf.prefix + '-' + mapped;
                     break;
-                case 'feature':
+                }
+                case 'feature': {
                     const dashIdx   = value.indexOf('-');
                     const featureId = value.substring(0, dashIdx);
                     const valueId   = value.substring(dashIdx + 1);
                     const prefix    = conf.feature_map[featureId];
                     if (prefix) encodedValue = prefix + '-' + valueId;
                     break;
+                }
             }
 
             if (encodedValue === part) {
