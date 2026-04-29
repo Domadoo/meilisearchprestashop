@@ -351,56 +351,71 @@ function meilisearchUpdateSortUrls() {
     });
 }
 
+// ── Interception pagination/tri — pages listing ───────────────────────────────
+// Phase CAPTURE : s'exécute avant le handler jQuery du thème (bubble phase).
+// Sans stopPropagation, le thème émet prestashop('updateFacets', listing_url) et
+// PS core.js fait son propre pushState avec l'URL de listing.php → redirect accueil au refresh.
 document.addEventListener('click', function(e) {
+    if (!window.meilisearch_listing_context || !window.meilisearch_listing_ajax_url) return;
+
+    const link = e.target.closest('.js-search-link');
+    if (!link) return;
+
+    e.preventDefault();
+    e.stopPropagation(); // Coupe la chaîne : le handler jQuery du thème ne se déclenche pas
+
+    const url           = new URL(link.href);
+    const encodedFacets = new URL(window.location.href).searchParams.get('encodedFacets');
+    const page          = url.searchParams.get('page') || '1';
+    const order         = url.searchParams.get('order') || '';
+
+    const fetchUrl = new URL(window.meilisearch_listing_ajax_url);
+    fetchUrl.searchParams.set('page', page);
+    if (order)         fetchUrl.searchParams.set('order', order);
+    if (encodedFacets) fetchUrl.searchParams.set('encodedFacets', encodedFacets);
+    else               fetchUrl.searchParams.delete('encodedFacets');
+
+    const browserUrl = new URL(window.location.href);
+    browserUrl.searchParams.set('page', page);
+    if (order)         browserUrl.searchParams.set('order', order);
+    else               browserUrl.searchParams.delete('order');
+    if (encodedFacets) browserUrl.searchParams.set('encodedFacets', encodedFacets);
+    else               browserUrl.searchParams.delete('encodedFacets');
+
+    meilisearchShowLoader();
+    fetch(fetchUrl.toString(), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        meilisearchUpdateProducts(data);
+        history.pushState(null, '', browserUrl.toString());
+        meilisearchUpdateSortUrls();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    })
+    .catch(function(err) { console.error('[Meilisearch] Erreur pagination listing:', err); })
+    .finally(function() { meilisearchHideLoader(); });
+
+}, true); // true = capture phase
+
+// ── Interception tri — pages recherche ───────────────────────────────────────
+// Bubble phase : uniquement pour les pages hors listing (ex: page résultats de recherche).
+// Propage encodedFacets dans l'URL du lien avant navigation.
+document.addEventListener('click', function(e) {
+    if (window.meilisearch_listing_context) return; // Géré par le handler capture ci-dessus
+
     const link = e.target.closest('.js-search-link');
     if (!link) return;
 
     e.preventDefault();
 
-    const url = new URL(link.href);
+    const url           = new URL(link.href);
     const encodedFacets = new URL(window.location.href).searchParams.get('encodedFacets');
 
     if (encodedFacets) {
         url.searchParams.set('encodedFacets', encodedFacets);
     } else {
         url.searchParams.delete('encodedFacets');
-    }
-
-    // Sur les pages listing, les liens de pagination pointent vers listing.php (AJAX only).
-    // Il faut faire une requête AJAX et mettre à jour l'URL réelle (catégorie/fabricant),
-    // sans naviguer vers listing.php qui redirigerait vers l'accueil.
-    if (window.meilisearch_listing_context && window.meilisearch_listing_ajax_url) {
-        const page  = url.searchParams.get('page') || '1';
-        const order = url.searchParams.get('order') || '';
-
-        const fetchUrl = new URL(window.meilisearch_listing_ajax_url);
-        fetchUrl.searchParams.set('page', page);
-        if (order)         fetchUrl.searchParams.set('order', order);
-        if (encodedFacets) fetchUrl.searchParams.set('encodedFacets', encodedFacets);
-        else               fetchUrl.searchParams.delete('encodedFacets');
-
-        const browserUrl = new URL(window.location.href);
-        browserUrl.searchParams.set('page', page);
-        if (order)         browserUrl.searchParams.set('order', order);
-        else               browserUrl.searchParams.delete('order');
-        if (encodedFacets) browserUrl.searchParams.set('encodedFacets', encodedFacets);
-        else               browserUrl.searchParams.delete('encodedFacets');
-
-        meilisearchShowLoader();
-        fetch(fetchUrl.toString(), {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            meilisearchUpdateProducts(data);
-            history.pushState(null, '', browserUrl.toString());
-            meilisearchUpdateSortUrls();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        })
-        .catch(function(err) { console.error('[Meilisearch] Erreur pagination listing:', err); })
-        .finally(function() { meilisearchHideLoader(); });
-
-        return;
     }
 
     window.location.href = url.toString();
