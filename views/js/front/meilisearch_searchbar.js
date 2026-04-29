@@ -22,7 +22,7 @@ function toggleClearButton() {
     clearIcon.style.display = input.value ? 'block' : 'none';
 }
 
-// eslint-disable-next-line no-unused-vars
+// eslint-disable-next-line no-unused-vars -- appelée via onclick dans meilisearch_searchbar.tpl
 function clearSearch() {
     const input = document.getElementById('search-input');
     if (!input) return;

@@ -47,14 +47,14 @@ function meilisearchHideLoader() {
 
 // ── Accordion ─────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line no-unused-vars
+// eslint-disable-next-line no-unused-vars -- appelée via onclick dans meilisearch_facets.tpl
 function meilisearchToggle(btn) {
     btn.classList.toggle('open');
     btn.setAttribute('aria-expanded', btn.classList.contains('open'));
     btn.nextElementSibling.classList.toggle('open');
 }
 
-// eslint-disable-next-line no-unused-vars
+// eslint-disable-next-line no-unused-vars -- appelée via onclick dans meilisearch_facets.tpl
 function meilisearchShowMore(btn) {
     const group = btn.closest('.meilisearch-facet-body, .meilisearch-facet-sub-group');
     group.querySelectorAll('.meilisearch-facet-item--hidden').forEach(el => {
@@ -80,7 +80,7 @@ function meilisearchSyncTags() {
     });
 }
 
-// eslint-disable-next-line no-unused-vars
+// eslint-disable-next-line no-unused-vars -- appelée via onclick dans meilisearch_facets.tpl
 function meilisearchRemoveTag(inputId) {
     const cb = document.getElementById(inputId);
     if (cb) {
@@ -90,7 +90,7 @@ function meilisearchRemoveTag(inputId) {
     }
 }
 
-// eslint-disable-next-line no-unused-vars
+// eslint-disable-next-line no-unused-vars -- appelée via onclick dans meilisearch_facets.tpl
 function meilisearchResetAll() {
     document.querySelectorAll('.meilisearch-facet-checkbox').forEach(cb => cb.checked = false);
     meilisearchSyncTags();
