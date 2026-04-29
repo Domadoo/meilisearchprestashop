@@ -47,12 +47,14 @@ function meilisearchHideLoader() {
 
 // ── Accordion ─────────────────────────────────────────────────────────────────
 
+// eslint-disable-next-line no-unused-vars
 function meilisearchToggle(btn) {
     btn.classList.toggle('open');
     btn.setAttribute('aria-expanded', btn.classList.contains('open'));
     btn.nextElementSibling.classList.toggle('open');
 }
 
+// eslint-disable-next-line no-unused-vars
 function meilisearchShowMore(btn) {
     const group = btn.closest('.meilisearch-facet-body, .meilisearch-facet-sub-group');
     group.querySelectorAll('.meilisearch-facet-item--hidden').forEach(el => {
@@ -78,6 +80,7 @@ function meilisearchSyncTags() {
     });
 }
 
+// eslint-disable-next-line no-unused-vars
 function meilisearchRemoveTag(inputId) {
     const cb = document.getElementById(inputId);
     if (cb) {
@@ -87,6 +90,7 @@ function meilisearchRemoveTag(inputId) {
     }
 }
 
+// eslint-disable-next-line no-unused-vars
 function meilisearchResetAll() {
     document.querySelectorAll('.meilisearch-facet-checkbox').forEach(cb => cb.checked = false);
     meilisearchSyncTags();

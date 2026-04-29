@@ -22,6 +22,7 @@ function toggleClearButton() {
     clearIcon.style.display = input.value ? 'block' : 'none';
 }
 
+// eslint-disable-next-line no-unused-vars
 function clearSearch() {
     const input = document.getElementById('search-input');
     if (!input) return;
