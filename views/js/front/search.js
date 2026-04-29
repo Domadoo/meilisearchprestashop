@@ -20,13 +20,11 @@ function ajaxProductClick(product, index) {
     }
     let position = 1 + index + 48*(parseInt(params.get('page'), 10) - 1);
     const xhttp = new XMLHttpRequest();
-    $url = base_url + "?token=1&action=productClick&id_product=" + product.dataset.idProduct + "&position=" + position;
+    const $url = base_url + "?token=1&action=productClick&id_product=" + product.dataset.idProduct + "&position=" + position;
     xhttp.onload = function() {
         if (this.status >= 200 && this.status < 300) {
-            // Handle successful response
             console.log('Product click recorded successfully');
         } else {
-            // Handle error response
             console.error('Error recording product click');
         }
     };

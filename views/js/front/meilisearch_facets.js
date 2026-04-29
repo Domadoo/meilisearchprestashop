@@ -184,6 +184,54 @@ function meilisearchApplyFilters() {
     });
 }
 
+function meilisearchApplyFiltersWithSort(order) {
+    const encoded      = meilisearchBuildEncodedFacets();
+    const baseAjaxUrl  = window.meilisearch_listing_ajax_url || window.location.href;
+    const fetchUrl     = new URL(baseAjaxUrl);
+    const cleanUrl     = new URL(window.location.href);
+
+    fetchUrl.searchParams.set('ajax', '1');
+    fetchUrl.searchParams.set('page', '1');
+    fetchUrl.searchParams.set('order', order);
+    if (encoded) {
+        fetchUrl.searchParams.set('encodedFacets', encoded);
+    } else {
+        fetchUrl.searchParams.delete('encodedFacets');
+    }
+
+    cleanUrl.searchParams.delete('ajax');
+    cleanUrl.searchParams.set('page', '1');
+    cleanUrl.searchParams.set('order', order);
+    if (encoded) {
+        cleanUrl.searchParams.set('encodedFacets', encoded);
+    } else {
+        cleanUrl.searchParams.delete('encodedFacets');
+    }
+
+    meilisearchShowLoader();
+
+    fetch(fetchUrl.toString(), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.text())
+    .then(text => {
+        try {
+            const data = JSON.parse(text);
+            meilisearchUpdateProducts(data);
+            history.pushState(null, '', cleanUrl.toString());
+            meilisearchUpdateSortUrls();
+        } catch (e) {
+            console.error('[Meilisearch] JSON parse error:', e, text.substring(0, 300));
+        }
+    })
+    .catch(err => {
+        console.error('[Meilisearch] Fetch error:', err);
+    })
+    .finally(() => {
+        meilisearchHideLoader();
+    });
+}
+
 // ── Mise à jour du DOM ────────────────────────────────────────────────────────
 
 function meilisearchUpdateProducts(data) {
