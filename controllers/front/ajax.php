@@ -68,6 +68,7 @@ class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontControll
                 break;
         }
 
-        return http_response_code(200);
+        header('Content-Type: application/json; charset=utf-8');
+        die(json_encode(['success' => true]));
     }
 }

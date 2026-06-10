@@ -311,7 +311,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         self::$contextFilters = [];
 
         return [
-            'products'    => $this->formatProducts($productsChunk[$page - 1]),
+            'products'    => $this->formatProducts($productsChunk[$page - 1] ?? []),
             'allProducts' => $this->formatProducts($response->hits),
             'total'       => $response->estimatedTotalHits,
             'facets'      => (object)$mergedFacets,
@@ -320,7 +320,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
     private function formatProducts($products): array
     {
-        return json_decode(json_encode($products), true);
+        return json_decode(json_encode($products ?? []), true) ?? [];
     }
 
     public function getAvailableSortOrders(ProductSearchQuery $query): array
