@@ -132,7 +132,7 @@ trait MeilisearchListingControllerTrait
     private function getDisjunctiveFacets(array $currentFacets, string $encodedFacets): array
     {
         $module = \Module::getInstanceByName('meilisearchprestashop');
-        if (!($module instanceof \Meilisearchprestashop)) {
+        if (!$module instanceof \Meilisearchprestashop) {
             return $currentFacets;
         }
         $iso_lang = $this->context->language->iso_code;

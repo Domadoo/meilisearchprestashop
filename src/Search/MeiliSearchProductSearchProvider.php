@@ -232,7 +232,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $data['filter'] = $this->buildFilterArray($groupedFilters);
         $response = $this->module->requestCurl($meiliUrl, json_encode($data));
 
-        if (!$response || !isset($response->hits) || !is_array($response->hits)) {
+        if (!$response instanceof \stdClass || !isset($response->hits) || !is_array($response->hits)) {
             return [
                 'products' => [],
                 'allProducts' => [],

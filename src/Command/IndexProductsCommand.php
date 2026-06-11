@@ -191,8 +191,8 @@ class IndexProductsCommand extends Command
             }
 
             // Cast types and add feature_values / ids_category
+            /** @var list<array<string, mixed>> $products */
             foreach ($products as &$product) {
-                /** @var array<string, mixed> $product */
                 foreach ($typeMap as $field => $type) {
                     if (array_key_exists($field, $product) && $product[$field] !== null) {
                         switch ($type) {

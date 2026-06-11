@@ -26,7 +26,9 @@ if (!defined('_PS_VERSION_')) {
 function upgrade_module_1_1_6($module)
 {
     $module = Module::getInstanceByName('meilisearchprestashop');
-
+    if (!$module instanceof Meilisearchprestashop) {
+        return false;
+    }
     $module->uninstallTab();
     $module->callInstallTab();
 
