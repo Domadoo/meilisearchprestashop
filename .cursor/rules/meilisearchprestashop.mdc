@@ -1,0 +1,9 @@
+---
+description: meilisearchprestashop module conventions
+alwaysApply: true
+---
+
+Read [`CLAUDE.md`](../../CLAUDE.md) at the repo root before suggesting
+any code in this repository. It is the single source of truth for the
+module's architecture, hook patterns, AJAX lifecycle rules, indexation
+logic, facet system, security requirements, and canonical examples.

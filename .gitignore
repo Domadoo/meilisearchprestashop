@@ -408,11 +408,6 @@ FodyWeavers.xsd
 .Spotlight-V100
 .Trashes
 
-# Cursor
-.cursor/
-
-# Claude (Anthropic)
-.claude/
 
 # Composer
 /vendor/
