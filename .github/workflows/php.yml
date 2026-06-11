@@ -75,4 +75,3 @@ jobs:
           phpstan-level: '5'
           phpstan-config: 'tests/php/phpstan/phpstan-${{ matrix.presta-version }}.neon'
           phpstan-version: ${{ matrix.phpstan-version }}
-          phpstan-config-merge: 'false'
