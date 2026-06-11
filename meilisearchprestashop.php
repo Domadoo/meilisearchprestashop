@@ -56,7 +56,7 @@ class Meilisearchprestashop extends Module
     {
         $this->name = 'meilisearchprestashop';
         $this->tab = 'search_filter';
-        $this->version = '1.1.9';
+        $this->version = '1.2.0';
         $this->author = 'Doudeau Adam, Johan Vivien';
         $this->need_instance = 0;
 
@@ -215,7 +215,7 @@ class Meilisearchprestashop extends Module
             'meilisearch_listing_ajax_url' => $listingAjaxUrl,
             'meilisearch_listing_context'  => $context,
             'meilisearch_facets_config'    => $facetsData['js_config'],
-            'meilisearch_encoded_facets'   => Tools::getValue('encodedFacets', ''),
+            'meilisearch_encoded_facets'   => $this->sanitizeEncodedFacets(Tools::getValue('encodedFacets', '')),
             'meilisearch_i18n'             => [
                 'products_many' => $this->l('There are %d products.'),
                 'products_one'  => $this->l('There is 1 product.'),
@@ -248,7 +248,7 @@ class Meilisearchprestashop extends Module
             return '';
         }
 
-        $encodedFacets = Tools::getValue('encodedFacets', '');
+        $encodedFacets = $this->sanitizeEncodedFacets(Tools::getValue('encodedFacets', ''));
 
         $this->context->smarty->assign([
             'meilisearch_facets'           => $facetsData['facets'],
@@ -444,6 +444,16 @@ class Meilisearchprestashop extends Module
         }
     }
 
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    public function sanitizeEncodedFacets(string $value): string
+    {
+        if ($value && !preg_match('/^[a-z0-9_|\-]*$/', $value)) {
+            return '';
+        }
+        return $value;
+    }
+
     // ── cURL helper ───────────────────────────────────────────────────────────
 
     public function requestCurl($url, $payload = null, $request = false)
@@ -459,7 +469,7 @@ class Meilisearchprestashop extends Module
             CURLOPT_CONNECTTIMEOUT => 120,      // timeout on connect
             CURLOPT_TIMEOUT        => 120,      // timeout on response
             CURLOPT_MAXREDIRS      => 10,       // stop after 10 redirects
-            CURLOPT_SSL_VERIFYPEER => false    // Disabled SSL Cert checks
+            CURLOPT_SSL_VERIFYPEER => true
         );
         $header = ['Content-Type: application/json', $authorization];
         $ch      = curl_init($url);

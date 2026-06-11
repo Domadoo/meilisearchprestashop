@@ -36,11 +36,39 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
         $this->module = \Module::getInstanceByName('meilisearchprestashop');
     }
 
+    /** Keys that should never be overwritten with an empty submission */
+    private const SECRET_KEYS = [
+        'MEILISEARCHPRESTASHOP_KEY',
+        'MEILISEARCHPRESTASHOP_TOKEN_CRON',
+    ];
+
     public function indexAction(Request $request): Response
     {
         if ($request->isMethod('POST') && $request->request->get('submitMeilisearchprestashopSettings')) {
+            if (!$this->isCsrfTokenValid('save_meilisearch_config', $request->request->get('_token'))) {
+                $this->addFlash('error', $this->module->l('Invalid security token.', 'meilisearchconfigurationcontroller'));
+                return $this->redirectToRoute('admin_meilisearch_configuration_index');
+            }
+
             foreach (array_keys($this->getConfigValues()) as $key) {
-                Configuration::updateValue($key, $request->request->get($key));
+                $value = $request->request->get($key);
+
+                // Never overwrite secrets with an empty value
+                if (in_array($key, self::SECRET_KEYS, true) && empty($value)) {
+                    continue;
+                }
+
+                // Validate URL format before saving
+                if ($key === 'MEILISEARCHPRESTASHOP_URL') {
+                    $parsed = parse_url($value);
+                    if (!$value || !filter_var($value, FILTER_VALIDATE_URL)
+                        || !in_array($parsed['scheme'] ?? '', ['http', 'https'], true)) {
+                        $this->addFlash('error', $this->module->l('Invalid Meilisearch URL (must be http:// or https://).', 'meilisearchconfigurationcontroller'));
+                        continue;
+                    }
+                }
+
+                Configuration::updateValue($key, $value);
             }
             $this->addFlash('success', $this->module->l('Settings saved successfully.', 'meilisearchconfigurationcontroller'));
         }

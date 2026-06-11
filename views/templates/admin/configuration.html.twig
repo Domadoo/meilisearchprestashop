@@ -31,6 +31,7 @@
 
     <form id="meilisearch-configuration-form" method="POST" action="{{ path('admin_meilisearch_configuration_index') }}">
       <input type="hidden" name="submitMeilisearchprestashopSettings" value="1">
+      <input type="hidden" name="_token" value="{{ csrf_token('save_meilisearch_config') }}">
 
       <div class="form-group row">
         <label class="col-sm-3 col-form-label" for="MEILISEARCHPRESTASHOP_URL">{{ urlLabel }}</label>
@@ -43,7 +44,7 @@
       <div class="form-group row">
         <label class="col-sm-3 col-form-label" for="MEILISEARCHPRESTASHOP_KEY">{{ apiKeyLabel }}</label>
         <div class="col-sm-9">
-          <input type="text" class="form-control" id="MEILISEARCHPRESTASHOP_KEY" name="MEILISEARCHPRESTASHOP_KEY" value="{{ config['MEILISEARCHPRESTASHOP_KEY'] }}">
+          <input type="password" class="form-control" id="MEILISEARCHPRESTASHOP_KEY" name="MEILISEARCHPRESTASHOP_KEY" value="" autocomplete="new-password" placeholder="Leave empty to keep current key">
         </div>
       </div>
 
@@ -58,7 +59,7 @@
       <div class="form-group row">
         <label class="col-sm-3 col-form-label" for="MEILISEARCHPRESTASHOP_TOKEN_CRON">{{ cronTokenLabel }}</label>
         <div class="col-sm-4">
-          <input type="text" class="form-control" id="MEILISEARCHPRESTASHOP_TOKEN_CRON" name="MEILISEARCHPRESTASHOP_TOKEN_CRON" value="{{ config['MEILISEARCHPRESTASHOP_TOKEN_CRON'] }}">
+          <input type="password" class="form-control" id="MEILISEARCHPRESTASHOP_TOKEN_CRON" name="MEILISEARCHPRESTASHOP_TOKEN_CRON" value="" autocomplete="new-password" placeholder="Leave empty to keep current token">
           <small class="form-text text-muted">{{ cronTokenHelp }} {{ cronTokenExample }}</small>
         </div>
       </div>

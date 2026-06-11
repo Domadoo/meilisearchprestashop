@@ -14,6 +14,8 @@
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 
+declare(strict_types=1);
+
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -28,10 +30,10 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
     {
 
         $token = Tools::getValue('token');
-        if(!$token == Configuration::get('MEILISEARCHPRESTASHOP_TOKEN_CRON'))
-        {
+        $expectedToken = Configuration::get('MEILISEARCHPRESTASHOP_TOKEN_CRON');
+        if (empty($token) || empty($expectedToken) || $token !== $expectedToken) {
             PrestaShopLogger::addLog($this->l('Illegal access to CRON Meilisearch'), 3);
-            Tools::redirect('404');
+            http_response_code(403);
             exit;
         }
         

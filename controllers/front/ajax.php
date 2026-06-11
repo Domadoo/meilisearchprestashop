@@ -15,6 +15,8 @@
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 
+declare(strict_types=1);
+
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -31,28 +33,35 @@ class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontControll
     {
 
         $token = Tools::getValue('token');
-        if (!$token == 1) {
-            die($this->module->l('Access denied', 'ajax'));
+        if ($token !== '1') {
+            http_response_code(403);
+            die(json_encode(['error' => 'Access denied']));
         }
         $action = Tools::getValue('action');
         $cookie = $this->context->cookie;
 
-
         switch ($action) {
             case 'productClick':
+                $idProduct = (int) Tools::getValue('id_product');
+                $position  = (int) Tools::getValue('position');
+                if ($idProduct <= 0 || $position < 0) {
+                    break;
+                }
                 // @phpstan-ignore-next-line
                 if (isset($cookie->meilisearch_id)) {
                     try {
                         // @phpstan-ignore-next-line
-                        $newSearch = new MeilisearchStatssearch($cookie->meilisearch_id);
-                        $newSearch->id_product = Tools::getValue('id_product');
-                        $newSearch->position = Tools::getValue('position');
+                        $newSearch = new MeilisearchStatssearch((int) $cookie->meilisearch_id);
+                        if (!Validate::isLoadedObject($newSearch)) {
+                            break;
+                        }
+                        $newSearch->id_product = $idProduct;
+                        $newSearch->position   = $position;
                         $newSearch->save();
 
                         // @phpstan-ignore-next-line
-                        $cookie->meilisearch_product_id = Tools::getValue('id_product');
+                        $cookie->meilisearch_product_id = $idProduct;
                     } catch (\Exception $e) {
-                        // Tracking non-critique, on logge sans planter
                         PrestaShopLogger::addLog(
                             'Meilisearch productClick error: ' . $e->getMessage(),
                             2,
@@ -64,7 +73,6 @@ class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontControll
                 break;
 
             default:
-                # code...
                 break;
         }
 

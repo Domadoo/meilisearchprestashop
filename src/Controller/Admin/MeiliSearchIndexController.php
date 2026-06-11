@@ -108,8 +108,17 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
         ];
     }
 
+    private function isValidIndexUid(string $uid): bool
+    {
+        return (bool) preg_match('/^[a-zA-Z0-9_\-]+$/', $uid);
+    }
+
     public function deleteAction($uid)
     {
+        if (!$this->isValidIndexUid($uid)) {
+            $this->addFlash('error', $this->module->l('Invalid index uid.', 'meilisearchindexcontroller'));
+            return $this->redirectToRoute('admin_meilisearch_index_index');
+        }
         $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
         $this->module->requestCurl($meiliUrl . 'indexes/' . $uid, null, 'DELETE');
         $this->addFlash('success', sprintf($this->module->l('Index "%s" deleted.', 'meilisearchindexcontroller'), $uid));
@@ -119,6 +128,10 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
 
     public function flushAction($uid)
     {
+        if (!$this->isValidIndexUid($uid)) {
+            $this->addFlash('error', $this->module->l('Invalid index uid.', 'meilisearchindexcontroller'));
+            return $this->redirectToRoute('admin_meilisearch_index_index');
+        }
         $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
         $this->module->requestCurl($meiliUrl . 'indexes/' . $uid . '/documents', null, 'DELETE');
         $this->addFlash('success', sprintf($this->module->l('Documents of index "%s" deleted.', 'meilisearchindexcontroller'), $uid));
@@ -128,7 +141,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
 
     public function bulkFlushAction(Request $request)
     {
-        $uids = (array) $request->request->get('uids', []);
+        $uids = array_filter((array) $request->request->get('uids', []), [$this, 'isValidIndexUid']);
         $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
 
         foreach ($uids as $uid) {
@@ -142,7 +155,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
 
     public function bulkDeleteAction(Request $request)
     {
-        $uids = (array) $request->request->get('uids', []);
+        $uids = array_filter((array) $request->request->get('uids', []), [$this, 'isValidIndexUid']);
         $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
 
         foreach ($uids as $uid) {
