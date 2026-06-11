@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 2007-2026 PrestaShop
  *
@@ -32,10 +33,10 @@ if (!defined('_PS_VERSION_')) {
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-use PrestaShop\PrestaShop\Core\Product\Search\FacetCollection; #Collection de facettes
-use PrestaShop\PrestaShop\Core\Product\Search\Facet; #Classe de la facette
-use PrestaShop\PrestaShop\Core\Product\Search\Filter; #Classe des filtres
-use PrestaShop\PrestaShop\Core\Product\Search\URLFragmentSerializer; #Pour transformer l'url
+// Collection de facettes
+// Classe de la facette
+// Classe des filtres
+// Pour transformer l'url
 
 use PrestaShop\Module\Classes\MeilisearchStatssearch;
 use PrestaShop\Module\MeiliSearch\Listing\MeilisearchListingControllerTrait;
@@ -47,7 +48,7 @@ class Meilisearchprestashop extends Module
     protected $config_form = false;
 
     /** @var array|null Cache des données de facettes pour les pages listing */
-    private $listingFacetsCache = null;
+    private $listingFacetsCache;
 
     /** Pages de listing gérées par Meilisearch */
     private const LISTING_PAGES = ['category', 'manufacturer', 'new-products', 'best-sales'];
@@ -60,7 +61,7 @@ class Meilisearchprestashop extends Module
         $this->author = 'Doudeau Adam, Johan Vivien';
         $this->need_instance = 0;
 
-        /**
+        /*
          * Set $this->bootstrap to true if your module is compliant with bootstrap (PrestaShop 1.6)
          */
         $this->bootstrap = true;
@@ -70,7 +71,7 @@ class Meilisearchprestashop extends Module
         $this->displayName = $this->l('Meilisearch Prestashop');
         $this->description = $this->l('Prestashop module to replace the standard searchbar with Meilisearch');
 
-        $this->ps_versions_compliancy = array('min' => '1.7', 'max' => '8.0');
+        $this->ps_versions_compliancy = ['min' => '1.7', 'max' => '8.0'];
     }
 
     /**
@@ -79,16 +80,16 @@ class Meilisearchprestashop extends Module
      */
     public function install()
     {
-        include(dirname(__FILE__).'/sql/install.php');
+        include dirname(__FILE__) . '/sql/install.php';
 
-        return parent::install() &&
-            $this->registerHook('displayHeader') &&
-            $this->registerHook('displaySearch') &&
-            $this->registerHook('displayLeftColumn') &&
-            $this->registerHook('actionCartUpdateQuantityBefore') &&
-            $this->registerHook('actionPresentProduct') &&
-            $this->registerHook('actionValidateOrder') &&
-            $this->callInstallTab();
+        return parent::install()
+            && $this->registerHook('displayHeader')
+            && $this->registerHook('displaySearch')
+            && $this->registerHook('displayLeftColumn')
+            && $this->registerHook('actionCartUpdateQuantityBefore')
+            && $this->registerHook('actionPresentProduct')
+            && $this->registerHook('actionValidateOrder')
+            && $this->callInstallTab();
     }
 
     public function uninstall()
@@ -103,10 +104,10 @@ class Meilisearchprestashop extends Module
         $tab->active = true;
         $tab->class_name = $className;
         $tab->route_name = $routeName;
-        $tab->name = array();
+        $tab->name = [];
 
-        if ($className == 'AdminMeiliSearch') { //Tab name for which you want to add icon
-            $tab->icon = 'repeat'; //Material Icon name
+        if ($className == 'AdminMeiliSearch') { // Tab name for which you want to add icon
+            $tab->icon = 'repeat'; // Material Icon name
         }
 
         foreach (Language::getLanguages(true) as $lang) {
@@ -157,25 +158,27 @@ class Meilisearchprestashop extends Module
      */
     public function getContent()
     {
-        $router = \PrestaShop\PrestaShop\Adapter\SymfonyContainer::getInstance()->get('router');
+        $router = PrestaShop\PrestaShop\Adapter\SymfonyContainer::getInstance()->get('router');
         Tools::redirectAdmin($router->generate('admin_meilisearch_configuration_index'));
     }
 
-    public function hookDisplaySearch(){
+    public function hookDisplaySearch()
+    {
         $this->context->smarty->assign([
             'search_string' => Tools::getValue('s', Tools::getValue('search_query', '')),
         ]);
+
         return $this->display(__FILE__, 'meilisearch_searchbar.tpl');
     }
 
-    public function hookDisplayHeader(){
-
+    public function hookDisplayHeader()
+    {
         $this->trans('This product is no longer available.', [], 'Modules.Meilisearchprestashop.front');
 
-        Media::addJsDef(['searchPlaceholder' =>  [
+        Media::addJsDef(['searchPlaceholder' => [
             '1' => $this->l('Search an article'),
             '2' => $this->l('Search a product'),
-            '3' => $this->l('Search a category')
+            '3' => $this->l('Search a category'),
         ]]);
 
         $link = Context::getContext()->link->getModuleLink(
@@ -187,8 +190,8 @@ class Meilisearchprestashop extends Module
             'meilisearchUrl' => $link,
         ]);
 
-        $this->context->controller->addJS($this->_path.'views/js/front/meilisearch_searchbar.js');
-        $this->context->controller->addCSS($this->_path.'views/css/front/meilisearch_searchbar.css');
+        $this->context->controller->addJS($this->_path . 'views/js/front/meilisearch_searchbar.js');
+        $this->context->controller->addCSS($this->_path . 'views/css/front/meilisearch_searchbar.css');
 
         // Injection pour les pages de listing (catégorie, fabricant, nouveaux, meilleures ventes)
         $phpSelf = $this->context->controller->php_self ?? '';
@@ -213,12 +216,12 @@ class Meilisearchprestashop extends Module
 
         Media::addJsDef([
             'meilisearch_listing_ajax_url' => $listingAjaxUrl,
-            'meilisearch_listing_context'  => $context,
-            'meilisearch_facets_config'    => $facetsData['js_config'],
-            'meilisearch_encoded_facets'   => $this->sanitizeEncodedFacets(Tools::getValue('encodedFacets', '')),
-            'meilisearch_i18n'             => [
+            'meilisearch_listing_context' => $context,
+            'meilisearch_facets_config' => $facetsData['js_config'],
+            'meilisearch_encoded_facets' => $this->sanitizeEncodedFacets(Tools::getValue('encodedFacets', '')),
+            'meilisearch_i18n' => [
                 'products_many' => $this->l('There are %d products.'),
-                'products_one'  => $this->l('There is 1 product.'),
+                'products_one' => $this->l('There is 1 product.'),
             ],
         ]);
 
@@ -251,12 +254,12 @@ class Meilisearchprestashop extends Module
         $encodedFacets = $this->sanitizeEncodedFacets(Tools::getValue('encodedFacets', ''));
 
         $this->context->smarty->assign([
-            'meilisearch_facets'           => $facetsData['facets'],
-            'meilisearch_facet_labels'     => $facetsData['facet_labels'],
+            'meilisearch_facets' => $facetsData['facets'],
+            'meilisearch_facet_labels' => $facetsData['facet_labels'],
             'meilisearch_grouped_features' => $facetsData['grouped_features'],
-            'meilisearch_hidden_facets'    => $facetsData['hidden_facets'],
-            'open_facets'                  => ['condition', 'availability', 'id_manufacturer'],
-            'current_facets_encoded'       => $encodedFacets,
+            'meilisearch_hidden_facets' => $facetsData['hidden_facets'],
+            'open_facets' => ['condition', 'availability', 'id_manufacturer'],
+            'current_facets_encoded' => $encodedFacets,
         ]);
 
         return $this->display(__FILE__, 'views/templates/front/_partials/meilisearch_facets.tpl');
@@ -266,11 +269,10 @@ class Meilisearchprestashop extends Module
     {
         unset($this->context->cookie->meilisearch_query);
         unset($this->context->cookie->meilisearch_id);
-        if(Tools::getValue('id_meilisearch_statssearch')) {
-            $id_meilisearch_statssearch = (int)Tools::getValue('id_meilisearch_statssearch');
+        if (Tools::getValue('id_meilisearch_statssearch')) {
+            $id_meilisearch_statssearch = (int) Tools::getValue('id_meilisearch_statssearch');
             $search = new MeilisearchStatssearch($id_meilisearch_statssearch);
-            if(Validate::isLoadedObject($search)) {
-
+            if (Validate::isLoadedObject($search)) {
                 // @phpstan-ignore-next-line
                 $this->context->cookie->meilisearch_id = $id_meilisearch_statssearch;
                 // @phpstan-ignore-next-line
@@ -281,11 +283,10 @@ class Meilisearchprestashop extends Module
 
     public function hookActionCartUpdateQuantityBefore($params)
     {
-        if(isset($this->context->cookie->meilisearch_id) && isset($this->context->cookie->meilisearch_product_id)
+        if (isset($this->context->cookie->meilisearch_id) && isset($this->context->cookie->meilisearch_product_id)
             && $params['product']->id == $this->context->cookie->meilisearch_product_id && $params['operator'] == 'up') {
-
             $newSearch = new MeilisearchStatssearch($this->context->cookie->meilisearch_id);
-            if(!Validate::isLoadedObject($newSearch) || $newSearch->id_product != $this->context->cookie->meilisearch_product_id) {
+            if (!Validate::isLoadedObject($newSearch) || $newSearch->id_product != $this->context->cookie->meilisearch_product_id) {
                 return;
             }
             $newSearch->id_cart = $params['cart']->id;
@@ -302,13 +303,13 @@ class Meilisearchprestashop extends Module
             $listSearches = MeilisearchStatssearch::getSearchesByIdCart($params['cart']->id);
             foreach ($listSearches as $search) {
                 $newSearch = new MeilisearchStatssearch($search['id_statssearch']);
-                if(Validate::isLoadedObject($newSearch)) {
+                if (Validate::isLoadedObject($newSearch)) {
                     $newSearch->is_ordered = 1;
                     $newSearch->save();
                 }
             }
-        } catch (\Throwable $th) {
-            PrestaShopLogger::addLog('Error validation order Meilisearch : '.$th->getMessage(), 3);
+        } catch (Throwable $th) {
+            PrestaShopLogger::addLog('Error validation order Meilisearch : ' . $th->getMessage(), 3);
         }
     }
 
@@ -324,9 +325,9 @@ class Meilisearchprestashop extends Module
             return $this->listingFacetsCache;
         }
 
-        $context    = $this->buildListingContext($phpSelf);
-        $isoLang    = $this->context->language->iso_code;
-        $meiliUrl   = Configuration::get('MEILISEARCHPRESTASHOP_URL')
+        $context = $this->buildListingContext($phpSelf);
+        $isoLang = $this->context->language->iso_code;
+        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL')
             . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX')
             . 'products_' . $isoLang . '/search';
 
@@ -337,8 +338,8 @@ class Meilisearchprestashop extends Module
 
         // Requête facettes (limit=0 = pas de produits, juste la distribution)
         $response = $this->requestCurl($meiliUrl, json_encode([
-            'q'      => '',
-            'limit'  => 0,
+            'q' => '',
+            'limit' => 0,
             'filter' => $baseFilter,
             'facets' => ['*'],
         ]));
@@ -351,18 +352,18 @@ class Meilisearchprestashop extends Module
 
         // Comptage stock en stock (estimatedTotalHits avec quantity >= 1, limit=0)
         $stockResponse = $this->requestCurl($meiliUrl, json_encode([
-            'q'      => '',
-            'limit'  => 0,
+            'q' => '',
+            'limit' => 0,
             'filter' => array_merge($baseFilter, ['quantity >= 1']),
             'facets' => [],
         ]));
         $facets['availability'] = [
             'in_stock' => ($stockResponse && isset($stockResponse->estimatedTotalHits))
-                ? (int)$stockResponse->estimatedTotalHits
+                ? (int) $stockResponse->estimatedTotalHits
                 : 0,
         ];
 
-        $facetLabels  = $this->getFacetLabels();
+        $facetLabels = $this->getFacetLabels();
         $facetsConfig = $this->buildFacetsJsConfig($facets, $facetLabels);
 
         $hiddenFacets = array_merge(
@@ -373,18 +374,18 @@ class Meilisearchprestashop extends Module
         $groupedFeatureValues = [];
         if (isset($facets['feature_values'])) {
             foreach ($facets['feature_values'] as $key => $count) {
-                $parts     = explode('-', $key, 2);
+                $parts = explode('-', $key, 2);
                 $featureId = $parts[0];
-                $groupedFeatureValues[$featureId]['label']        = $facetLabels['feature_names'][$featureId] ?? 'Feature';
+                $groupedFeatureValues[$featureId]['label'] = $facetLabels['feature_names'][$featureId] ?? 'Feature';
                 $groupedFeatureValues[$featureId]['values'][$key] = $count;
             }
         }
 
         $this->listingFacetsCache = [
-            'facets'           => $facets,
-            'facet_labels'     => $facetLabels,
-            'js_config'        => $facetsConfig,
-            'hidden_facets'    => $hiddenFacets,
+            'facets' => $facets,
+            'facet_labels' => $facetLabels,
+            'js_config' => $facetsConfig,
+            'hidden_facets' => $hiddenFacets,
             'grouped_features' => $groupedFeatureValues,
         ];
 
@@ -400,46 +401,48 @@ class Meilisearchprestashop extends Module
 
         switch ($phpSelf) {
             case 'category':
-                $id = (int)Tools::getValue('id_category', $ctrl->category->id ?? 0);
+                $id = (int) Tools::getValue('id_category', $ctrl->category->id ?? 0);
+
                 return [
-                    'type'            => 'category',
-                    'id'              => $id,
-                    'param'           => 'id_category',
+                    'type' => 'category',
+                    'id' => $id,
+                    'param' => 'id_category',
                     'context_filters' => $id ? ['ids_category = ' . $id] : [],
-                    'hide_facets'     => ['ids_category'],
+                    'hide_facets' => ['ids_category'],
                 ];
             case 'manufacturer':
-                $id = (int)Tools::getValue('id_manufacturer', $ctrl->manufacturer->id ?? 0);
+                $id = (int) Tools::getValue('id_manufacturer', $ctrl->manufacturer->id ?? 0);
+
                 return [
-                    'type'            => 'manufacturer',
-                    'id'              => $id,
-                    'param'           => 'id_manufacturer',
+                    'type' => 'manufacturer',
+                    'id' => $id,
+                    'param' => 'id_manufacturer',
                     'context_filters' => $id ? ['id_manufacturer = ' . $id] : [],
-                    'hide_facets'     => ['id_manufacturer'],
+                    'hide_facets' => ['id_manufacturer'],
                 ];
             case 'new-products':
                 return [
-                    'type'            => 'new-products',
-                    'id'              => 0,
-                    'param'           => 'page_type',
+                    'type' => 'new-products',
+                    'id' => 0,
+                    'param' => 'page_type',
                     'context_filters' => [],
-                    'hide_facets'     => [],
+                    'hide_facets' => [],
                 ];
             case 'best-sales':
                 return [
-                    'type'            => 'best-sales',
-                    'id'              => 0,
-                    'param'           => 'page_type',
+                    'type' => 'best-sales',
+                    'id' => 0,
+                    'param' => 'page_type',
                     'context_filters' => [],
-                    'hide_facets'     => [],
+                    'hide_facets' => [],
                 ];
             default:
                 return [
-                    'type'            => '',
-                    'id'              => 0,
-                    'param'           => '',
+                    'type' => '',
+                    'id' => 0,
+                    'param' => '',
                     'context_filters' => [],
-                    'hide_facets'     => [],
+                    'hide_facets' => [],
                 ];
         }
     }
@@ -451,6 +454,7 @@ class Meilisearchprestashop extends Module
         if ($value && !preg_match('/^[a-z0-9_|\-]*$/', $value)) {
             return '';
         }
+
         return $value;
     }
 
@@ -459,20 +463,20 @@ class Meilisearchprestashop extends Module
     public function requestCurl($url, $payload = null, $request = false)
     {
         $authorization = 'Authorization: Bearer ' . Configuration::get('MEILISEARCHPRESTASHOP_KEY');
-        $options = array(
+        $options = [
             CURLOPT_RETURNTRANSFER => true,     // return web page
-            CURLOPT_HEADER         => false,    // don't return headers
+            CURLOPT_HEADER => false,    // don't return headers
             CURLOPT_FOLLOWLOCATION => true,     // follow redirects
-            CURLOPT_ENCODING       => "",       // handle all encodings
-            CURLOPT_USERAGENT      => "spider", // who am i
-            CURLOPT_AUTOREFERER    => true,     // set referer on redirect
+            CURLOPT_ENCODING => '',       // handle all encodings
+            CURLOPT_USERAGENT => 'spider', // who am i
+            CURLOPT_AUTOREFERER => true,     // set referer on redirect
             CURLOPT_CONNECTTIMEOUT => 120,      // timeout on connect
-            CURLOPT_TIMEOUT        => 120,      // timeout on response
-            CURLOPT_MAXREDIRS      => 10,       // stop after 10 redirects
-            CURLOPT_SSL_VERIFYPEER => true
-        );
+            CURLOPT_TIMEOUT => 120,      // timeout on response
+            CURLOPT_MAXREDIRS => 10,       // stop after 10 redirects
+            CURLOPT_SSL_VERIFYPEER => true,
+        ];
         $header = ['Content-Type: application/json', $authorization];
-        $ch      = curl_init($url);
+        $ch = curl_init($url);
 
         if ($payload != null && $payload != []) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
@@ -485,13 +489,13 @@ class Meilisearchprestashop extends Module
         curl_setopt_array($ch, $options);
 
         $content = curl_exec($ch);
-        $err     = curl_errno($ch);
-        $errmsg  = curl_error($ch);
-        $header  = curl_getinfo($ch);
+        $err = curl_errno($ch);
+        $errmsg = curl_error($ch);
+        $header = curl_getinfo($ch);
         curl_close($ch);
 
-        $header['errno']   = $err;
-        $header['errmsg']  = $errmsg;
+        $header['errno'] = $err;
+        $header['errmsg'] = $errmsg;
         $header['content'] = $content;
 
         return json_decode($content);

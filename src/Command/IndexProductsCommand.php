@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 2007-2025 PrestaShop
  *
@@ -22,10 +23,6 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-use Configuration;
-use Db;
-use Language;
-use Shop;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputInterface;
@@ -62,70 +59,72 @@ class IndexProductsCommand extends Command
         $io = new SymfonyStyle($input, $output);
         $io->title('Meilisearch — Product indexation');
 
-        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
-        $prefix = Configuration::get('MEILISEARCHPRESTASHOP_PREFIX');
+        $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL');
+        $prefix = \Configuration::get('MEILISEARCHPRESTASHOP_PREFIX');
 
         if (!$meiliUrl) {
             $io->error('MEILISEARCHPRESTASHOP_URL is not configured.');
+
             return 1;
         }
 
         $langFilter = $input->getOption('lang');
         $batchSize = max(1, (int) $input->getOption('batch-size'));
 
-        $languages = Language::getLanguages();
+        $languages = \Language::getLanguages();
 
         if ($langFilter) {
             $languages = array_filter($languages, function ($l) use ($langFilter) { return $l['iso_code'] === $langFilter; });
             if (empty($languages)) {
                 $io->error(sprintf('Language "%s" not found.', $langFilter));
+
                 return 1;
             }
         }
 
         $typeMap = [
-            'id_product'                => 'int',
-            'id_supplier'               => 'int',
-            'id_manufacturer'           => 'int',
-            'id_category_default'       => 'int',
-            'id_shop_default'           => 'int',
-            'id_tax_rules_group'        => 'int',
-            'on_sale'                   => 'bool',
-            'online_only'               => 'bool',
-            'low_stock_alert'           => 'bool',
-            'quantity'                  => 'int',
-            'minimal_quantity'          => 'int',
-            'price'                     => 'float',
-            'wholesale_price'           => 'float',
-            'unit_price_ratio'          => 'float',
-            'additional_shipping_cost'  => 'float',
-            'width'                     => 'float',
-            'height'                    => 'float',
-            'depth'                     => 'float',
-            'weight'                    => 'float',
-            'out_of_stock'              => 'int',
+            'id_product' => 'int',
+            'id_supplier' => 'int',
+            'id_manufacturer' => 'int',
+            'id_category_default' => 'int',
+            'id_shop_default' => 'int',
+            'id_tax_rules_group' => 'int',
+            'on_sale' => 'bool',
+            'online_only' => 'bool',
+            'low_stock_alert' => 'bool',
+            'quantity' => 'int',
+            'minimal_quantity' => 'int',
+            'price' => 'float',
+            'wholesale_price' => 'float',
+            'unit_price_ratio' => 'float',
+            'additional_shipping_cost' => 'float',
+            'width' => 'float',
+            'height' => 'float',
+            'depth' => 'float',
+            'weight' => 'float',
+            'out_of_stock' => 'int',
             'additional_delivery_times' => 'bool',
-            'quantity_discount'         => 'bool',
-            'customizable'              => 'bool',
-            'uploadable_files'          => 'bool',
-            'text_fields'               => 'bool',
-            'active'                    => 'bool',
-            'id_type_redirected'        => 'int',
-            'available_for_order'       => 'bool',
-            'show_condition'            => 'bool',
-            'show_price'                => 'bool',
-            'indexed'                   => 'bool',
-            'cache_is_pack'             => 'bool',
-            'cache_has_attachments'     => 'bool',
-            'is_virtual'                => 'bool',
-            'cache_default_attribute'   => 'int',
+            'quantity_discount' => 'bool',
+            'customizable' => 'bool',
+            'uploadable_files' => 'bool',
+            'text_fields' => 'bool',
+            'active' => 'bool',
+            'id_type_redirected' => 'int',
+            'available_for_order' => 'bool',
+            'show_condition' => 'bool',
+            'show_price' => 'bool',
+            'indexed' => 'bool',
+            'cache_is_pack' => 'bool',
+            'cache_has_attachments' => 'bool',
+            'is_virtual' => 'bool',
+            'cache_default_attribute' => 'int',
             'advanced_stock_management' => 'bool',
-            'pack_stock_type'           => 'int',
-            'state'                     => 'int',
-            'atoosync'                  => 'bool',
-            'id_shop'                   => 'int',
-            'final_price'               => 'float',
-            'id_lang'                   => 'int',
+            'pack_stock_type' => 'int',
+            'state' => 'int',
+            'atoosync' => 'bool',
+            'id_shop' => 'int',
+            'final_price' => 'float',
+            'id_lang' => 'int',
         ];
 
         foreach ($languages as $language) {
@@ -140,9 +139,9 @@ class IndexProductsCommand extends Command
                     m.`name` AS manufacturer_name,
                     s.`name` AS supplier_name
                 FROM `' . _DB_PREFIX_ . 'product` p
-                ' . Shop::addSqlAssociation('product', 'p') . '
+                ' . \Shop::addSqlAssociation('product', 'p') . '
                 LEFT JOIN `' . _DB_PREFIX_ . 'product_lang` pl
-                    ON (p.`id_product` = pl.`id_product` ' . Shop::addSqlRestrictionOnLang('pl') . ')
+                    ON (p.`id_product` = pl.`id_product` ' . \Shop::addSqlRestrictionOnLang('pl') . ')
                 LEFT JOIN `' . _DB_PREFIX_ . 'manufacturer` m
                     ON (m.`id_manufacturer` = p.`id_manufacturer`)
                 LEFT JOIN `' . _DB_PREFIX_ . 'supplier` s
@@ -151,7 +150,7 @@ class IndexProductsCommand extends Command
                 AND product_shop.`active` = 1
             ';
 
-            $products = Db::getInstance(true)->executeS($sql);
+            $products = \Db::getInstance(true)->executeS($sql);
 
             if (empty($products)) {
                 $io->warning(sprintf('No active products found for language "%s".', $isoCode));
@@ -169,7 +168,7 @@ class IndexProductsCommand extends Command
                 FROM `' . _DB_PREFIX_ . 'feature_product`
                 WHERE id_product IN (' . $productIdsStr . ')
             ';
-            $featureResults = Db::getInstance()->executeS($featuresSql);
+            $featureResults = \Db::getInstance()->executeS($featuresSql);
 
             $productFeatureValues = [];
             foreach ($featureResults as $row) {
@@ -184,11 +183,11 @@ class IndexProductsCommand extends Command
                 FROM `' . _DB_PREFIX_ . 'category_product`
                 WHERE id_product IN (' . $productIdsStr . ')
             ';
-            $categoryResults = Db::getInstance()->executeS($categoriesSql);
+            $categoryResults = \Db::getInstance()->executeS($categoriesSql);
 
             $productCategoryIds = [];
             foreach ($categoryResults as $row) {
-                $productCategoryIds[(int)$row['id_product']][] = (int)$row['id_category'];
+                $productCategoryIds[(int) $row['id_product']][] = (int) $row['id_category'];
             }
 
             // Cast types and add feature_values / ids_category
@@ -196,9 +195,12 @@ class IndexProductsCommand extends Command
                 foreach ($typeMap as $field => $type) {
                     if (array_key_exists($field, $product) && $product[$field] !== null) {
                         switch ($type) {
-                            case 'int':   $product[$field] = (int)   $product[$field]; break;
-                            case 'float': $product[$field] = (float) $product[$field]; break;
-                            case 'bool':  $product[$field] = (bool)  $product[$field]; break;
+                            case 'int':   $product[$field] = (int) $product[$field];
+                                break;
+                            case 'float': $product[$field] = (float) $product[$field];
+                                break;
+                            case 'bool':  $product[$field] = (bool) $product[$field];
+                                break;
                         }
                     }
                 }
@@ -259,17 +261,17 @@ class IndexProductsCommand extends Command
 
     private function requestMeilisearch(string $url, ?string $payload = null, ?string $method = null): void
     {
-        $authorization = 'Authorization: Bearer ' . Configuration::get('MEILISEARCHPRESTASHOP_KEY');
+        $authorization = 'Authorization: Bearer ' . \Configuration::get('MEILISEARCHPRESTASHOP_KEY');
 
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HEADER         => false,
+            CURLOPT_HEADER => false,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_CONNECTTIMEOUT => 120,
-            CURLOPT_TIMEOUT        => 120,
+            CURLOPT_TIMEOUT => 120,
             CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_HTTPHEADER     => ['Content-Type: application/json', $authorization],
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json', $authorization],
         ]);
 
         if ($payload !== null) {

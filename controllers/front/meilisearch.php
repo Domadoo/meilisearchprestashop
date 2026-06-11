@@ -16,17 +16,15 @@ declare(strict_types=1);
  * @copyright 2007-2025 Domadoo
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
-
 if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchQuery;
-use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchContext;
-use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchResult;
-use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
-use PrestaShop\Module\MeiliSearch\Search\MeiliSearchProductSearchProvider;
 use PrestaShop\Module\MeiliSearch\Listing\MeilisearchListingControllerTrait;
+use PrestaShop\Module\MeiliSearch\Search\MeiliSearchProductSearchProvider;
+use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchContext;
+use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchQuery;
+use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
 
 class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListingFrontController
 {
@@ -45,7 +43,7 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
         $query = new ProductSearchQuery();
         $query->setQueryType('meilisearch');
         $query->setSearchString(Tools::getValue('s'));
-        $query->setPage(max(1, (int)Tools::getValue('page', 1)));
+        $query->setPage(max(1, (int) Tools::getValue('page', 1)));
         $query->setResultsPerPage(48);
         $_GET['resultsPerPage'] = 48;
 
@@ -75,7 +73,8 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
 
     public function getListingLabel()
     {
-        $this->module = \Module::getInstanceByName('meilisearchprestashop');
+        $this->module = Module::getInstanceByName('meilisearchprestashop');
+
         return $this->module->l('Search results', 'meilisearch');
     }
 
@@ -100,15 +99,16 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
             ob_end_clean();
             header('Content-Type: application/json; charset=utf-8');
             $this->ajaxRender(json_encode($this->getAjaxProductSearchVariables()));
+
             return;
         }
 
-        $variables     = $this->getProductSearchVariables();
+        $variables = $this->getProductSearchVariables();
         $encodedFacets = Tools::getValue('encodedFacets', '');
 
         $facetDistribution = MeiliSearchProductSearchProvider::$lastFacetDistribution;
-        $facets            = json_decode(json_encode($facetDistribution), true) ?? [];
-        $facetLabels       = $this->getFacetLabels();
+        $facets = json_decode(json_encode($facetDistribution), true) ?? [];
+        $facetLabels = $this->getFacetLabels();
 
         if ($encodedFacets) {
             $facets = $this->getDisjunctiveFacets($facets, $encodedFacets);
@@ -118,10 +118,10 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
         $groupedFeatureValues = [];
         if (isset($facets['feature_values'])) {
             foreach ($facets['feature_values'] as $key => $count) {
-                $parts       = explode('-', $key, 2);
-                $featureId   = $parts[0];
+                $parts = explode('-', $key, 2);
+                $featureId = $parts[0];
                 $featureName = $facetLabels['feature_names'][$featureId] ?? 'Feature';
-                $groupedFeatureValues[$featureId]['label']        = $featureName;
+                $groupedFeatureValues[$featureId]['label'] = $featureName;
                 $groupedFeatureValues[$featureId]['values'][$key] = $count;
             }
         }
@@ -131,25 +131,25 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
         $hiddenFacets = ['out_of_stock', 'visibility', 'quantity', 'available_for_order'];
 
         $this->context->smarty->assign([
-            'listing'                       => $variables,
-            'meilisearch_facets'            => $facets,
-            'meilisearch_facet_labels'      => $facetLabels,
-            'meilisearch_grouped_features'  => $groupedFeatureValues,
-            'open_facets'                   => ['condition', 'availability', 'id_manufacturer'],
-            'current_facets_encoded'        => $encodedFacets,
-            'meilisearch_hidden_facets'     => $hiddenFacets,
+            'listing' => $variables,
+            'meilisearch_facets' => $facets,
+            'meilisearch_facet_labels' => $facetLabels,
+            'meilisearch_grouped_features' => $groupedFeatureValues,
+            'open_facets' => ['condition', 'availability', 'id_manufacturer'],
+            'current_facets_encoded' => $encodedFacets,
+            'meilisearch_hidden_facets' => $hiddenFacets,
         ]);
 
         Media::addJsDef([
-            'meilisearch_facets_config'   => $facetsConfig,
-            'meilisearch_encoded_facets'  => $encodedFacets,
+            'meilisearch_facets_config' => $facetsConfig,
+            'meilisearch_encoded_facets' => $encodedFacets,
         ]);
 
         $this->setTemplate($template, $params, $locale);
 
         $cookie = Context::getContext()->cookie;
         Media::addJsDef([
-            'id_statssearch' => (int)$cookie->meilisearch_id,
+            'id_statssearch' => (int) $cookie->meilisearch_id,
         ]);
     }
 
@@ -157,13 +157,13 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
     {
         parent::setMedia();
 
-        $this->module = \Module::getInstanceByName('meilisearchprestashop');
+        $this->module = Module::getInstanceByName('meilisearchprestashop');
         $page = Tools::getValue('page') ?: 1;
 
         Media::addJsDef([
-            'base_url'                   => $this->context->link->getModuleLink($this->module->name, 'ajax', [], true),
-            'page'                       => $page,
-            'meilisearch_search_string'  => Tools::getValue('s', ''),
+            'base_url' => $this->context->link->getModuleLink($this->module->name, 'ajax', [], true),
+            'page' => $page,
+            'meilisearch_search_string' => Tools::getValue('s', ''),
             'meilisearch_encoded_facets' => Tools::getValue('encodedFacets', ''),
         ]);
 

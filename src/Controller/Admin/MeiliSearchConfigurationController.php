@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 2007-2025 PrestaShop
  *
@@ -20,11 +21,9 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-use Configuration;
+use PrestaShopBundle\Controller\Admin\FrameworkBundleAdminController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use PrestaShopBundle\Controller\Admin\FrameworkBundleAdminController;
-use Tools;
 
 class MeiliSearchConfigurationController extends FrameworkBundleAdminController
 {
@@ -47,6 +46,7 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
         if ($request->isMethod('POST') && $request->request->get('submitMeilisearchprestashopSettings')) {
             if (!$this->isCsrfTokenValid('save_meilisearch_config', $request->request->get('_token'))) {
                 $this->addFlash('error', $this->module->l('Invalid security token.', 'meilisearchconfigurationcontroller'));
+
                 return $this->redirectToRoute('admin_meilisearch_configuration_index');
             }
 
@@ -68,35 +68,36 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
                     }
                 }
 
-                Configuration::updateValue($key, $value);
+                \Configuration::updateValue($key, $value);
             }
             $this->addFlash('success', $this->module->l('Settings saved successfully.', 'meilisearchconfigurationcontroller'));
         }
 
         $ctx = 'meilisearchconfigurationcontroller';
+
         return $this->render('@Modules/meilisearchprestashop/views/templates/admin/configuration.html.twig', [
-            'config'                  => $this->getConfigValues(),
-            'cronTokenExample'        => Tools::passwdGen(32),
-            'settingsTitle'           => $this->module->l('Settings', $ctx),
-            'indexationTitle'         => $this->module->l('Indexation', $ctx),
-            'urlLabel'                => $this->module->l('URL', $ctx),
-            'urlHelp'                 => $this->module->l('Meilisearch instance URL (with trailing /)', $ctx),
-            'apiKeyLabel'             => $this->module->l('API Key', $ctx),
-            'prefixLabel'             => $this->module->l('Index prefix', $ctx),
-            'prefixHelp'              => $this->module->l('Index prefix (e.g. shop1_)', $ctx),
-            'cronTokenLabel'          => $this->module->l('Cron token', $ctx),
-            'cronTokenHelp'           => $this->module->l('Enter a private key, for example:', $ctx),
-            'saveLabel'               => $this->module->l('Save', $ctx),
+            'config' => $this->getConfigValues(),
+            'cronTokenExample' => \Tools::passwdGen(32),
+            'settingsTitle' => $this->module->l('Settings', $ctx),
+            'indexationTitle' => $this->module->l('Indexation', $ctx),
+            'urlLabel' => $this->module->l('URL', $ctx),
+            'urlHelp' => $this->module->l('Meilisearch instance URL (with trailing /)', $ctx),
+            'apiKeyLabel' => $this->module->l('API Key', $ctx),
+            'prefixLabel' => $this->module->l('Index prefix', $ctx),
+            'prefixHelp' => $this->module->l('Index prefix (e.g. shop1_)', $ctx),
+            'cronTokenLabel' => $this->module->l('Cron token', $ctx),
+            'cronTokenHelp' => $this->module->l('Enter a private key, for example:', $ctx),
+            'saveLabel' => $this->module->l('Save', $ctx),
         ]);
     }
 
     private function getConfigValues(): array
     {
         return [
-            'MEILISEARCHPRESTASHOP_URL'              => Configuration::get('MEILISEARCHPRESTASHOP_URL', null),
-            'MEILISEARCHPRESTASHOP_KEY'              => Configuration::get('MEILISEARCHPRESTASHOP_KEY', null),
-            'MEILISEARCHPRESTASHOP_PREFIX'           => Configuration::get('MEILISEARCHPRESTASHOP_PREFIX', null),
-            'MEILISEARCHPRESTASHOP_TOKEN_CRON'       => Configuration::get('MEILISEARCHPRESTASHOP_TOKEN_CRON', null),
+            'MEILISEARCHPRESTASHOP_URL' => \Configuration::get('MEILISEARCHPRESTASHOP_URL', null),
+            'MEILISEARCHPRESTASHOP_KEY' => \Configuration::get('MEILISEARCHPRESTASHOP_KEY', null),
+            'MEILISEARCHPRESTASHOP_PREFIX' => \Configuration::get('MEILISEARCHPRESTASHOP_PREFIX', null),
+            'MEILISEARCHPRESTASHOP_TOKEN_CRON' => \Configuration::get('MEILISEARCHPRESTASHOP_TOKEN_CRON', null),
         ];
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 2007-2025 PrestaShop
  *
@@ -20,16 +21,8 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
-use PrestaShopBundle\Security\Annotation\AdminSecurity;
 use PrestaShopBundle\Controller\Admin\FrameworkBundleAdminController;
-use Configuration;
-use Context;
-use Db;
-use Shop;
-use Language;
+use Symfony\Component\HttpFoundation\Request;
 
 class MeiliSearchIndexController extends FrameworkBundleAdminController
 {
@@ -43,8 +36,8 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
 
     public function indexAction()
     {
-        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
-        $meiliPrefix = Configuration::get('MEILISEARCHPRESTASHOP_PREFIX');
+        $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL');
+        $meiliPrefix = \Configuration::get('MEILISEARCHPRESTASHOP_PREFIX');
         $indexes = [];
 
         if ($meiliUrl) {
@@ -67,7 +60,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             $this->getTranslatedText(),
             [
                 'indexes' => $indexes,
-                'languages' => Language::getLanguages(),
+                'languages' => \Language::getLanguages(),
             ]
         ));
     }
@@ -75,36 +68,37 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
     public function getTranslatedText()
     {
         $ctx = 'meilisearchindexcontroller';
+
         return [
-            'indexingMeilisearchText'          => $this->module->l('Meilisearch indexing', $ctx),
+            'indexingMeilisearchText' => $this->module->l('Meilisearch indexing', $ctx),
             'indexingMeillisearchProductsText' => $this->module->l('Index products in Meilisearch', $ctx),
-            'indexationTitle'                  => $this->module->l('Indexation', $ctx),
-            'settingsTitle'                    => $this->module->l('Settings', $ctx),
-            'chooseLanguage'                   => $this->module->l('-- Choose a language --', $ctx),
-            'reindexLanguageBtn'               => $this->module->l('Reindex this language', $ctx),
-            'noIndexFound'                     => $this->module->l('No index found.', $ctx),
-            'bulkActionsPlaceholder'           => $this->module->l('-- Bulk actions --', $ctx),
-            'bulkReindexLabel'                 => $this->module->l('Reindex selection', $ctx),
-            'bulkFlushLabel'                   => $this->module->l('Flush selection', $ctx),
-            'bulkDeleteLabel'                  => $this->module->l('Delete selection', $ctx),
-            'applyLabel'                       => $this->module->l('Apply', $ctx),
-            'colCreatedAt'                     => $this->module->l('Created at', $ctx),
-            'colUpdatedAt'                     => $this->module->l('Updated at', $ctx),
-            'colActions'                       => $this->module->l('Actions', $ctx),
-            'btnEdit'                          => $this->module->l('Edit', $ctx),
-            'btnReindex'                       => $this->module->l('Reindex', $ctx),
-            'btnFlush'                         => $this->module->l('Flush', $ctx),
-            'btnDelete'                        => $this->module->l('Delete', $ctx),
-            'confirmReindexMsg'                => $this->module->l('Reindex index "%s" (replaces all documents)?', $ctx),
-            'confirmFlushMsg'                  => $this->module->l('Flush index "%s" (delete all documents)?', $ctx),
-            'confirmDeleteMsg'                 => $this->module->l('Delete index "%s"?', $ctx),
-            'confirmBulkReindex'               => $this->module->l('Reindex the %d selected index(es)?', $ctx),
-            'confirmBulkFlush'                 => $this->module->l('Flush the %d selected index(es) (delete all documents)?', $ctx),
-            'confirmBulkDelete'                => $this->module->l('Delete the %d selected index(es)?', $ctx),
-            'pleaseChooseLang'                 => $this->module->l('Please choose a language.', $ctx),
-            'confirmReindexLang'               => $this->module->l('Reindex language "%s"?', $ctx),
-            'backToList'                       => $this->module->l('Back to list', $ctx),
-            'pageUnderConstruction'            => $this->module->l('Page under construction.', $ctx),
+            'indexationTitle' => $this->module->l('Indexation', $ctx),
+            'settingsTitle' => $this->module->l('Settings', $ctx),
+            'chooseLanguage' => $this->module->l('-- Choose a language --', $ctx),
+            'reindexLanguageBtn' => $this->module->l('Reindex this language', $ctx),
+            'noIndexFound' => $this->module->l('No index found.', $ctx),
+            'bulkActionsPlaceholder' => $this->module->l('-- Bulk actions --', $ctx),
+            'bulkReindexLabel' => $this->module->l('Reindex selection', $ctx),
+            'bulkFlushLabel' => $this->module->l('Flush selection', $ctx),
+            'bulkDeleteLabel' => $this->module->l('Delete selection', $ctx),
+            'applyLabel' => $this->module->l('Apply', $ctx),
+            'colCreatedAt' => $this->module->l('Created at', $ctx),
+            'colUpdatedAt' => $this->module->l('Updated at', $ctx),
+            'colActions' => $this->module->l('Actions', $ctx),
+            'btnEdit' => $this->module->l('Edit', $ctx),
+            'btnReindex' => $this->module->l('Reindex', $ctx),
+            'btnFlush' => $this->module->l('Flush', $ctx),
+            'btnDelete' => $this->module->l('Delete', $ctx),
+            'confirmReindexMsg' => $this->module->l('Reindex index "%s" (replaces all documents)?', $ctx),
+            'confirmFlushMsg' => $this->module->l('Flush index "%s" (delete all documents)?', $ctx),
+            'confirmDeleteMsg' => $this->module->l('Delete index "%s"?', $ctx),
+            'confirmBulkReindex' => $this->module->l('Reindex the %d selected index(es)?', $ctx),
+            'confirmBulkFlush' => $this->module->l('Flush the %d selected index(es) (delete all documents)?', $ctx),
+            'confirmBulkDelete' => $this->module->l('Delete the %d selected index(es)?', $ctx),
+            'pleaseChooseLang' => $this->module->l('Please choose a language.', $ctx),
+            'confirmReindexLang' => $this->module->l('Reindex language "%s"?', $ctx),
+            'backToList' => $this->module->l('Back to list', $ctx),
+            'pageUnderConstruction' => $this->module->l('Page under construction.', $ctx),
         ];
     }
 
@@ -117,9 +111,10 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
     {
         if (!$this->isValidIndexUid($uid)) {
             $this->addFlash('error', $this->module->l('Invalid index uid.', 'meilisearchindexcontroller'));
+
             return $this->redirectToRoute('admin_meilisearch_index_index');
         }
-        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
+        $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL');
         $this->module->requestCurl($meiliUrl . 'indexes/' . $uid, null, 'DELETE');
         $this->addFlash('success', sprintf($this->module->l('Index "%s" deleted.', 'meilisearchindexcontroller'), $uid));
 
@@ -130,9 +125,10 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
     {
         if (!$this->isValidIndexUid($uid)) {
             $this->addFlash('error', $this->module->l('Invalid index uid.', 'meilisearchindexcontroller'));
+
             return $this->redirectToRoute('admin_meilisearch_index_index');
         }
-        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
+        $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL');
         $this->module->requestCurl($meiliUrl . 'indexes/' . $uid . '/documents', null, 'DELETE');
         $this->addFlash('success', sprintf($this->module->l('Documents of index "%s" deleted.', 'meilisearchindexcontroller'), $uid));
 
@@ -142,7 +138,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
     public function bulkFlushAction(Request $request)
     {
         $uids = array_filter((array) $request->request->get('uids', []), [$this, 'isValidIndexUid']);
-        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
+        $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL');
 
         foreach ($uids as $uid) {
             $this->module->requestCurl($meiliUrl . 'indexes/' . $uid . '/documents', null, 'DELETE');
@@ -156,7 +152,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
     public function bulkDeleteAction(Request $request)
     {
         $uids = array_filter((array) $request->request->get('uids', []), [$this, 'isValidIndexUid']);
-        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
+        $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL');
 
         foreach ($uids as $uid) {
             $this->module->requestCurl($meiliUrl . 'indexes/' . $uid, null, 'DELETE');
@@ -169,7 +165,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
 
     public function indexProductsAction()
     {
-        foreach (Language::getLanguages() as $language) {
+        foreach (\Language::getLanguages() as $language) {
             $this->indexLanguage($language);
         }
 
@@ -180,7 +176,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
 
     public function reindexLanguageAction($uid)
     {
-        $prefix = Configuration::get('MEILISEARCHPRESTASHOP_PREFIX');
+        $prefix = \Configuration::get('MEILISEARCHPRESTASHOP_PREFIX');
         $needle = $prefix . 'products_';
 
         // uid peut être un nom d'index complet (shop1_products_fr) ou un iso_code seul (fr)
@@ -188,10 +184,11 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             ? substr($uid, strlen($needle))
             : $uid;
 
-        foreach (Language::getLanguages() as $language) {
+        foreach (\Language::getLanguages() as $language) {
             if ($language['iso_code'] === $iso_code) {
                 $this->indexLanguage($language);
                 $this->addFlash('success', sprintf($this->module->l('Index "%s" successfully reindexed.', 'meilisearchindexcontroller'), $uid));
+
                 return $this->redirectToRoute('admin_meilisearch_index_index');
             }
         }
@@ -204,9 +201,9 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
     public function bulkReindexAction(Request $request)
     {
         $uids = (array) $request->request->get('uids', []);
-        $prefix = Configuration::get('MEILISEARCHPRESTASHOP_PREFIX');
+        $prefix = \Configuration::get('MEILISEARCHPRESTASHOP_PREFIX');
         $needle = $prefix . 'products_';
-        $langByIso = array_column(Language::getLanguages(), null, 'iso_code');
+        $langByIso = array_column(\Language::getLanguages(), null, 'iso_code');
         $count = 0;
 
         foreach ($uids as $uid) {
@@ -214,7 +211,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
                 $iso_code = substr($uid, strlen($needle));
                 if (isset($langByIso[$iso_code])) {
                     $this->indexLanguage($langByIso[$iso_code]);
-                    $count++;
+                    ++$count;
                 }
             }
         }
@@ -228,16 +225,16 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
     {
         $id_lang = $language['id_lang'];
         $iso_code = $language['iso_code'];
-        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
+        $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL');
 
         $sql = '
             SELECT p.*, product_shop.*, pl.*,
                 m.`name` AS manufacturer_name,
                 s.`name` AS supplier_name
             FROM `' . _DB_PREFIX_ . 'product` p
-            ' . Shop::addSqlAssociation('product', 'p') . '
+            ' . \Shop::addSqlAssociation('product', 'p') . '
             LEFT JOIN `' . _DB_PREFIX_ . 'product_lang` pl
-                ON (p.`id_product` = pl.`id_product` ' . Shop::addSqlRestrictionOnLang('pl') . ')
+                ON (p.`id_product` = pl.`id_product` ' . \Shop::addSqlRestrictionOnLang('pl') . ')
             LEFT JOIN `' . _DB_PREFIX_ . 'manufacturer` m
                 ON (m.`id_manufacturer` = p.`id_manufacturer`)
             LEFT JOIN `' . _DB_PREFIX_ . 'supplier` s
@@ -246,7 +243,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             AND product_shop.`active` = 1
         ';
 
-        $products = Db::getInstance(true)->executeS($sql);
+        $products = \Db::getInstance(true)->executeS($sql);
 
         $typeMap = [
             'id_product' => 'int',
@@ -302,7 +299,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             WHERE id_product IN (' . $productIdsStr . ')
         ';
 
-        $featureResults = Db::getInstance()->executeS($featuresSql);
+        $featureResults = \Db::getInstance()->executeS($featuresSql);
 
         $productFeatureValues = [];
         foreach ($featureResults as $row) {
@@ -321,11 +318,11 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             FROM `' . _DB_PREFIX_ . 'category_product`
             WHERE id_product IN (' . $productIdsStr . ')
         ';
-        $categoryResults = Db::getInstance()->executeS($categoriesSql);
+        $categoryResults = \Db::getInstance()->executeS($categoriesSql);
 
         $productCategoryIds = [];
         foreach ($categoryResults as $row) {
-            $productCategoryIds[(int)$row['id_product']][] = (int)$row['id_category'];
+            $productCategoryIds[(int) $row['id_product']][] = (int) $row['id_category'];
         }
 
         foreach ($products as &$product) {
@@ -350,7 +347,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
         }
         unset($product);
 
-        $indexUid = Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code;
+        $indexUid = \Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code;
 
         $payloadIndex = json_encode([
             'uid' => $indexUid,

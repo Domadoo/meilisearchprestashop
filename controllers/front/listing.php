@@ -14,16 +14,15 @@ declare(strict_types=1);
  * @copyright 2007-2026 Domadoo
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
-
 if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchQuery;
-use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchContext;
-use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
-use PrestaShop\Module\MeiliSearch\Search\MeiliSearchProductSearchProvider;
 use PrestaShop\Module\MeiliSearch\Listing\MeilisearchListingControllerTrait;
+use PrestaShop\Module\MeiliSearch\Search\MeiliSearchProductSearchProvider;
+use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchContext;
+use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchQuery;
+use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
 
 /**
  * AJAX-only endpoint for Meilisearch on listing pages (category, manufacturer, new-products, best-sales).
@@ -50,11 +49,12 @@ class MeilisearchprestashopListingModuleFrontController extends ProductListingFr
 
         if (!$isXhr) {
             Tools::redirect($this->context->link->getPageLink('index'));
+
             return;
         }
 
-        $idCategory     = (int)Tools::getValue('id_category', 0);
-        $idManufacturer = (int)Tools::getValue('id_manufacturer', 0);
+        $idCategory = (int) Tools::getValue('id_category', 0);
+        $idManufacturer = (int) Tools::getValue('id_manufacturer', 0);
 
         if ($idCategory) {
             MeiliSearchProductSearchProvider::$contextFilters = ['ids_category = ' . $idCategory];
@@ -91,8 +91,8 @@ class MeilisearchprestashopListingModuleFrontController extends ProductListingFr
             MeiliSearchProductSearchProvider::$contextFilters = [];
         }
 
-        $variables['meilisearch_facets']        = $facets;
-        $variables['meilisearch_hidden_facets']  = $this->hideFacets;
+        $variables['meilisearch_facets'] = $facets;
+        $variables['meilisearch_hidden_facets'] = $this->hideFacets;
 
         return $variables;
     }
@@ -102,7 +102,7 @@ class MeilisearchprestashopListingModuleFrontController extends ProductListingFr
         $query = new ProductSearchQuery();
         $query->setQueryType('meilisearch');
         $query->setSearchString('');
-        $query->setPage(max(1, (int)Tools::getValue('page', 1)));
+        $query->setPage(max(1, (int) Tools::getValue('page', 1)));
         $query->setResultsPerPage(48);
         $_GET['resultsPerPage'] = 48;
 

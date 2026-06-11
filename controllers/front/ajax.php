@@ -29,13 +29,13 @@ class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontControll
     {
         parent::__construct();
     }
+
     public function postProcess()
     {
-
         $token = Tools::getValue('token');
         if ($token !== '1') {
             http_response_code(403);
-            die(json_encode(['error' => 'Access denied']));
+            exit(json_encode(['error' => 'Access denied']));
         }
         $action = Tools::getValue('action');
         $cookie = $this->context->cookie;
@@ -43,7 +43,7 @@ class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontControll
         switch ($action) {
             case 'productClick':
                 $idProduct = (int) Tools::getValue('id_product');
-                $position  = (int) Tools::getValue('position');
+                $position = (int) Tools::getValue('position');
                 if ($idProduct <= 0 || $position < 0) {
                     break;
                 }
@@ -56,12 +56,12 @@ class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontControll
                             break;
                         }
                         $newSearch->id_product = $idProduct;
-                        $newSearch->position   = $position;
+                        $newSearch->position = $position;
                         $newSearch->save();
 
                         // @phpstan-ignore-next-line
                         $cookie->meilisearch_product_id = $idProduct;
-                    } catch (\Exception $e) {
+                    } catch (Exception $e) {
                         PrestaShopLogger::addLog(
                             'Meilisearch productClick error: ' . $e->getMessage(),
                             2,
@@ -77,6 +77,6 @@ class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontControll
         }
 
         header('Content-Type: application/json; charset=utf-8');
-        die(json_encode(['success' => true]));
+        exit(json_encode(['success' => true]));
     }
 }

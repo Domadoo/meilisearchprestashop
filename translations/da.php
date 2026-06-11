@@ -1,7 +1,7 @@
 <?php
 
 global $_MODULE;
-$_MODULE = array();
+$_MODULE = [];
 $_MODULE['<{meilisearchprestashop}prestashop>meilisearchprestashop_8a82326e503d813d6204ee9b73b5c510'] = 'Meilisearch Prestashop';
 $_MODULE['<{meilisearchprestashop}prestashop>meilisearchprestashop_8f5a1d9f111d28169356d67bad7c131e'] = 'Prestashop module to replace the standard searchbar with Meilisearch';
 $_MODULE['<{meilisearchprestashop}prestashop>meilisearchprestashop_f4f70727dc34561dfde1a3c529b6205c'] = 'Settings';

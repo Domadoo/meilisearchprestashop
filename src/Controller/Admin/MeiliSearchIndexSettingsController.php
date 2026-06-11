@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 2007-2025 PrestaShop
  *
@@ -20,9 +21,7 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-use Symfony\Component\HttpFoundation\Request;
 use PrestaShopBundle\Controller\Admin\FrameworkBundleAdminController;
-use Configuration;
 
 class MeiliSearchIndexSettingsController extends FrameworkBundleAdminController
 {
@@ -36,7 +35,7 @@ class MeiliSearchIndexSettingsController extends FrameworkBundleAdminController
 
     public function indexAction($uid)
     {
-        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
+        $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL');
         $index = null;
         $settings = null;
 
@@ -46,13 +45,14 @@ class MeiliSearchIndexSettingsController extends FrameworkBundleAdminController
         }
 
         $ctx = 'meilisearchindexsettingscontroller';
+
         return $this->render('@Modules/meilisearchprestashop/views/templates/admin/index_settings.html.twig', [
-            'uid'                  => $uid,
-            'index'                => $index,
-            'settings'             => $settings,
-            'settingsTitle'        => $this->module->l('Settings', $ctx),
-            'indexationTitle'      => $this->module->l('Indexation', $ctx),
-            'backToList'           => $this->module->l('Back to list', $ctx),
+            'uid' => $uid,
+            'index' => $index,
+            'settings' => $settings,
+            'settingsTitle' => $this->module->l('Settings', $ctx),
+            'indexationTitle' => $this->module->l('Indexation', $ctx),
+            'backToList' => $this->module->l('Back to list', $ctx),
             'pageUnderConstruction' => $this->module->l('Page under construction.', $ctx),
         ]);
     }

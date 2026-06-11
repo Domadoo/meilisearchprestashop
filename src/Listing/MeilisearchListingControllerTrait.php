@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 2007-2026 PrestaShop
  *
@@ -19,9 +20,6 @@ if (!defined('_PS_VERSION_')) {
 }
 
 use PrestaShop\Module\MeiliSearch\Search\MeiliSearchProductSearchProvider;
-use Cache;
-use Db;
-use Configuration;
 
 trait MeilisearchListingControllerTrait
 {
@@ -29,6 +27,7 @@ trait MeilisearchListingControllerTrait
     {
         $text = strtolower(trim($text));
         $text = preg_replace('/[^a-z0-9]+/', '_', $text);
+
         return trim($text, '_');
     }
 
@@ -37,13 +36,13 @@ trait MeilisearchListingControllerTrait
         $idLang = (int) $this->context->language->id;
 
         $cache_id = 'meilisearchprestashop::getFacetLabels_' . $idLang;
-        if (Cache::isStored($cache_id)) {
-            return Cache::retrieve($cache_id);
+        if (\Cache::isStored($cache_id)) {
+            return \Cache::retrieve($cache_id);
         }
 
         $labels = [];
 
-        $manufacturers = Db::getInstance((bool)_PS_USE_SQL_SLAVE_)->executeS('
+        $manufacturers = \Db::getInstance((bool) _PS_USE_SQL_SLAVE_)->executeS('
             SELECT id_manufacturer, name
             FROM ' . _DB_PREFIX_ . 'manufacturer
         ');
@@ -51,7 +50,7 @@ trait MeilisearchListingControllerTrait
             $labels['id_manufacturer'][$row['id_manufacturer']] = $row['name'];
         }
 
-        $categories = Db::getInstance((bool)_PS_USE_SQL_SLAVE_)->executeS('
+        $categories = \Db::getInstance((bool) _PS_USE_SQL_SLAVE_)->executeS('
             SELECT id_category, name
             FROM ' . _DB_PREFIX_ . 'category_lang
             WHERE id_lang = ' . $idLang
@@ -60,7 +59,7 @@ trait MeilisearchListingControllerTrait
             $labels['ids_category'][$row['id_category']] = $row['name'];
         }
 
-        $rows = Db::getInstance((bool)_PS_USE_SQL_SLAVE_)->executeS('
+        $rows = \Db::getInstance((bool) _PS_USE_SQL_SLAVE_)->executeS('
             SELECT fv.id_feature, fv.id_feature_value, fvl.value, fl.name AS feature_name
             FROM ' . _DB_PREFIX_ . 'feature_value fv
             LEFT JOIN ' . _DB_PREFIX_ . 'feature_value_lang fvl
@@ -73,11 +72,12 @@ trait MeilisearchListingControllerTrait
 
         foreach ($rows as $row) {
             $key = $row['id_feature'] . '-' . $row['id_feature_value'];
-            $labels['feature_values'][$key]              = $row['value'];
+            $labels['feature_values'][$key] = $row['value'];
             $labels['feature_names'][$row['id_feature']] = $row['feature_name'];
         }
 
-        Cache::store($cache_id, $labels);
+        \Cache::store($cache_id, $labels);
+
         return $labels;
     }
 
@@ -95,8 +95,8 @@ trait MeilisearchListingControllerTrait
                 case 'availability':
                     $config[$groupKey] = [
                         'prefix' => 'avail',
-                        'type'   => 'map',
-                        'map'    => ['in_stock' => 'stock'],
+                        'type' => 'map',
+                        'map' => ['in_stock' => 'stock'],
                     ];
                     break;
                 case 'ids_category':
@@ -115,8 +115,8 @@ trait MeilisearchListingControllerTrait
                         }
                     }
                     $config[$groupKey] = [
-                        'prefix'      => null,
-                        'type'        => 'feature',
+                        'prefix' => null,
+                        'type' => 'feature',
                         'feature_map' => $featureMap,
                     ];
                     break;
@@ -131,18 +131,18 @@ trait MeilisearchListingControllerTrait
 
     private function getDisjunctiveFacets(array $currentFacets, string $encodedFacets): array
     {
-        $module   = \Module::getInstanceByName('meilisearchprestashop');
+        $module = \Module::getInstanceByName('meilisearchprestashop');
         $iso_lang = $this->context->language->iso_code;
-        $search   = \Tools::getValue('s', '');
+        $search = \Tools::getValue('s', '');
 
-        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL')
-            . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX')
+        $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL')
+            . 'indexes/' . \Configuration::get('MEILISEARCHPRESTASHOP_PREFIX')
             . 'products_' . $iso_lang . '/search';
 
         $filtersArray = array_filter(explode('|', $encodedFacets));
 
         $idLang = (int) $this->context->language->id;
-        $rows   = Db::getInstance()->executeS('
+        $rows = \Db::getInstance()->executeS('
             SELECT id_feature, name
             FROM ' . _DB_PREFIX_ . 'feature_lang
             WHERE id_lang = ' . $idLang
@@ -156,13 +156,15 @@ trait MeilisearchListingControllerTrait
         $groupedFilters = [];
         foreach ($filtersArray as $filterString) {
             $dashPos = strpos($filterString, '-');
-            if ($dashPos === false) continue;
+            if ($dashPos === false) {
+                continue;
+            }
             $prefix = substr($filterString, 0, $dashPos);
-            $value  = substr($filterString, $dashPos + 1);
+            $value = substr($filterString, $dashPos + 1);
 
             switch ($prefix) {
                 case 'manu':
-                    $groupedFilters['manu'][] = 'id_manufacturer = ' . (int)$value;
+                    $groupedFilters['manu'][] = 'id_manufacturer = ' . (int) $value;
                     break;
                 case 'avail':
                     if ($value === 'stock') {
@@ -170,7 +172,7 @@ trait MeilisearchListingControllerTrait
                     }
                     break;
                 case 'cat':
-                    $groupedFilters['cat'][] = 'ids_category = ' . (int)$value;
+                    $groupedFilters['cat'][] = 'ids_category = ' . (int) $value;
                     break;
                 case 'cond':
                     $groupedFilters['cond'][] = 'condition = "' . pSQL($value) . '"';
@@ -178,7 +180,7 @@ trait MeilisearchListingControllerTrait
                 default:
                     if (isset($featureMapFlipped[$prefix])) {
                         $featureId = $featureMapFlipped[$prefix];
-                        $groupedFilters[$prefix][] = '"feature_values" = "' . $featureId . '-' . (int)$value . '"';
+                        $groupedFilters[$prefix][] = '"feature_values" = "' . $featureId . '-' . (int) $value . '"';
                     }
                     break;
             }
@@ -192,13 +194,13 @@ trait MeilisearchListingControllerTrait
 
         // Requête sans filtre utilisateur → toutes les valeurs possibles
         $dataAll = [
-            'q'      => $search,
-            'limit'  => 0,
+            'q' => $search,
+            'limit' => 0,
             'filter' => $baseFilter,
             'facets' => ['*'],
         ];
         $responseAll = $module->requestCurl($meiliUrl, json_encode($dataAll));
-        $allFacets   = $responseAll && isset($responseAll->facetDistribution)
+        $allFacets = $responseAll && isset($responseAll->facetDistribution)
             ? json_decode(json_encode($responseAll->facetDistribution), true)
             : [];
 
@@ -210,21 +212,23 @@ trait MeilisearchListingControllerTrait
 
         // Calcul du stock total
         $dataAllStock = [
-            'q'      => $search,
-            'limit'  => 0,
+            'q' => $search,
+            'limit' => 0,
             'filter' => array_merge($baseFilter, ['quantity >= 1']),
             'facets' => [],
         ];
         $responseAllStock = $module->requestCurl($meiliUrl, json_encode($dataAllStock));
         $mergedFacets['availability'] = [
             'in_stock' => $responseAllStock && isset($responseAllStock->estimatedTotalHits)
-                ? (int)$responseAllStock->estimatedTotalHits
+                ? (int) $responseAllStock->estimatedTotalHits
                 : 0,
         ];
 
         // Écrase avec les compteurs de la requête filtrée principale
         foreach ($currentFacets as $groupKey => $values) {
-            if ($groupKey === 'availability') continue;
+            if ($groupKey === 'availability') {
+                continue;
+            }
             if (is_array($values)) {
                 foreach ($values as $valueKey => $count) {
                     $mergedFacets[$groupKey][$valueKey] = $count;
@@ -243,29 +247,31 @@ trait MeilisearchListingControllerTrait
 
             if ($groupKey === 'avail') {
                 $dataCount = [
-                    'q'      => $search,
-                    'limit'  => 0,
+                    'q' => $search,
+                    'limit' => 0,
                     'filter' => array_merge($filter, ['quantity >= 1']),
                     'facets' => [],
                 ];
                 $respCount = $module->requestCurl($meiliUrl, json_encode($dataCount));
                 $mergedFacets['availability'] = [
                     'in_stock' => $respCount && isset($respCount->estimatedTotalHits)
-                        ? (int)$respCount->estimatedTotalHits
+                        ? (int) $respCount->estimatedTotalHits
                         : 0,
                 ];
                 continue;
             }
 
             $data = [
-                'q'      => $search,
-                'limit'  => 0,
+                'q' => $search,
+                'limit' => 0,
                 'filter' => $filter,
                 'facets' => ['*'],
             ];
 
             $resp = $module->requestCurl($meiliUrl, json_encode($data));
-            if (!$resp || !isset($resp->facetDistribution)) continue;
+            if (!$resp || !isset($resp->facetDistribution)) {
+                continue;
+            }
 
             $respFacets = json_decode(json_encode($resp->facetDistribution), true);
 

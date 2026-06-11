@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 2007-2025 PrestaShop
  *
@@ -20,11 +21,8 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-use PrestaShopBundle\Controller\Admin\FrameworkBundleAdminController;
 use PrestaShop\Module\Classes\MeilisearchStatssearch;
-use Media;
-use Tools;
-use Language;
+use PrestaShopBundle\Controller\Admin\FrameworkBundleAdminController;
 
 class MeiliSearchStatsController extends FrameworkBundleAdminController
 {
@@ -40,8 +38,8 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
     public function indexAction()
     {
         $objMeilisearchStats = new MeilisearchStatssearch();
-        $buttonClicked = Tools::getValue('selectedPeriod', 'submitDateAllTime');
-        $id_lang = Tools::getValue('id_lang', 0);
+        $buttonClicked = \Tools::getValue('selectedPeriod', 'submitDateAllTime');
+        $id_lang = \Tools::getValue('id_lang', 0);
 
         foreach ($_POST as $key => $value) {
             if (strpos($key, 'submitDate') === 0) {
@@ -80,7 +78,6 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
                     $dateEnd = date('Y-m-d H:i:s', strtotime('-1 year'));
                     // Année -1
                     break;
-                
             }
         }
 
@@ -88,10 +85,9 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
         $i = 1;
         $dataMostSearchQueriesValues = [];
         foreach ($mostSearchedQueries as $query) {
-
             $dataMostSearchQueriesValues[] = [
                 'label' => $query['label'],
-                'value' => (int)$query['value'],
+                'value' => (int) $query['value'],
                 'id' => $i++,
             ];
         }
@@ -107,7 +103,7 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
         foreach ($mostClickedProducts as $product) {
             $dataMostClickedProductsValues[] = [
                 'label' => $product['label'],
-                'value' => (int)$product['value'],
+                'value' => (int) $product['value'],
                 'id' => $i++,
             ];
         }
@@ -115,7 +111,7 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
         $dataMostClickedProducts = [[
             'key' => 'Most Clicked Products',
             'color' => '#ff0000',
-            'values' => $dataMostClickedProductsValues
+            'values' => $dataMostClickedProductsValues,
         ]];
 
         $mostSearchedEmptyQueries = $objMeilisearchStats->getMostSearchedEmptyQueries(10, $dateBegin, $dateEnd, $id_lang);
@@ -124,7 +120,7 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
         foreach ($mostSearchedEmptyQueries as $query) {
             $dataMostSearchedEmptyQueriesValues[] = [
                 'label' => $query['label'],
-                'value' => (int)$query['value'],
+                'value' => (int) $query['value'],
                 'id' => $i++,
             ];
         }
@@ -133,7 +129,7 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             'key' => 'Most Searched Empty Queries',
             'color' => '#ff0000',
             'values' => $dataMostSearchedEmptyQueriesValues,
-        ]]; 
+        ]];
 
         $ctrPercentages = $objMeilisearchStats->getCTR($dateBegin, $dateEnd, $id_lang);
         $dataCtr = [];
@@ -141,11 +137,11 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             $dataCtr = [
                 [
                     'label' => $this->module->l('Click through rate', 'meilisearchstatscontroller'),
-                    'value' => (float)$ctrPercentages,
+                    'value' => (float) $ctrPercentages,
                 ],
                 [
                     'label' => $this->module->l('No Click through rate', 'meilisearchstatscontroller'),
-                    'value' => 100 - (float)$ctrPercentages,
+                    'value' => 100 - (float) $ctrPercentages,
                 ],
             ];
         }
@@ -156,11 +152,11 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             $dataAddedToCartRate = [
                 [
                     'label' => $this->module->l('Added to cart rate', 'meilisearchstatscontroller'),
-                    'value' => (float)$addedToCartRate,
+                    'value' => (float) $addedToCartRate,
                 ],
                 [
                     'label' => $this->module->l('No Added to cart rate', 'meilisearchstatscontroller'),
-                    'value' => 100 - (float)$addedToCartRate,
+                    'value' => 100 - (float) $addedToCartRate,
                 ],
             ];
         }
@@ -171,19 +167,18 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             $dataConversionRate = [
                 [
                     'label' => $this->module->l('Conversion rate', 'meilisearchstatscontroller'),
-                    'value' => (float)$conversionRate,
+                    'value' => (float) $conversionRate,
                 ],
                 [
                     'label' => $this->module->l('No Conversion rate', 'meilisearchstatscontroller'),
-                    'value' => 100 - (float)$conversionRate,
+                    'value' => 100 - (float) $conversionRate,
                 ],
             ];
         }
 
         $totalSearches = $objMeilisearchStats->getTotalSearches($dateBegin, $dateEnd, $id_lang);
 
-
-        Media::addJsDef([
+        \Media::addJsDef([
             'dataSearches' => $dataMostSearchedQueries,
             'dataEmpty' => $dataMostSearchedEmptyQueries,
             'dataClicks' => $dataMostClickedProducts,
@@ -197,14 +192,15 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             'ctrPercentages' => $ctrPercentages,
             'addedToCartRate' => $addedToCartRate,
             'conversionRate' => $conversionRate,
-            'selectedIdLang' => Tools::getValue('id_lang'),
-            'languages' => Language::getLanguages(false),
-            'totalSearches' => $totalSearches
+            'selectedIdLang' => \Tools::getValue('id_lang'),
+            'languages' => \Language::getLanguages(false),
+            'totalSearches' => $totalSearches,
         ], $this->getTranslatedText()));
     }
 
-    public function getTranslatedText(){
-        return array(
+    public function getTranslatedText()
+    {
+        return [
             'allLanguagesText' => $this->module->l('All Languages', 'meilisearchstatscontroller'),
             'topSearchesText' => $this->module->l('Top Searches', 'meilisearchstatscontroller'),
             'topClickedText' => $this->module->l('Top Clicked', 'meilisearchstatscontroller'),
@@ -214,6 +210,6 @@ class MeiliSearchStatsController extends FrameworkBundleAdminController
             'addedToCartRateText' => $this->module->l('Added to cart rate', 'meilisearchstatscontroller'),
             'conversionRateText' => $this->module->l('Conversion rate', 'meilisearchstatscontroller'),
             'totalSearchesText' => $this->module->l('Total searches', 'meilisearchstatscontroller'),
-        );
+        ];
     }
 }

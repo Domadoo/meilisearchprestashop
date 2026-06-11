@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 2007-2025 PrestaShop
  *
@@ -23,12 +24,12 @@ if (!defined('_PS_VERSION_')) {
 class MeilisearchprestashopCronModuleFrontController extends ModuleFrontController
 {
     public function __construct()
-	{
-		parent::__construct();
-	}
+    {
+        parent::__construct();
+    }
+
     public function postProcess()
     {
-
         $token = Tools::getValue('token');
         $expectedToken = Configuration::get('MEILISEARCHPRESTASHOP_TOKEN_CRON');
         if (empty($token) || empty($expectedToken) || $token !== $expectedToken) {
@@ -36,35 +37,31 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
             http_response_code(403);
             exit;
         }
-        
+
         $success = false;
 
-        if(Tools::getValue('action') == 'indexProducts'){
+        if (Tools::getValue('action') == 'indexProducts') {
             $success = $this->indexProductsAction();
         }
 
-        if($success){
+        if ($success) {
             echo 'success';
             exit(http_response_code(200));
-        }else {
-            echo 'error';
-            PrestaShopLogger::addLog($this->l('CRON error for action: ', 'cron') . Tools::getValue('action'), 3);
-            exit(http_response_code(400));
         }
-
+        echo 'error';
+        PrestaShopLogger::addLog($this->l('CRON error for action: ', 'cron') . Tools::getValue('action'), 3);
+        exit(http_response_code(400));
     }
 
     public function indexProductsAction()
     {
-
         $languages = Language::getLanguages();
-        
+
         foreach ($languages as $language) {
             $id_lang = $language['id_lang'];
             $iso_code = $language['iso_code'];
             $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
-    
-    
+
             $sql = '
                 SELECT p.*, product_shop.*, pl.*, 
                     m.`name` AS manufacturer_name, 
@@ -80,10 +77,9 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
                 WHERE pl.`id_lang` = ' . (int) $id_lang . '
                 AND product_shop.`active` = 1
             ';
-    
+
             $products = Db::getInstance(true)->executeS($sql);
-    
-            
+
             $typeMap = [
                 'id_product' => 'int',
                 'id_supplier' => 'int',
@@ -128,7 +124,7 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
                 'final_price' => 'float',
                 'id_lang' => 'int',
             ];
-    
+
             // Récupère les IDs produits
             $productIds = array_column($products, 'id_product');
             $productIdsStr = implode(',', array_map('intval', $productIds));
@@ -136,7 +132,7 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
             // Récupération des features
             $featuresSql = '
                 SELECT id_product, id_feature, id_feature_value
-                FROM `'._DB_PREFIX_.'feature_product`
+                FROM `' . _DB_PREFIX_ . 'feature_product`
                 WHERE id_product IN (' . $productIdsStr . ')
             ';
 
@@ -145,8 +141,8 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
             // Structure à plat : [id_product => [ "2-36", "2-60", ... ]]
             $productFeatureValues = [];
             foreach ($featureResults as $row) {
-                $idProduct = (int)$row['id_product'];
-                $featureKey = (int)$row['id_feature'] . '-' . (int)$row['id_feature_value'];
+                $idProduct = (int) $row['id_product'];
+                $featureKey = (int) $row['id_feature'] . '-' . (int) $row['id_feature_value'];
 
                 if (!isset($productFeatureValues[$idProduct])) {
                     $productFeatureValues[$idProduct] = [];
@@ -158,14 +154,14 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
             // Récupération de toutes les catégories de chaque produit
             $categoriesSql = '
                 SELECT id_product, id_category
-                FROM `'._DB_PREFIX_.'category_product`
+                FROM `' . _DB_PREFIX_ . 'category_product`
                 WHERE id_product IN (' . $productIdsStr . ')
             ';
             $categoryResults = Db::getInstance()->executeS($categoriesSql);
 
             $productCategoryIds = [];
             foreach ($categoryResults as $row) {
-                $productCategoryIds[(int)$row['id_product']][] = (int)$row['id_category'];
+                $productCategoryIds[(int) $row['id_product']][] = (int) $row['id_category'];
             }
 
             foreach ($products as &$product) {
@@ -189,11 +185,10 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
                 $product['ids_category'] = $productCategoryIds[$id] ?? [];
             }
             unset($product);
-    
-    
+
             $payloadIndex = json_encode([
                 'uid' => Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code,
-                'primaryKey' => 'id_product'
+                'primaryKey' => 'id_product',
             ]);
             // @phpstan-ignore-next-line
             $this->module->requestCurl($meiliUrl . 'indexes', $payloadIndex);
@@ -203,20 +198,18 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
             // Envoi à Meilisearch
             foreach ($arrayProductsChunk as $arrayProducts) {
                 // @phpstan-ignore-next-line
-                $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/documents', json_encode($arrayProducts));
+                $this->module->requestCurl($meiliUrl . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code . '/documents', json_encode($arrayProducts));
             }
 
             // @phpstan-ignore-next-line
-            $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/pagination', json_encode(['maxTotalHits' => 9999]), 'PATCH');
+            $this->module->requestCurl($meiliUrl . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code . '/settings/pagination', json_encode(['maxTotalHits' => 9999]), 'PATCH');
             // @phpstan-ignore-next-line
-            $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/sortable-attributes', json_encode(['name','price', 'date_add', 'quantity']), 'PUT');
+            $this->module->requestCurl($meiliUrl . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code . '/settings/sortable-attributes', json_encode(['name', 'price', 'date_add', 'quantity']), 'PUT');
             // @phpstan-ignore-next-line
-            $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/ranking-rules', json_encode(["sort","words","typo","proximity","attribute","exactness"]), 'PUT');
+            $this->module->requestCurl($meiliUrl . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code . '/settings/ranking-rules', json_encode(['sort', 'words', 'typo', 'proximity', 'attribute', 'exactness']), 'PUT');
             // @phpstan-ignore-next-line
-            $this->module->requestCurl($meiliUrl . 'indexes/'. Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') .'products_'.$iso_code.'/settings/filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'ids_category', 'quantity', 'feature_values', 'visibility', 'available_for_order']), 'PUT');
+            $this->module->requestCurl($meiliUrl . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code . '/settings/filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'ids_category', 'quantity', 'feature_values', 'visibility', 'available_for_order']), 'PUT');
         }
-
-
 
         return true;
     }

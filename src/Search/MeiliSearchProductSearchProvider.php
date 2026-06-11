@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 2007-2025 PrestaShop
  *
@@ -20,24 +21,20 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
+use PrestaShop\Module\Classes\MeilisearchStatssearch;
+use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchContext;
 use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchProviderInterface;
 use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchQuery;
-use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchContext;
 use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchResult;
 use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
 use Symfony\Component\Translation\TranslatorInterface;
-use PrestaShop\Module\Classes\MeilisearchStatssearch;
-use Configuration;
-use Context;
-use Db;
-use Cache;
 
 class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 {
     private $translator;
     private $module;
 
-    public static $lastFacetDistribution = null;
+    public static $lastFacetDistribution;
 
     /** @var array Filtres de contexte non-utilisateur (ex: page catégorie, fabricant) */
     public static $contextFilters = [];
@@ -45,7 +42,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     public function __construct(TranslatorInterface $translator)
     {
         $this->translator = $translator;
-        $this->module     = \Module::getInstanceByName('meilisearchprestashop');
+        $this->module = \Module::getInstanceByName('meilisearchprestashop');
     }
 
     public function runQuery(ProductSearchContext $context, ProductSearchQuery $query)
@@ -71,14 +68,14 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
     private function getFeatureMap(): array
     {
-        $idLang = (int) Context::getContext()->language->id;
+        $idLang = (int) \Context::getContext()->language->id;
 
         $cache_id = 'meilisearchprestashop::getFeatureMap_' . $idLang;
-        if(Cache::isStored($cache_id)){
-            return Cache::retrieve($cache_id);
+        if (\Cache::isStored($cache_id)) {
+            return \Cache::retrieve($cache_id);
         }
 
-        $rows   = Db::getInstance((bool)_PS_USE_SQL_SLAVE_)->executeS('
+        $rows = \Db::getInstance((bool) _PS_USE_SQL_SLAVE_)->executeS('
             SELECT id_feature, name
             FROM ' . _DB_PREFIX_ . 'feature_lang
             WHERE id_lang = ' . $idLang
@@ -89,7 +86,8 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
             $map[$row['id_feature']] = $this->slugify($row['name']);
         }
 
-        Cache::store($cache_id, $map);
+        \Cache::store($cache_id, $map);
+
         return $map;
     }
 
@@ -97,6 +95,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     {
         $text = strtolower(trim($text));
         $text = preg_replace('/[^a-z0-9]+/', '_', $text);
+
         return trim($text, '_');
     }
 
@@ -106,14 +105,16 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
         foreach ($filtersArray as $filterString) {
             $dashPos = strpos($filterString, '-');
-            if ($dashPos === false) continue;
+            if ($dashPos === false) {
+                continue;
+            }
 
             $prefix = substr($filterString, 0, $dashPos);
-            $value  = substr($filterString, $dashPos + 1);
+            $value = substr($filterString, $dashPos + 1);
 
             switch ($prefix) {
                 case 'manu':
-                    $groupedFilters['manu'][] = 'id_manufacturer = ' . (int)$value;
+                    $groupedFilters['manu'][] = 'id_manufacturer = ' . (int) $value;
                     break;
                 case 'avail':
                     if ($value === 'stock') {
@@ -121,7 +122,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                     }
                     break;
                 case 'cat':
-                    $groupedFilters['cat'][] = 'ids_category = ' . (int)$value;
+                    $groupedFilters['cat'][] = 'ids_category = ' . (int) $value;
                     break;
                 case 'cond':
                     $groupedFilters['cond'][] = 'condition = "' . pSQL($value) . '"';
@@ -129,7 +130,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                 default:
                     if (isset($featureMapFlipped[$prefix])) {
                         $featureId = $featureMapFlipped[$prefix];
-                        $groupedFilters[$prefix][] = '"feature_values" = "' . $featureId . '-' . (int)$value . '"';
+                        $groupedFilters[$prefix][] = '"feature_values" = "' . $featureId . '-' . (int) $value . '"';
                     }
                     break;
             }
@@ -168,6 +169,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                 if (in_array($groupKey, $featureMap)) {
                     return 'feature_values';
                 }
+
                 return null;
         }
     }
@@ -175,6 +177,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     private function getFeatureIdFromGroupKey(string $groupKey, array $featureMap): ?string
     {
         $flipped = array_flip($featureMap);
+
         return $flipped[$groupKey] ?? null;
     }
 
@@ -184,56 +187,57 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         foreach ($hits as $hit) {
             $qty = is_object($hit) ? ($hit->quantity ?? 0) : ($hit['quantity'] ?? 0);
             if ($qty > 0) {
-                $count++;
+                ++$count;
             }
         }
+
         return $count;
     }
 
     private function searchInMeili($query)
     {
-        $context  = Context::getContext();
+        $context = \Context::getContext();
         $iso_lang = $context->language->iso_code;
 
-        $search    = $query->getSearchString();
-        $page      = $query->getPage();
-        $perPage   = $query->getResultsPerPage();
+        $search = $query->getSearchString();
+        $page = $query->getPage();
+        $perPage = $query->getResultsPerPage();
         $sortOrder = $query->getSortOrder();
-        $field     = $sortOrder->getField();
+        $field = $sortOrder->getField();
 
-        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL')
-            . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX')
+        $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL')
+            . 'indexes/' . \Configuration::get('MEILISEARCHPRESTASHOP_PREFIX')
             . 'products_' . $iso_lang . '/search';
 
         $baseData = [
-            'q'                    => $search,
-            'limit'                => 9999,
+            'q' => $search,
+            'limit' => 9999,
             'attributesToRetrieve' => ['*'],
-            'filter'               => [],
-            'facets'               => ['*'],
+            'filter' => [],
+            'facets' => ['*'],
         ];
 
         if ($field !== 'relevance') {
             $baseData['sort'] = [$field . ':' . strtolower($sortOrder->getDirection())];
         }
 
-        $filters           = \Tools::getValue('encodedFacets', '');
-        $filtersArray      = array_filter(explode('|', $filters));
-        $featureMap        = $this->getFeatureMap();
+        $filters = \Tools::getValue('encodedFacets', '');
+        $filtersArray = array_filter(explode('|', $filters));
+        $featureMap = $this->getFeatureMap();
         $featureMapFlipped = array_flip($featureMap);
-        $groupedFilters    = $this->parseFilters($filtersArray, $featureMapFlipped);
+        $groupedFilters = $this->parseFilters($filtersArray, $featureMapFlipped);
 
         // Requête principale avec tous les filtres
-        $data           = $baseData;
+        $data = $baseData;
         $data['filter'] = $this->buildFilterArray($groupedFilters);
-        $response       = $this->module->requestCurl($meiliUrl, json_encode($data));
+        $response = $this->module->requestCurl($meiliUrl, json_encode($data));
 
         if (!$response || !isset($response->hits) || !is_array($response->hits)) {
             return [
                 'products' => [],
                 'allProducts' => [],
-                'total'    => 0,
-                'facets'   => null,
+                'total' => 0,
+                'facets' => null,
             ];
         }
 
@@ -245,13 +249,13 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
         // Requêtes disjunctives : une par groupe actif
         foreach ($groupedFilters as $groupKey => $groupFilterLines) {
-            $filtersWithoutGroup    = array_diff_key($groupedFilters, [$groupKey => null]);
-            $dataForGroup           = $baseData;
+            $filtersWithoutGroup = array_diff_key($groupedFilters, [$groupKey => null]);
+            $dataForGroup = $baseData;
             $dataForGroup['filter'] = $this->buildFilterArray($filtersWithoutGroup);
 
             if ($groupKey === 'avail') {
                 // Pour availability on a besoin des hits pour compter la quantité
-                $dataForGroup['limit']                = 9999;
+                $dataForGroup['limit'] = 9999;
                 $dataForGroup['attributesToRetrieve'] = ['quantity'];
                 $resp = $this->module->requestCurl($meiliUrl, json_encode($dataForGroup));
                 if ($resp && isset($resp->hits)) {
@@ -260,13 +264,15 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                     ];
                 }
             } else {
-                $dataForGroup['limit']                = 0;
+                $dataForGroup['limit'] = 0;
                 $dataForGroup['attributesToRetrieve'] = [];
                 $resp = $this->module->requestCurl($meiliUrl, json_encode($dataForGroup));
-                if (!$resp || !isset($resp->facetDistribution)) continue;
+                if (!$resp || !isset($resp->facetDistribution)) {
+                    continue;
+                }
 
                 $respFacets = json_decode(json_encode($resp->facetDistribution), true);
-                $meiliKey   = $this->getMeiliGroupKey($groupKey, $featureMap);
+                $meiliKey = $this->getMeiliGroupKey($groupKey, $featureMap);
 
                 if ($meiliKey === 'feature_values') {
                     $featureId = $this->getFeatureIdFromGroupKey($groupKey, $featureMap);
@@ -296,14 +302,14 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
             || $cookie->meilisearch_query != $search)
             && !empty($search)
         ) {
-            $newSearch              = new MeilisearchStatssearch();
-            $newSearch->query       = mb_strtolower($search);
-            $newSearch->nb_results  = $response->estimatedTotalHits;
+            $newSearch = new MeilisearchStatssearch();
+            $newSearch->query = mb_strtolower($search);
+            $newSearch->nb_results = $response->estimatedTotalHits;
             $newSearch->id_customer = isset($context->customer) ? $context->customer->id : null;
-            $newSearch->id_lang     = $context->language->id;
+            $newSearch->id_lang = $context->language->id;
             $newSearch->save();
 
-            $cookie->meilisearch_id    = $newSearch->id;
+            $cookie->meilisearch_id = $newSearch->id;
             $cookie->meilisearch_query = $search;
             unset($cookie->meilisearch_product_id);
         }
@@ -311,10 +317,10 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         self::$contextFilters = [];
 
         return [
-            'products'    => $this->formatProducts($productsChunk[$page - 1] ?? []),
+            'products' => $this->formatProducts($productsChunk[$page - 1] ?? []),
             'allProducts' => $this->formatProducts($response->hits),
-            'total'       => $response->estimatedTotalHits,
-            'facets'      => (object)$mergedFacets,
+            'total' => $response->estimatedTotalHits,
+            'facets' => (object) $mergedFacets,
         ];
     }
 
