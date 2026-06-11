@@ -397,11 +397,9 @@ class Meilisearchprestashop extends Module
      */
     private function buildListingContext(string $phpSelf): array
     {
-        $ctrl = $this->context->controller;
-
         switch ($phpSelf) {
             case 'category':
-                $id = (int) Tools::getValue('id_category', $ctrl->category->id ?? 0);
+                $id = (int) Tools::getValue('id_category', 0);
 
                 return [
                     'type' => 'category',
@@ -411,7 +409,7 @@ class Meilisearchprestashop extends Module
                     'hide_facets' => ['ids_category'],
                 ];
             case 'manufacturer':
-                $id = (int) Tools::getValue('id_manufacturer', $ctrl->manufacturer->id ?? 0);
+                $id = (int) Tools::getValue('id_manufacturer', 0);
 
                 return [
                     'type' => 'manufacturer',

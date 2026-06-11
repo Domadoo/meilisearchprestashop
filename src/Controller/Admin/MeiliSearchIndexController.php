@@ -137,7 +137,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
 
     public function bulkFlushAction(Request $request)
     {
-        $uids = array_filter((array) $request->request->get('uids', []), [$this, 'isValidIndexUid']);
+        $uids = array_filter((array) ($request->request->all()['uids'] ?? []), [$this, 'isValidIndexUid']);
         $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL');
 
         foreach ($uids as $uid) {
@@ -151,7 +151,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
 
     public function bulkDeleteAction(Request $request)
     {
-        $uids = array_filter((array) $request->request->get('uids', []), [$this, 'isValidIndexUid']);
+        $uids = array_filter((array) ($request->request->all()['uids'] ?? []), [$this, 'isValidIndexUid']);
         $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL');
 
         foreach ($uids as $uid) {
@@ -200,7 +200,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
 
     public function bulkReindexAction(Request $request)
     {
-        $uids = (array) $request->request->get('uids', []);
+        $uids = (array) ($request->request->all()['uids'] ?? []);
         $prefix = \Configuration::get('MEILISEARCHPRESTASHOP_PREFIX');
         $needle = $prefix . 'products_';
         $langByIso = array_column(\Language::getLanguages(), null, 'iso_code');
