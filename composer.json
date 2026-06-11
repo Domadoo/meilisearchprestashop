@@ -18,14 +18,6 @@
             "PrestaShop\\Module\\Classes\\": "classes/"
         }
     },
-    "autoload-dev": {
-        "psr-4": {
-            "Tests\\Prestaflow\\": "tests/prestaflow/"
-        }
-    },
-    "scripts": {
-        "prestaflow": "php tests/prestaflow/run.php"
-    },
     "config": {
         "prepend-autoloader": false,
         "platform": {
@@ -35,7 +27,6 @@
     "require-dev": {
         "prestashop/php-dev-tools": "^5.0",
         "phpstan/phpstan": "^1.10",
-        "friendsofphp/php-cs-fixer": "^3.2",
-        "prestaflow/php-library": "^1.2"
+        "friendsofphp/php-cs-fixer": "^3.2"
     }
 }

@@ -1,5 +1,9 @@
 name: PHP tests
 on: [push, pull_request]
+concurrency:
+  group: ${{ github.event_name }}-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   php-linter:
     name: PHP Syntax check
@@ -8,31 +12,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: PHP syntax checker 7.2
-        uses: prestashop/github-action-php-lint/7.2@master
       - name: PHP syntax checker 7.4
         uses: prestashop/github-action-php-lint/7.4@master
-      - name: PHP syntax checker 8.0
-        uses: prestashop/github-action-php-lint/8.0@master
       - name: PHP syntax checker 8.1
         uses: prestashop/github-action-php-lint/8.1@master
       - name: PHP syntax checker 8.2
         uses: prestashop/github-action-php-lint/8.2@master
       - name: PHP syntax checker 8.3
         uses: prestashop/github-action-php-lint/8.3@master
-      - name: PHP syntax checker 8.4
-        uses: prestashop/github-action-php-lint/8.4@master
 
   php-cs-fixer:
     name: PHP-CS-Fixer
     runs-on: ubuntu-latest
     steps:
-      - uses: PrestaShop/.github/.github/actions/php-ci/php-cs@master
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
           php-version: '8.1'
 
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: php-${{ hashFiles('composer.lock') }}
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run PHP-CS-Fixer
+        run: ./vendor/bin/php-cs-fixer fix --dry-run --diff --using-cache=no
+
   phpstan:
-    name: PHPStan
+    name: PHPStan (${{ matrix.presta-version }}, PHP ${{ matrix.php-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -61,4 +75,4 @@ jobs:
           phpstan-level: '5'
           phpstan-config: 'tests/php/phpstan/phpstan-${{ matrix.presta-version }}.neon'
           phpstan-version: ${{ matrix.phpstan-version }}
-          composer-version: '2.2.18'
+          phpstan-config-merge: 'false'

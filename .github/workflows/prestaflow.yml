@@ -16,8 +16,8 @@ jobs:
           php-version: '8.2'
           extensions: gd
 
-      - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+      - name: Install e2e dependencies
+        run: composer install --no-interaction --prefer-dist --working-dir=tests/prestaflow
 
       - name: Install Chrome
         uses: browser-actions/setup-chrome@v1
@@ -31,4 +31,4 @@ jobs:
           echo "PRESTAFLOW_HEADLESS=true" >> .env
 
       - name: Run PrestaFlow tests
-        run: composer prestaflow
+        run: php tests/prestaflow/run.php
