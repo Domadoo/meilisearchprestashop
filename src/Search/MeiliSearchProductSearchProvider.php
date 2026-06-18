@@ -316,10 +316,12 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
         self::$contextFilters = [];
 
+        $totalHits = count($response->hits);
+
         return [
             'products' => $this->formatProducts($productsChunk[$page - 1] ?? []),
             'allProducts' => $this->formatProducts($response->hits),
-            'total' => $response->estimatedTotalHits,
+            'total' => $totalHits,
             'facets' => (object) $mergedFacets,
         ];
     }
