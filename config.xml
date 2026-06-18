@@ -2,7 +2,7 @@
 <module>
 	<name>meilisearchprestashop</name>
 	<displayName><![CDATA[Meilisearch Prestashop]]></displayName>
-	<version><![CDATA[1.1.3]]></version>
+	<version><![CDATA[1.2.1]]></version>
 	<description><![CDATA[Prestashop module to replace the standard searchbar with Meilisearch]]></description>
 	<author><![CDATA[Doudeau Adam, Johan Vivien]]></author>
 	<tab><![CDATA[search_filter]]></tab>
