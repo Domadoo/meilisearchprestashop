@@ -65,15 +65,18 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
             $sql = '
                 SELECT p.*, product_shop.*, pl.*, 
                     m.`name` AS manufacturer_name, 
-                    s.`name` AS supplier_name
+                    s.`name` AS supplier_name,
+                    IFNULL(psale.`quantity`, 0) AS sales
                 FROM `' . _DB_PREFIX_ . 'product` p
                 ' . Shop::addSqlAssociation('product', 'p') . '
                 LEFT JOIN `' . _DB_PREFIX_ . 'product_lang` pl 
                     ON (p.`id_product` = pl.`id_product` ' . Shop::addSqlRestrictionOnLang('pl') . ')
                 LEFT JOIN `' . _DB_PREFIX_ . 'manufacturer` m 
                     ON (m.`id_manufacturer` = p.`id_manufacturer`)
-                LEFT JOIN `' . _DB_PREFIX_ . 'supplier` s 
+                LEFT JOIN `' . _DB_PREFIX_ . 'supplier` s
                     ON (s.`id_supplier` = p.`id_supplier`)
+                LEFT JOIN `' . _DB_PREFIX_ . 'product_sale` psale
+                    ON (psale.`id_product` = p.`id_product`)
                 WHERE pl.`id_lang` = ' . (int) $id_lang . '
                 AND product_shop.`active` = 1
             ';
@@ -123,6 +126,7 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
                 'id_shop' => 'int',
                 'final_price' => 'float',
                 'id_lang' => 'int',
+                'sales' => 'int',
             ];
 
             // Récupère les IDs produits
@@ -191,24 +195,24 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
                 'primaryKey' => 'id_product',
             ]);
             // @phpstan-ignore-next-line
-            $this->module->requestCurl($meiliUrl . 'indexes', $payloadIndex);
+            $this->module->requestCurlIndex($meiliUrl . 'indexes', $payloadIndex);
 
             $arrayProductsChunk = array_chunk($products, 200);
 
             // Envoi à Meilisearch
             foreach ($arrayProductsChunk as $arrayProducts) {
                 // @phpstan-ignore-next-line
-                $this->module->requestCurl($meiliUrl . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code . '/documents', json_encode($arrayProducts));
+                $this->module->requestCurlIndex($meiliUrl . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code . '/documents', json_encode($arrayProducts));
             }
 
             // @phpstan-ignore-next-line
-            $this->module->requestCurl($meiliUrl . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code . '/settings/pagination', json_encode(['maxTotalHits' => 9999]), 'PATCH');
+            $this->module->requestCurlIndex($meiliUrl . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code . '/settings/pagination', json_encode(['maxTotalHits' => 9999]), 'PATCH');
             // @phpstan-ignore-next-line
-            $this->module->requestCurl($meiliUrl . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code . '/settings/sortable-attributes', json_encode(['name', 'price', 'date_add', 'quantity']), 'PUT');
+            $this->module->requestCurlIndex($meiliUrl . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code . '/settings/sortable-attributes', json_encode(['name', 'price', 'date_add', 'quantity', 'sales']), 'PUT');
             // @phpstan-ignore-next-line
-            $this->module->requestCurl($meiliUrl . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code . '/settings/ranking-rules', json_encode(['sort', 'words', 'typo', 'proximity', 'attribute', 'exactness']), 'PUT');
+            $this->module->requestCurlIndex($meiliUrl . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code . '/settings/ranking-rules', json_encode(['sort', 'words', 'typo', 'proximity', 'attribute', 'exactness']), 'PUT');
             // @phpstan-ignore-next-line
-            $this->module->requestCurl($meiliUrl . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code . '/settings/filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'ids_category', 'quantity', 'feature_values', 'visibility', 'available_for_order']), 'PUT');
+            $this->module->requestCurlIndex($meiliUrl . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX') . 'products_' . $iso_code . '/settings/filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'ids_category', 'quantity', 'feature_values', 'visibility', 'available_for_order']), 'PUT');
         }
 
         return true;

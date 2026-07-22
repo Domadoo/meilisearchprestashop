@@ -41,8 +41,8 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
         $indexes = [];
 
         if ($meiliUrl) {
-            $response = $this->module->requestCurl($meiliUrl . 'indexes?limit=100');
-            $stats = $this->module->requestCurl($meiliUrl . 'stats');
+            $response = $this->module->requestCurlSearch($meiliUrl . 'indexes?limit=100');
+            $stats = $this->module->requestCurlSearch($meiliUrl . 'stats');
             $indexStats = ($stats && isset($stats->indexes)) ? (array) $stats->indexes : [];
 
             if ($response && isset($response->results)) {
@@ -115,7 +115,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             return $this->redirectToRoute('admin_meilisearch_index_index');
         }
         $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL');
-        $this->module->requestCurl($meiliUrl . 'indexes/' . $uid, null, 'DELETE');
+        $this->module->requestCurlIndex($meiliUrl . 'indexes/' . $uid, null, 'DELETE');
         $this->addFlash('success', sprintf($this->module->l('Index "%s" deleted.', 'meilisearchindexcontroller'), $uid));
 
         return $this->redirectToRoute('admin_meilisearch_index_index');
@@ -129,7 +129,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             return $this->redirectToRoute('admin_meilisearch_index_index');
         }
         $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL');
-        $this->module->requestCurl($meiliUrl . 'indexes/' . $uid . '/documents', null, 'DELETE');
+        $this->module->requestCurlIndex($meiliUrl . 'indexes/' . $uid . '/documents', null, 'DELETE');
         $this->addFlash('success', sprintf($this->module->l('Documents of index "%s" deleted.', 'meilisearchindexcontroller'), $uid));
 
         return $this->redirectToRoute('admin_meilisearch_index_index');
@@ -141,7 +141,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
         $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL');
 
         foreach ($uids as $uid) {
-            $this->module->requestCurl($meiliUrl . 'indexes/' . $uid . '/documents', null, 'DELETE');
+            $this->module->requestCurlIndex($meiliUrl . 'indexes/' . $uid . '/documents', null, 'DELETE');
         }
 
         $this->addFlash('success', sprintf($this->module->l('%d index(es) flushed.', 'meilisearchindexcontroller'), count($uids)));
@@ -155,7 +155,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
         $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL');
 
         foreach ($uids as $uid) {
-            $this->module->requestCurl($meiliUrl . 'indexes/' . $uid, null, 'DELETE');
+            $this->module->requestCurlIndex($meiliUrl . 'indexes/' . $uid, null, 'DELETE');
         }
 
         $this->addFlash('success', sprintf($this->module->l('%d index(es) deleted.', 'meilisearchindexcontroller'), count($uids)));
@@ -230,7 +230,8 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
         $sql = '
             SELECT p.*, product_shop.*, pl.*,
                 m.`name` AS manufacturer_name,
-                s.`name` AS supplier_name
+                s.`name` AS supplier_name,
+                IFNULL(psale.`quantity`, 0) AS sales
             FROM `' . _DB_PREFIX_ . 'product` p
             ' . \Shop::addSqlAssociation('product', 'p') . '
             LEFT JOIN `' . _DB_PREFIX_ . 'product_lang` pl
@@ -239,6 +240,8 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
                 ON (m.`id_manufacturer` = p.`id_manufacturer`)
             LEFT JOIN `' . _DB_PREFIX_ . 'supplier` s
                 ON (s.`id_supplier` = p.`id_supplier`)
+            LEFT JOIN `' . _DB_PREFIX_ . 'product_sale` psale
+                ON (psale.`id_product` = p.`id_product`)
             WHERE pl.`id_lang` = ' . (int) $id_lang . '
             AND product_shop.`active` = 1
         ';
@@ -288,6 +291,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             'id_shop' => 'int',
             'final_price' => 'float',
             'id_lang' => 'int',
+            'sales' => 'int',
         ];
 
         $productIds = array_column($products, 'id_product');
@@ -353,15 +357,15 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             'uid' => $indexUid,
             'primaryKey' => 'id_product',
         ]);
-        $this->module->requestCurl($meiliUrl . 'indexes', $payloadIndex);
+        $this->module->requestCurlIndex($meiliUrl . 'indexes', $payloadIndex);
 
         foreach (array_chunk($products, 200) as $chunk) {
-            $this->module->requestCurl($meiliUrl . 'indexes/' . $indexUid . '/documents', json_encode($chunk));
+            $this->module->requestCurlIndex($meiliUrl . 'indexes/' . $indexUid . '/documents', json_encode($chunk));
         }
 
-        $this->module->requestCurl($meiliUrl . 'indexes/' . $indexUid . '/settings/pagination', json_encode(['maxTotalHits' => 9999]), 'PATCH');
-        $this->module->requestCurl($meiliUrl . 'indexes/' . $indexUid . '/settings/sortable-attributes', json_encode(['name', 'price', 'date_add', 'quantity']), 'PUT');
-        $this->module->requestCurl($meiliUrl . 'indexes/' . $indexUid . '/settings/ranking-rules', json_encode(['sort', 'words', 'typo', 'proximity', 'attribute', 'exactness']), 'PUT');
-        $this->module->requestCurl($meiliUrl . 'indexes/' . $indexUid . '/settings/filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'ids_category', 'quantity', 'feature_values', 'visibility', 'available_for_order']), 'PUT');
+        $this->module->requestCurlIndex($meiliUrl . 'indexes/' . $indexUid . '/settings/pagination', json_encode(['maxTotalHits' => 9999]), 'PATCH');
+        $this->module->requestCurlIndex($meiliUrl . 'indexes/' . $indexUid . '/settings/sortable-attributes', json_encode(['name', 'price', 'date_add', 'quantity', 'sales']), 'PUT');
+        $this->module->requestCurlIndex($meiliUrl . 'indexes/' . $indexUid . '/settings/ranking-rules', json_encode(['sort', 'words', 'typo', 'proximity', 'attribute', 'exactness']), 'PUT');
+        $this->module->requestCurlIndex($meiliUrl . 'indexes/' . $indexUid . '/settings/filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'ids_category', 'quantity', 'feature_values', 'visibility', 'available_for_order']), 'PUT');
     }
 }

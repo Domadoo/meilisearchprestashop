@@ -202,7 +202,7 @@ trait MeilisearchListingControllerTrait
             'filter' => $baseFilter,
             'facets' => ['*'],
         ];
-        $responseAll = $module->requestCurl($meiliUrl, json_encode($dataAll));
+        $responseAll = $module->requestCurlSearch($meiliUrl, json_encode($dataAll));
         $allFacets = $responseAll && isset($responseAll->facetDistribution)
             ? json_decode(json_encode($responseAll->facetDistribution), true)
             : [];
@@ -220,7 +220,7 @@ trait MeilisearchListingControllerTrait
             'filter' => array_merge($baseFilter, ['quantity >= 1']),
             'facets' => [],
         ];
-        $responseAllStock = $module->requestCurl($meiliUrl, json_encode($dataAllStock));
+        $responseAllStock = $module->requestCurlSearch($meiliUrl, json_encode($dataAllStock));
         $mergedFacets['availability'] = [
             'in_stock' => $responseAllStock && isset($responseAllStock->estimatedTotalHits)
                 ? (int) $responseAllStock->estimatedTotalHits
@@ -255,7 +255,7 @@ trait MeilisearchListingControllerTrait
                     'filter' => array_merge($filter, ['quantity >= 1']),
                     'facets' => [],
                 ];
-                $respCount = $module->requestCurl($meiliUrl, json_encode($dataCount));
+                $respCount = $module->requestCurlSearch($meiliUrl, json_encode($dataCount));
                 $mergedFacets['availability'] = [
                     'in_stock' => $respCount && isset($respCount->estimatedTotalHits)
                         ? (int) $respCount->estimatedTotalHits
@@ -271,7 +271,7 @@ trait MeilisearchListingControllerTrait
                 'facets' => ['*'],
             ];
 
-            $resp = $module->requestCurl($meiliUrl, json_encode($data));
+            $resp = $module->requestCurlSearch($meiliUrl, json_encode($data));
             if (!$resp || !isset($resp->facetDistribution)) {
                 continue;
             }

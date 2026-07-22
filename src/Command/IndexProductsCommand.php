@@ -125,6 +125,7 @@ class IndexProductsCommand extends Command
             'id_shop' => 'int',
             'final_price' => 'float',
             'id_lang' => 'int',
+            'sales' => 'int',
         ];
 
         foreach ($languages as $language) {
@@ -137,7 +138,8 @@ class IndexProductsCommand extends Command
             $sql = '
                 SELECT p.*, product_shop.*, pl.*,
                     m.`name` AS manufacturer_name,
-                    s.`name` AS supplier_name
+                    s.`name` AS supplier_name,
+                    IFNULL(psale.`quantity`, 0) AS sales
                 FROM `' . _DB_PREFIX_ . 'product` p
                 ' . \Shop::addSqlAssociation('product', 'p') . '
                 LEFT JOIN `' . _DB_PREFIX_ . 'product_lang` pl
@@ -146,6 +148,8 @@ class IndexProductsCommand extends Command
                     ON (m.`id_manufacturer` = p.`id_manufacturer`)
                 LEFT JOIN `' . _DB_PREFIX_ . 'supplier` s
                     ON (s.`id_supplier` = p.`id_supplier`)
+                LEFT JOIN `' . _DB_PREFIX_ . 'product_sale` psale
+                    ON (psale.`id_product` = p.`id_product`)
                 WHERE pl.`id_lang` = ' . $idLang . '
                 AND product_shop.`active` = 1
             ';
@@ -240,7 +244,7 @@ class IndexProductsCommand extends Command
             );
             $this->requestMeilisearch(
                 $meiliUrl . 'indexes/' . $indexName . '/settings/sortable-attributes',
-                json_encode(['name', 'price', 'date_add', 'quantity']),
+                json_encode(['name', 'price', 'date_add', 'quantity', 'sales']),
                 'PUT'
             );
             $this->requestMeilisearch(

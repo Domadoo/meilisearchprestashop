@@ -40,8 +40,8 @@ class MeiliSearchIndexSettingsController extends FrameworkBundleAdminController
         $settings = null;
 
         if ($meiliUrl) {
-            $index = $this->module->requestCurl($meiliUrl . 'indexes/' . $uid);
-            $settings = $this->module->requestCurl($meiliUrl . 'indexes/' . $uid . '/settings');
+            $index = $this->module->requestCurlSearch($meiliUrl . 'indexes/' . $uid);
+            $settings = $this->module->requestCurlSearch($meiliUrl . 'indexes/' . $uid . '/settings');
         }
 
         $ctx = 'meilisearchindexsettingscontroller';

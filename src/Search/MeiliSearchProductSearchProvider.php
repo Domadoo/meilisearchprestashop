@@ -230,7 +230,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         // Requête principale avec tous les filtres
         $data = $baseData;
         $data['filter'] = $this->buildFilterArray($groupedFilters);
-        $response = $this->module->requestCurl($meiliUrl, json_encode($data));
+        $response = $this->module->requestCurlSearch($meiliUrl, json_encode($data));
 
         if (!$response instanceof \stdClass || !isset($response->hits) || !is_array($response->hits)) {
             return [
@@ -257,7 +257,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                 // Pour availability on a besoin des hits pour compter la quantité
                 $dataForGroup['limit'] = 9999;
                 $dataForGroup['attributesToRetrieve'] = ['quantity'];
-                $resp = $this->module->requestCurl($meiliUrl, json_encode($dataForGroup));
+                $resp = $this->module->requestCurlSearch($meiliUrl, json_encode($dataForGroup));
                 if ($resp && isset($resp->hits)) {
                     $mergedFacets['availability'] = [
                         'in_stock' => $this->countInStock($resp->hits),
@@ -266,7 +266,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
             } else {
                 $dataForGroup['limit'] = 0;
                 $dataForGroup['attributesToRetrieve'] = [];
-                $resp = $this->module->requestCurl($meiliUrl, json_encode($dataForGroup));
+                $resp = $this->module->requestCurlSearch($meiliUrl, json_encode($dataForGroup));
                 if (!$resp || !isset($resp->facetDistribution)) {
                     continue;
                 }
@@ -348,6 +348,8 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                 ->setLabel($this->translator->trans('Newest first', [], 'Shop.Theme.Catalog')),
             (new SortOrder('meilisearch', 'quantity', 'desc'))
                 ->setLabel($this->translator->trans('Quantity', [], 'Shop.Theme.Catalog')),
+            (new SortOrder('meilisearch', 'sales', 'desc'))
+                ->setLabel($this->translator->trans('Sales, highest to lowest', [], 'Shop.Theme.Catalog')),
         ];
     }
 }

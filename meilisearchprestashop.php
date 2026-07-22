@@ -337,7 +337,7 @@ class Meilisearchprestashop extends Module
         }
 
         // Requête facettes (limit=0 = pas de produits, juste la distribution)
-        $response = $this->requestCurl($meiliUrl, json_encode([
+        $response = $this->requestCurlSearch($meiliUrl, json_encode([
             'q' => '',
             'limit' => 0,
             'filter' => $baseFilter,
@@ -351,7 +351,7 @@ class Meilisearchprestashop extends Module
         $facets = json_decode(json_encode($response->facetDistribution), true) ?? [];
 
         // Comptage stock en stock (estimatedTotalHits avec quantity >= 1, limit=0)
-        $stockResponse = $this->requestCurl($meiliUrl, json_encode([
+        $stockResponse = $this->requestCurlSearch($meiliUrl, json_encode([
             'q' => '',
             'limit' => 0,
             'filter' => array_merge($baseFilter, ['quantity >= 1']),
@@ -456,9 +456,29 @@ class Meilisearchprestashop extends Module
         return $value;
     }
 
-    // ── cURL helper ───────────────────────────────────────────────────────────
+    // ── cURL helpers ──────────────────────────────────────────────────────────
 
-    public function requestCurl($url, $payload = null, $request = false)
+    /**
+     * Requête cURL vers Meilisearch pour les lectures de recherche (front + lectures
+     * admin légères). Timeouts courts : si Meili est lent/down, on abandonne vite pour
+     * ne pas saturer les workers PHP-FPM (mécanisme de l'incident crawl Googlebot).
+     */
+    public function requestCurlSearch($url, $payload = null, $request = false)
+    {
+        return $this->requestCurlRaw($url, $payload, $request, 3, 5);
+    }
+
+    /**
+     * Requête cURL vers Meilisearch pour l'indexation (création d'index, envoi de
+     * documents par chunks, settings, suppressions). Timeouts longs : ces opérations
+     * peuvent légitimement durer et ne sont pas sur le chemin critique front.
+     */
+    public function requestCurlIndex($url, $payload = null, $request = false)
+    {
+        return $this->requestCurlRaw($url, $payload, $request, 5, 60);
+    }
+
+    private function requestCurlRaw($url, $payload, $request, $connectTimeout, $timeout)
     {
         $authorization = 'Authorization: Bearer ' . Configuration::get('MEILISEARCHPRESTASHOP_KEY');
         $options = [
@@ -468,8 +488,8 @@ class Meilisearchprestashop extends Module
             CURLOPT_ENCODING => '',       // handle all encodings
             CURLOPT_USERAGENT => 'spider', // who am i
             CURLOPT_AUTOREFERER => true,     // set referer on redirect
-            CURLOPT_CONNECTTIMEOUT => 120,      // timeout on connect
-            CURLOPT_TIMEOUT => 120,      // timeout on response
+            CURLOPT_CONNECTTIMEOUT => $connectTimeout,      // timeout on connect
+            CURLOPT_TIMEOUT => $timeout,      // timeout on response
             CURLOPT_MAXREDIRS => 10,       // stop after 10 redirects
             CURLOPT_SSL_VERIFYPEER => true,
         ];
