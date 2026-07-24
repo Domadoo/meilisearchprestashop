@@ -19,9 +19,11 @@ if (!defined('_PS_VERSION_')) {
 }
 
 /**
- * Ajout du hook actionFrontControllerSetMedia : neutralise côté serveur le param `order`
- * des tris propres à Meilisearch (ex: `sales`) sur les pages listing, pour éviter que le
- * contrôleur natif PS tente un `ORDER BY` sur une colonne inexistante au rechargement.
+ * - actionFrontControllerSetMedia : neutralise côté serveur le param `order` des tris propres
+ *   à Meilisearch (ex: `sales`) sur les pages listing, pour éviter que le contrôleur natif PS
+ *   tente un `ORDER BY` sur une colonne inexistante au rechargement.
+ * - actionObjectProduct(Add|Update|Delete)After : réindexation temps réel d'un produit dans
+ *   Meilisearch dès sa création / mise à jour / suppression.
  */
 function upgrade_module_1_3_0($module)
 {
@@ -30,5 +32,8 @@ function upgrade_module_1_3_0($module)
         return false;
     }
 
-    return $module->registerHook('actionFrontControllerSetMedia');
+    return $module->registerHook('actionFrontControllerSetMedia')
+        && $module->registerHook('actionObjectProductAddAfter')
+        && $module->registerHook('actionObjectProductUpdateAfter')
+        && $module->registerHook('actionObjectProductDeleteAfter');
 }

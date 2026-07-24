@@ -97,6 +97,9 @@ class Meilisearchprestashop extends Module
             && $this->registerHook('actionCartUpdateQuantityBefore')
             && $this->registerHook('actionPresentProduct')
             && $this->registerHook('actionValidateOrder')
+            && $this->registerHook('actionObjectProductAddAfter')
+            && $this->registerHook('actionObjectProductUpdateAfter')
+            && $this->registerHook('actionObjectProductDeleteAfter')
             && $this->callInstallTab();
     }
 
@@ -352,6 +355,48 @@ class Meilisearchprestashop extends Module
             }
         } catch (Throwable $th) {
             PrestaShopLogger::addLog('Error validation order Meilisearch : ' . $th->getMessage(), 3);
+        }
+    }
+
+    // ── Réindexation temps réel produit ───────────────────────────────────────
+
+    public function hookActionObjectProductAddAfter($params)
+    {
+        $this->reindexProductFromHook($params);
+    }
+
+    public function hookActionObjectProductUpdateAfter($params)
+    {
+        $this->reindexProductFromHook($params);
+    }
+
+    public function hookActionObjectProductDeleteAfter($params)
+    {
+        $product = isset($params['object']) ? $params['object'] : null;
+        if (!$product || empty($product->id)) {
+            return;
+        }
+        try {
+            (new \PrestaShop\Module\MeiliSearch\Service\ProductIndexer($this))->deleteProduct((int) $product->id);
+        } catch (Throwable $th) {
+            PrestaShopLogger::addLog('Meilisearch: échec suppression index produit ' . (int) $product->id . ' : ' . $th->getMessage(), 3);
+        }
+    }
+
+    /**
+     * Réindexe un produit unique. N'interrompt jamais l'enregistrement produit
+     * si Meilisearch est indisponible (erreurs avalées + loguées).
+     */
+    private function reindexProductFromHook($params)
+    {
+        $product = isset($params['object']) ? $params['object'] : null;
+        if (!$product || empty($product->id)) {
+            return;
+        }
+        try {
+            (new \PrestaShop\Module\MeiliSearch\Service\ProductIndexer($this))->indexProduct((int) $product->id);
+        } catch (Throwable $th) {
+            PrestaShopLogger::addLog('Meilisearch: échec réindexation produit ' . (int) $product->id . ' : ' . $th->getMessage(), 3);
         }
     }
 
