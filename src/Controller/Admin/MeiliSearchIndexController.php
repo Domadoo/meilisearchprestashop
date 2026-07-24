@@ -230,8 +230,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
         $sql = '
             SELECT p.*, product_shop.*, pl.*,
                 m.`name` AS manufacturer_name,
-                s.`name` AS supplier_name,
-                IFNULL(psale.`quantity`, 0) AS sales
+                s.`name` AS supplier_name
             FROM `' . _DB_PREFIX_ . 'product` p
             ' . \Shop::addSqlAssociation('product', 'p') . '
             LEFT JOIN `' . _DB_PREFIX_ . 'product_lang` pl
@@ -240,8 +239,6 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
                 ON (m.`id_manufacturer` = p.`id_manufacturer`)
             LEFT JOIN `' . _DB_PREFIX_ . 'supplier` s
                 ON (s.`id_supplier` = p.`id_supplier`)
-            LEFT JOIN `' . _DB_PREFIX_ . 'product_sale` psale
-                ON (psale.`id_product` = p.`id_product`)
             WHERE pl.`id_lang` = ' . (int) $id_lang . '
             AND product_shop.`active` = 1
         ';
@@ -291,7 +288,6 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             'id_shop' => 'int',
             'final_price' => 'float',
             'id_lang' => 'int',
-            'sales' => 'int',
         ];
 
         $productIds = array_column($products, 'id_product');
@@ -329,6 +325,54 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             $productCategoryIds[(int) $row['id_product']][] = (int) $row['id_category'];
         }
 
+        // Catégorie récursive : un produit d'une sous-catégorie doit apparaître dans ses
+        // catégories parentes. On enrichit ids_category avec tous les ancêtres de chaque catégorie.
+        $catParent = [];
+        foreach (\Db::getInstance()->executeS('
+            SELECT id_category, id_parent FROM `' . _DB_PREFIX_ . 'category`
+        ') as $row) {
+            $catParent[(int) $row['id_category']] = (int) $row['id_parent'];
+        }
+
+        $catChainCache = [];
+        foreach ($productCategoryIds as $idProduct => $cats) {
+            $expanded = [];
+            foreach ($cats as $catId) {
+                if (!isset($catChainCache[$catId])) {
+                    $chain = [];
+                    $current = $catId;
+                    $guard = 0;
+                    while ($current > 0 && !in_array($current, $chain, true) && $guard < 1000) {
+                        $chain[] = $current;
+                        $current = $catParent[$current] ?? 0;
+                        ++$guard;
+                    }
+                    $catChainCache[$catId] = $chain;
+                }
+                foreach ($catChainCache[$catId] as $ancestor) {
+                    $expanded[$ancestor] = true;
+                }
+            }
+            $productCategoryIds[$idProduct] = array_keys($expanded);
+        }
+
+        // Ventes des 3 derniers mois (commandes valides) : [id_product => quantité vendue]
+        $salesSql = '
+            SELECT od.`product_id`, SUM(od.`product_quantity`) AS sales
+            FROM `' . _DB_PREFIX_ . 'order_detail` od
+            INNER JOIN `' . _DB_PREFIX_ . 'orders` o ON (o.`id_order` = od.`id_order`)
+            WHERE od.`product_id` IN (' . $productIdsStr . ')
+            AND o.`valid` = 1
+            AND o.`date_add` >= DATE_SUB(NOW(), INTERVAL 3 MONTH)
+            GROUP BY od.`product_id`
+        ';
+        $salesResults = \Db::getInstance(true)->executeS($salesSql);
+
+        $productSales = [];
+        foreach ($salesResults as $row) {
+            $productSales[(int) $row['product_id']] = (int) $row['sales'];
+        }
+
         foreach ($products as &$product) {
             foreach ($typeMap as $field => $type) {
                 if (array_key_exists($field, $product) && $product[$field] !== null) {
@@ -348,6 +392,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             $id = $product['id_product'];
             $product['feature_values'] = $productFeatureValues[$id] ?? [];
             $product['ids_category'] = $productCategoryIds[$id] ?? [];
+            $product['sales'] = $productSales[$id] ?? 0;
         }
         unset($product);
 

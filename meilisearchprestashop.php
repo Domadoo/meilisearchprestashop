@@ -53,11 +53,18 @@ class Meilisearchprestashop extends Module
     /** Pages de listing gérées par Meilisearch */
     private const LISTING_PAGES = ['category', 'manufacturer', 'new-products', 'best-sales'];
 
+    /**
+     * Champs de tri propres à Meilisearch, absents des requêtes SQL natives PS.
+     * Sur les pages listing, le param `order` correspondant doit être neutralisé
+     * côté serveur pour éviter un `ORDER BY` sur une colonne inexistante.
+     */
+    private const MEILI_ONLY_SORT_FIELDS = ['sales', 'relevance'];
+
     public function __construct()
     {
         $this->name = 'meilisearchprestashop';
         $this->tab = 'search_filter';
-        $this->version = '1.2.1';
+        $this->version = '1.3.0';
         $this->author = 'Doudeau Adam, Johan Vivien';
         $this->need_instance = 0;
 
@@ -86,6 +93,7 @@ class Meilisearchprestashop extends Module
             && $this->registerHook('displayHeader')
             && $this->registerHook('displaySearch')
             && $this->registerHook('displayLeftColumn')
+            && $this->registerHook('actionFrontControllerSetMedia')
             && $this->registerHook('actionCartUpdateQuantityBefore')
             && $this->registerHook('actionPresentProduct')
             && $this->registerHook('actionValidateOrder')
@@ -237,6 +245,40 @@ class Meilisearchprestashop extends Module
             'meilisearch_facets_css',
             'modules/' . $this->name . '/views/css/front/meilisearch_facets.css'
         );
+    }
+
+    /**
+     * Neutralise le param `order` côté serveur sur les pages listing quand il
+     * référence un critère de tri propre à Meilisearch (ex: `sales`) que la requête
+     * SQL native de PrestaShop ne connaît pas.
+     *
+     * Ces pages sont rendues par le contrôleur natif PS (puis masquées et remplacées
+     * via AJAX). Au rechargement d'une page triée par ventes, le natif tenterait
+     * `ORDER BY sales` → colonne inconnue → PrestaShopDatabaseException. On retire donc
+     * `order` du contexte serveur (le natif rend avec son tri par défaut, invisible car
+     * masqué) ; l'URL du navigateur reste intacte, donc le JS relit `order` et réapplique
+     * le bon tri via l'appel AJAX à listing.php.
+     *
+     * S'exécute dans setMedia(), donc avant initContent() et la construction de la requête.
+     */
+    public function hookActionFrontControllerSetMedia()
+    {
+        $phpSelf = $this->context->controller->php_self ?? '';
+        if (!in_array($phpSelf, self::LISTING_PAGES, true)) {
+            return;
+        }
+
+        $order = (string) Tools::getValue('order', '');
+        if ($order === '') {
+            return;
+        }
+
+        foreach (self::MEILI_ONLY_SORT_FIELDS as $field) {
+            if (strpos($order, $field) !== false) {
+                unset($_GET['order'], $_REQUEST['order']);
+                break;
+            }
+        }
     }
 
     public function hookDisplayLeftColumn()
