@@ -212,7 +212,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $baseData = [
             'q' => $search,
             'limit' => 9999,
-            'attributesToRetrieve' => ['*'],
+            'attributesToRetrieve' => ['id_product'],
             'filter' => [],
             'facets' => ['*'],
         ];
