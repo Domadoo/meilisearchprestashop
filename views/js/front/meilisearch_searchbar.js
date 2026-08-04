@@ -61,14 +61,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const box = document.getElementById('meilisearch-autocomplete');
     if (!input || !box) return;
 
-    // eslint-disable-next-line camelcase
-    const url = typeof meilisearch_autocomplete_url !== 'undefined' ? meilisearch_autocomplete_url : '';
+    const url = window.meilisearch_autocomplete_url || '';
     if (!url) return;
 
-    // eslint-disable-next-line camelcase
-    const labels = typeof meilisearch_ac_labels !== 'undefined' ? meilisearch_ac_labels : {};
-    // eslint-disable-next-line camelcase
-    const config = typeof meilisearch_ac_config !== 'undefined' ? meilisearch_ac_config : {};
+    const labels = window.meilisearch_ac_labels || {};
+    const config = window.meilisearch_ac_config || {};
     const minChars = parseInt(config.minChars, 10) || 2;
     const debounceMs = parseInt(config.debounce, 10) || 200;
 
@@ -211,7 +208,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let fetchUrl;
         try {
             fetchUrl = new URL(url, window.location.origin);
-        } catch (e) {
+        } catch {
             return;
         }
         fetchUrl.searchParams.set('action', 'autocomplete');
