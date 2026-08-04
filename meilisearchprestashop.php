@@ -78,7 +78,7 @@ class Meilisearchprestashop extends Module
         $this->displayName = $this->l('Meilisearch Prestashop');
         $this->description = $this->l('Prestashop module to replace the standard searchbar with Meilisearch');
 
-        $this->ps_versions_compliancy = ['min' => '1.7', 'max' => '8.0'];
+        $this->ps_versions_compliancy = ['min' => '1.7', 'max' => '9.1'];
     }
 
     /**
