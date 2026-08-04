@@ -212,7 +212,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $baseData = [
             'q' => $search,
             'limit' => 9999,
-            'attributesToRetrieve' => ['id_product'],
+            'attributesToRetrieve' => ['id_product', 'sales'],
             'filter' => [],
             'facets' => ['*'],
         ];
@@ -240,6 +240,10 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                 'facets' => null,
             ];
         }
+
+        // echo '<pre>';
+        // print_r($response);
+        // exit();
 
         // Calcul manuel du stock (quantity > 0)
         $mergedFacets = json_decode(json_encode($response->facetDistribution), true) ?? [];

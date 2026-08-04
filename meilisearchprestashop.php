@@ -192,6 +192,24 @@ class Meilisearchprestashop extends Module
             '3' => $this->l('Search a category'),
         ]]);
 
+        // Autocomplétion de la barre de recherche (endpoint public + libellés + config)
+        Media::addJsDef([
+            'meilisearch_autocomplete_url' => Context::getContext()->link->getModuleLink(
+                'meilisearchprestashop',
+                'ajax',
+                ['action' => 'autocomplete'],
+                true
+            ),
+            'meilisearch_ac_labels' => [
+                'queries' => $this->l('Popular searches'),
+                'products' => $this->l('Products'),
+            ],
+            'meilisearch_ac_config' => [
+                'minChars' => 2,
+                'debounce' => 200,
+            ],
+        ]);
+
         $link = Context::getContext()->link->getModuleLink(
             'meilisearchprestashop',
             'meilisearch'

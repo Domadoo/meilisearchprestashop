@@ -176,6 +176,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
 
     public function reindexLanguageAction($uid)
     {
+        
         $prefix = \Configuration::get('MEILISEARCHPRESTASHOP_PREFIX');
         $needle = $prefix . 'products_';
 

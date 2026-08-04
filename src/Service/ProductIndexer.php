@@ -21,6 +21,8 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
+use PrestaShopLogger;
+
 /**
  * Service partagé d'indexation produits vers Meilisearch.
  *
@@ -104,6 +106,8 @@ class ProductIndexer
      */
     public function indexLanguage(array $language, ?array $productIds = null, bool $applySettings = true, int $batchSize = 200): void
     {
+                PrestaShopLogger::addLog('test', 1, null, null, null, true);
+
         $idLang = (int) $language['id_lang'];
         $isoCode = $language['iso_code'];
         $uid = $this->indexUid($isoCode);
@@ -179,6 +183,8 @@ class ProductIndexer
                 $product['ids_category'] = $productCategoryIds[$id] ?? [];
                 $product['sales'] = $productSales[$id] ?? 0;
             }
+
+            PrestaShopLogger::addLog(print_r($products,true), 1, null, null, null, true);
             unset($product);
 
             foreach (array_chunk($products, $batchSize) as $chunk) {
@@ -299,7 +305,8 @@ class ProductIndexer
     }
 
     /**
-     * Ventes des 3 derniers mois (commandes valides) : [id_product => quantité vendue]
+     * Ventes totales (tout temps) depuis l'agrégat natif PrestaShop `product_sale`
+     * (maintenu par PS à partir des commandes valides) : [id_product => quantité vendue]
      *
      * @return array<int, int>
      */
@@ -309,21 +316,16 @@ class ProductIndexer
             return [];
         }
 
-        $rows = \Db::getInstance(true)->executeS('
-            SELECT od.`product_id`, SUM(od.`product_quantity`) AS sales
-            FROM `' . _DB_PREFIX_ . 'order_detail` od
-            INNER JOIN `' . _DB_PREFIX_ . 'orders` o ON (o.`id_order` = od.`id_order`)
-            WHERE od.`product_id` IN (' . $productIdsStr . ')
-            AND o.`valid` = 1
-            AND o.`date_add` >= DATE_SUB(NOW(), INTERVAL 3 MONTH)
-            GROUP BY od.`product_id`
+        $rows = \Db::getInstance()->executeS('
+            SELECT `id_product`, `quantity` AS sales
+            FROM `' . _DB_PREFIX_ . 'product_sale`
+            WHERE `id_product` IN (' . $productIdsStr . ')
         ');
 
         $map = [];
         foreach ($rows as $row) {
-            $map[(int) $row['product_id']] = (int) $row['sales'];
+            $map[(int) $row['id_product']] = (int) $row['sales'];
         }
-
         return $map;
     }
 
