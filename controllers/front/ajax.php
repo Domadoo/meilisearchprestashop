@@ -177,7 +177,9 @@ class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontControll
         try {
             $priceFormatted = $this->context->getCurrentLocale()->formatPrice((float) $price, $this->context->currency->iso_code);
         } catch (Throwable $th) {
-            $priceFormatted = Tools::displayPrice((float) $price);
+            // Fallback si le formatage locale échoue. Tools::displayPrice() a été
+            // supprimé en PS 9 : on reste sur un formatage natif, valable 1.7 → 9.
+            $priceFormatted = number_format((float) $price, 2, '.', ' ') . ' ' . $this->context->currency->iso_code;
         }
 
         $name = is_array($product->name) ? reset($product->name) : $product->name;
