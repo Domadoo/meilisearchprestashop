@@ -162,7 +162,10 @@ class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontControll
         $link = $this->context->link;
 
         // Image de couverture (fallback : pas d'image)
+        // getCover() renvoie une ligne DB (array) ou false ; le PHPDoc du core PS
+        // le déclare `bool`, d'où l'annotation qui rétablit le type réel pour PHPStan.
         $image = '';
+        /** @var array<string, mixed>|false $cover */
         $cover = Image::getCover($idProduct);
         if (is_array($cover) && isset($cover['id_image'])) {
             $rewrite = is_array($product->link_rewrite) ? reset($product->link_rewrite) : $product->link_rewrite;
