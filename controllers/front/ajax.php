@@ -164,9 +164,9 @@ class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontControll
         // Image de couverture (fallback : pas d'image)
         $image = '';
         $cover = Image::getCover($idProduct);
-        if ($cover && isset($cover['id_image'])) {
+        if (is_array($cover) && isset($cover['id_image'])) {
             $rewrite = is_array($product->link_rewrite) ? reset($product->link_rewrite) : $product->link_rewrite;
-            $image = $link->getImageLink($rewrite, (int) $cover['id_image'], 'home_default');
+            $image = $link->getImageLink($rewrite, (string) $cover['id_image'], 'home_default');
         }
 
         // Prix TTC formaté selon la locale/devise du contexte

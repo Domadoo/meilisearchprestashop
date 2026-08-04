@@ -47,7 +47,9 @@ class ProductIndexer
      */
     public function __construct($module = null)
     {
-        $this->module = $module ?: \Module::getInstanceByName('meilisearchprestashop');
+        /** @var \Meilisearchprestashop $resolved */
+        $resolved = $module ?: \Module::getInstanceByName('meilisearchprestashop');
+        $this->module = $resolved;
         $this->meiliUrl = (string) \Configuration::get('MEILISEARCHPRESTASHOP_URL');
         $this->prefix = (string) \Configuration::get('MEILISEARCHPRESTASHOP_PREFIX');
     }
