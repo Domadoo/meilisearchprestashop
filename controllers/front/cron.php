@@ -56,7 +56,7 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
     public function indexProductsAction()
     {
         // @phpstan-ignore-next-line
-        (new \PrestaShop\Module\MeiliSearch\Service\ProductIndexer($this->module))->indexAllProducts();
+        (new PrestaShop\Module\MeiliSearch\Service\ProductIndexer($this->module))->indexAllProducts();
 
         return true;
     }

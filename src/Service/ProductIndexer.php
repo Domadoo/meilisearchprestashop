@@ -21,8 +21,6 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-use PrestaShopLogger;
-
 /**
  * Service partagé d'indexation produits vers Meilisearch.
  *
@@ -98,16 +96,14 @@ class ProductIndexer
     /**
      * Cœur de l'indexation pour une langue.
      *
-     * @param array         $language   ligne Language::getLanguages()
-     * @param int[]|null    $productIds sous-ensemble de produits (null = tous). En mode
-     *                                  sous-ensemble, un produit absent (inactif/supprimé)
-     *                                  est retiré de l'index.
-     * @param bool          $applySettings appliquer les settings Meili (uniquement en full reindex)
+     * @param array $language ligne Language::getLanguages()
+     * @param int[]|null $productIds sous-ensemble de produits (null = tous). En mode
+     *                               sous-ensemble, un produit absent (inactif/supprimé)
+     *                               est retiré de l'index.
+     * @param bool $applySettings appliquer les settings Meili (uniquement en full reindex)
      */
     public function indexLanguage(array $language, ?array $productIds = null, bool $applySettings = true, int $batchSize = 200): void
     {
-                PrestaShopLogger::addLog('test', 1, null, null, null, true);
-
         $idLang = (int) $language['id_lang'];
         $isoCode = $language['iso_code'];
         $uid = $this->indexUid($isoCode);
@@ -184,7 +180,6 @@ class ProductIndexer
                 $product['sales'] = $productSales[$id] ?? 0;
             }
 
-            PrestaShopLogger::addLog(print_r($products,true), 1, null, null, null, true);
             unset($product);
 
             foreach (array_chunk($products, $batchSize) as $chunk) {
@@ -326,6 +321,7 @@ class ProductIndexer
         foreach ($rows as $row) {
             $map[(int) $row['id_product']] = (int) $row['sales'];
         }
+
         return $map;
     }
 

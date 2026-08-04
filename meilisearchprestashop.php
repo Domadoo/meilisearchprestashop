@@ -395,7 +395,7 @@ class Meilisearchprestashop extends Module
             return;
         }
         try {
-            (new \PrestaShop\Module\MeiliSearch\Service\ProductIndexer($this))->deleteProduct((int) $product->id);
+            (new PrestaShop\Module\MeiliSearch\Service\ProductIndexer($this))->deleteProduct((int) $product->id);
         } catch (Throwable $th) {
             PrestaShopLogger::addLog('Meilisearch: échec suppression index produit ' . (int) $product->id . ' : ' . $th->getMessage(), 3);
         }
@@ -412,7 +412,7 @@ class Meilisearchprestashop extends Module
             return;
         }
         try {
-            (new \PrestaShop\Module\MeiliSearch\Service\ProductIndexer($this))->indexProduct((int) $product->id);
+            (new PrestaShop\Module\MeiliSearch\Service\ProductIndexer($this))->indexProduct((int) $product->id);
         } catch (Throwable $th) {
             PrestaShopLogger::addLog('Meilisearch: échec réindexation produit ' . (int) $product->id . ' : ' . $th->getMessage(), 3);
         }
