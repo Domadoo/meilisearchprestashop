@@ -1,7 +1,4 @@
 <?php
-
-declare(strict_types=1);
-
 /**
  * 2007-2025 PrestaShop
  *
@@ -16,6 +13,7 @@ declare(strict_types=1);
  * @copyright Since 2016 Domadoo
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
+declare(strict_types=1);
 
 /**
  * NOTICE OF LICENSE

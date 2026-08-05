@@ -1,4 +1,19 @@
 /**
+ * 2007-2025 PrestaShop
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License (AFL 3.0)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * http://opensource.org/licenses/afl-3.0.php
+ *
+ * @author    Doudeau Adam, Johan Vivien
+ * @copyright 2007-2026 Domadoo
+ * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
+ */
+
+/**
  * meilisearch_facets.js
  * Système de filtres dynamique — aucune valeur en dur.
  * S'appuie sur window.meilisearch_facets_config injecté par le controller PHP.
