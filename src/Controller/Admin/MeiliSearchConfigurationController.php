@@ -31,7 +31,10 @@ class MeiliSearchConfigurationController extends FrameworkBundleAdminController
 
     public function __construct()
     {
-        parent::__construct();
+        $parent = get_parent_class($this);
+        if ($parent && method_exists($parent, '__construct')) {
+            $parent::__construct();
+        }
         $this->module = \Module::getInstanceByName('meilisearchprestashop');
     }
 

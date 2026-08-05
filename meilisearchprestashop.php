@@ -25,8 +25,6 @@
  *  International Registered Trademark & Property of PrestaShop SA
  */
 
-declare(strict_types=1);
-
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -194,7 +192,7 @@ class Meilisearchprestashop extends Module
 
         // Autocomplétion de la barre de recherche (endpoint public + libellés + config)
         Media::addJsDef([
-            'meilisearch_autocomplete_url' => Context::getContext()->link->getModuleLink(
+            'meilisearch_autocomplete_url' => $this->context->link->getModuleLink(
                 'meilisearchprestashop',
                 'ajax',
                 ['action' => 'autocomplete'],
@@ -210,7 +208,7 @@ class Meilisearchprestashop extends Module
             ],
         ]);
 
-        $link = Context::getContext()->link->getModuleLink(
+        $link = $this->context->link->getModuleLink(
             'meilisearchprestashop',
             'meilisearch'
         );

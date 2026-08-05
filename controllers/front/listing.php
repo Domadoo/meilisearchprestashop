@@ -137,7 +137,7 @@ class MeilisearchprestashopListingModuleFrontController extends ProductListingFr
 
     public function getDefaultProductSearchProvider()
     {
-        return new MeiliSearchProductSearchProvider($this->getTranslator());
+        return new MeiliSearchProductSearchProvider($this->getTranslator(), $this->context);
     }
 
     public function getListingLabel()

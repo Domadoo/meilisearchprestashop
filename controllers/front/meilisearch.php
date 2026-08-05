@@ -68,12 +68,12 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
 
     public function getDefaultProductSearchProvider()
     {
-        return new MeiliSearchProductSearchProvider($this->getTranslator());
+        return new MeiliSearchProductSearchProvider($this->getTranslator(), $this->context);
     }
 
     public function getListingLabel()
     {
-        $this->module = Module::getInstanceByName('meilisearchprestashop');
+        $this->module = Module::getInstanceByName('meilisearchprestashop') ?: null;
 
         return $this->module->l('Search results', 'meilisearch');
     }
@@ -147,8 +147,9 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
 
         $this->setTemplate($template, $params, $locale);
 
-        $cookie = Context::getContext()->cookie;
+        $cookie = $this->context->cookie;
         Media::addJsDef([
+            // @phpstan-ignore-next-line
             'id_statssearch' => (int) $cookie->meilisearch_id,
         ]);
     }
@@ -157,7 +158,7 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
     {
         parent::setMedia();
 
-        $this->module = Module::getInstanceByName('meilisearchprestashop');
+        $this->module = Module::getInstanceByName('meilisearchprestashop') ?: null;
         $page = Tools::getValue('page') ?: 1;
 
         Media::addJsDef([
