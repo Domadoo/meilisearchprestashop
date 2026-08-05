@@ -72,7 +72,9 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
 
     public function getListingLabel()
     {
-        $this->module = Module::getInstanceByName('meilisearchprestashop') ?: null;
+        /** @var Module|null $module */
+        $module = Module::getInstanceByName('meilisearchprestashop') ?: null;
+        $this->module = $module;
 
         return $this->module->l('Search results', 'meilisearch');
     }
@@ -157,7 +159,9 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
     {
         parent::setMedia();
 
-        $this->module = Module::getInstanceByName('meilisearchprestashop') ?: null;
+        /** @var Module|null $module */
+        $module = Module::getInstanceByName('meilisearchprestashop') ?: null;
+        $this->module = $module;
         $page = Tools::getValue('page') ?: 1;
 
         Media::addJsDef([

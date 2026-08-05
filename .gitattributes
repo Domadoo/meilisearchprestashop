@@ -1,0 +1,9 @@
+# Dev-only files: kept in the repository, excluded from the distributed
+# Addons package built with `git archive`.
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/eslint.config.js export-ignore
+/.php-cs-fixer.dist.php export-ignore
+/package.json export-ignore
+/package-lock.json export-ignore
+/tests/ export-ignore

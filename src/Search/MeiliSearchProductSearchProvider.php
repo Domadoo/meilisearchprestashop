@@ -43,7 +43,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
     /**
      * @param \Symfony\Contracts\Translation\TranslatorInterface $translator
-     * @param \Context                                           $context    Contexte PS (injecté depuis le contrôleur front)
+     * @param \Context $context Contexte PS (injecté depuis le contrôleur front)
      */
     public function __construct($translator, $context)
     {
