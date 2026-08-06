@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 2007-2025 PrestaShop
  *
@@ -29,7 +30,6 @@ use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
 
 class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 {
-    /** @var \Symfony\Contracts\Translation\TranslatorInterface */
     private $translator;
     private $module;
 
@@ -42,7 +42,6 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     public static $contextFilters = [];
 
     /**
-     * @param \Symfony\Contracts\Translation\TranslatorInterface $translator
      * @param \Context $context Contexte PS (injecté depuis le contrôleur front)
      */
     public function __construct($translator, $context)
