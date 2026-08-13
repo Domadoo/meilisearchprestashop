@@ -13,54 +13,43 @@
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 
-function toggleClearButton() {
-    const input = document.getElementById('search-input');
-    const clearIcon = document.getElementById('clear-icon');
-
-    if (!input || !clearIcon) return;
-
-    clearIcon.style.display = input.value ? 'block' : 'none';
+// ── Rétro-compat ──────────────────────────────────────────────────────────────
+// Le thème Classic (et dérivés) rend le hook displaySearch DEUX fois : une barre
+// desktop (#_desktop_search) et une barre mobile (#_mobile_search). Il y a donc
+// plusieurs .search-bar-container dans le DOM. On initialise chaque instance
+// séparément (voir plus bas) plutôt que via un id unique, sinon seule la première
+// barre (desktop, masquée sur mobile) serait câblée et l'autocomplete mobile ne
+// déclencherait aucune requête.
+//
+// Ces deux fonctions globales ne servent qu'aux anciens templates surchargés qui
+// appellent encore oninput="toggleClearButton()" / onclick="clearSearch()".
+function meilisearchSearchInput() {
+    const active = document.activeElement;
+    if (active && active.matches && active.matches('.search-bar-container input[name="s"]')) {
+        return active;
+    }
+    return document.querySelector('.search-bar-container input[name="s"]');
 }
 
-// eslint-disable-next-line no-unused-vars -- appelée via onclick dans meilisearch_searchbar.tpl
-function clearSearch() {
-    const input = document.getElementById('search-input');
-    if (!input) return;
+// eslint-disable-next-line no-unused-vars -- rétro-compat : appelée via oninput dans d'anciens templates
+function toggleClearButton() {
+    const input = meilisearchSearchInput();
+    if (!input || !input.parentElement) return;
+    const clearIcon = input.parentElement.querySelector('.clear-icon');
+    if (clearIcon) clearIcon.style.display = input.value ? 'block' : 'none';
+}
 
+// eslint-disable-next-line no-unused-vars -- rétro-compat : appelée via onclick dans d'anciens templates
+function clearSearch() {
+    const input = meilisearchSearchInput();
+    if (!input) return;
     input.value = '';
     toggleClearButton();
     input.focus();
 }
 
-// Trigger on page load if there's a default value
-document.addEventListener('DOMContentLoaded', toggleClearButton);
-
-
-document.addEventListener('DOMContentLoaded', function () {
-    const searchInput = document.getElementById("search-input");
-    if (!searchInput) return;
-
-    const placeholders = searchPlaceholder ? Object.values(searchPlaceholder) : [];
-    let index = 0;
-
-    function changePlaceholder() {
-        if (placeholders.length > 0) {
-            searchInput.setAttribute("placeholder", placeholders[index]);
-            index = (index + 1) % placeholders.length;
-        }
-    }
-
-    changePlaceholder();
-    setInterval(changePlaceholder, 1500);
-});
-
-
-// ── Autocomplétion : recherches populaires + aperçu produits ──────────────────
-document.addEventListener('DOMContentLoaded', function () {
-    const input = document.getElementById('search-input');
-    const box = document.getElementById('meilisearch-autocomplete');
-    if (!input || !box) return;
-
+// ── Autocomplétion : recherches populaires + aperçu produits (par instance) ────
+function meilisearchInitAutocomplete(input, box) {
     const url = window.meilisearch_autocomplete_url || '';
     if (!url) return;
 
@@ -263,10 +252,64 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Fermeture au clic extérieur
+    // Fermeture au clic extérieur (à cette instance)
     document.addEventListener('click', function (e) {
         if (!box.contains(e.target) && e.target !== input) {
             closeBox();
         }
     });
+}
+
+// ── Initialisation d'une barre de recherche (bouton clear + autocomplete) ──────
+function meilisearchInitSearchBar(container) {
+    const input = container.querySelector('input[name="s"]');
+    if (!input) return null;
+
+    const clearIcon = container.querySelector('.clear-icon');
+    const box = container.querySelector('.meilisearch-autocomplete');
+
+    function toggleClear() {
+        if (clearIcon) clearIcon.style.display = input.value ? 'block' : 'none';
+    }
+
+    input.addEventListener('input', toggleClear);
+    if (clearIcon) {
+        clearIcon.addEventListener('click', function () {
+            input.value = '';
+            toggleClear();
+            input.focus();
+        });
+    }
+    toggleClear(); // état initial (valeur pré-remplie)
+
+    if (box) {
+        meilisearchInitAutocomplete(input, box);
+    }
+
+    return input;
+}
+
+// ── Bootstrap : câble TOUTES les barres présentes (desktop ET mobile) ──────────
+document.addEventListener('DOMContentLoaded', function () {
+    const containers = document.querySelectorAll('.search-bar-container');
+    if (!containers.length) return;
+
+    const inputs = [];
+    containers.forEach(function (container) {
+        const input = meilisearchInitSearchBar(container);
+        if (input) inputs.push(input);
+    });
+
+    // Placeholder tournant, partagé entre toutes les instances
+    const placeholders = window.searchPlaceholder ? Object.values(window.searchPlaceholder) : [];
+    if (placeholders.length && inputs.length) {
+        let index = 0;
+        const changePlaceholder = function () {
+            const ph = placeholders[index];
+            inputs.forEach(function (el) { el.setAttribute('placeholder', ph); });
+            index = (index + 1) % placeholders.length;
+        };
+        changePlaceholder();
+        setInterval(changePlaceholder, 1500);
+    }
 });

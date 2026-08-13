@@ -19,18 +19,16 @@
     <input
       type="text"
       name="s"
-      id="search-input"
       placeholder="{l s='Search' mod='meilisearchprestashop'}"
-      oninput="toggleClearButton()"
       value="{$search_string|escape:'html':'UTF-8'}"
       autocomplete="off"
       spellcheck="false"
     />
 
-    <span class="clear-icon" id="clear-icon" onclick="clearSearch()">
+    <span class="clear-icon">
       <i class="material-icons">close</i>
     </span>
 
-    <div class="meilisearch-autocomplete" id="meilisearch-autocomplete" role="listbox" hidden></div>
+    <div class="meilisearch-autocomplete" role="listbox" hidden></div>
   </div>
 </form>
