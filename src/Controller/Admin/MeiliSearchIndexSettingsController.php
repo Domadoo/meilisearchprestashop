@@ -29,7 +29,10 @@ class MeiliSearchIndexSettingsController extends FrameworkBundleAdminController
 
     public function __construct()
     {
-        parent::__construct();
+        $parent = get_parent_class($this);
+        if (method_exists($parent, '__construct')) {
+            $parent::__construct();
+        }
         $this->module = \Module::getInstanceByName('meilisearchprestashop');
     }
 
@@ -40,8 +43,8 @@ class MeiliSearchIndexSettingsController extends FrameworkBundleAdminController
         $settings = null;
 
         if ($meiliUrl) {
-            $index = $this->module->requestCurl($meiliUrl . 'indexes/' . $uid);
-            $settings = $this->module->requestCurl($meiliUrl . 'indexes/' . $uid . '/settings');
+            $index = $this->module->requestCurlSearch($meiliUrl . 'indexes/' . $uid);
+            $settings = $this->module->requestCurlSearch($meiliUrl . 'indexes/' . $uid . '/settings');
         }
 
         $ctx = 'meilisearchindexsettingscontroller';

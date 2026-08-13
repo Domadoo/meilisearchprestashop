@@ -24,9 +24,6 @@
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  *  International Registered Trademark & Property of PrestaShop SA
  */
-
-declare(strict_types=1);
-
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -53,11 +50,18 @@ class Meilisearchprestashop extends Module
     /** Pages de listing gérées par Meilisearch */
     private const LISTING_PAGES = ['category', 'manufacturer', 'new-products', 'best-sales'];
 
+    /**
+     * Champs de tri propres à Meilisearch, absents des requêtes SQL natives PS.
+     * Sur les pages listing, le param `order` correspondant doit être neutralisé
+     * côté serveur pour éviter un `ORDER BY` sur une colonne inexistante.
+     */
+    private const MEILI_ONLY_SORT_FIELDS = ['sales', 'relevance'];
+
     public function __construct()
     {
         $this->name = 'meilisearchprestashop';
         $this->tab = 'search_filter';
-        $this->version = '1.2.1';
+        $this->version = '1.3.0';
         $this->author = 'Doudeau Adam, Johan Vivien';
         $this->need_instance = 0;
 
@@ -71,7 +75,7 @@ class Meilisearchprestashop extends Module
         $this->displayName = $this->l('Meilisearch Prestashop');
         $this->description = $this->l('Prestashop module to replace the standard searchbar with Meilisearch');
 
-        $this->ps_versions_compliancy = ['min' => '1.7', 'max' => '8.0'];
+        $this->ps_versions_compliancy = ['min' => '1.7', 'max' => '9.1'];
     }
 
     /**
@@ -86,9 +90,13 @@ class Meilisearchprestashop extends Module
             && $this->registerHook('displayHeader')
             && $this->registerHook('displaySearch')
             && $this->registerHook('displayLeftColumn')
+            && $this->registerHook('actionFrontControllerSetMedia')
             && $this->registerHook('actionCartUpdateQuantityBefore')
             && $this->registerHook('actionPresentProduct')
             && $this->registerHook('actionValidateOrder')
+            && $this->registerHook('actionObjectProductAddAfter')
+            && $this->registerHook('actionObjectProductUpdateAfter')
+            && $this->registerHook('actionObjectProductDeleteAfter')
             && $this->callInstallTab();
     }
 
@@ -181,7 +189,25 @@ class Meilisearchprestashop extends Module
             '3' => $this->l('Search a category'),
         ]]);
 
-        $link = Context::getContext()->link->getModuleLink(
+        // Autocomplétion de la barre de recherche (endpoint public + libellés + config)
+        Media::addJsDef([
+            'meilisearch_autocomplete_url' => $this->context->link->getModuleLink(
+                'meilisearchprestashop',
+                'ajax',
+                ['action' => 'autocomplete'],
+                true
+            ),
+            'meilisearch_ac_labels' => [
+                'queries' => $this->l('Popular searches'),
+                'products' => $this->l('Products'),
+            ],
+            'meilisearch_ac_config' => [
+                'minChars' => 2,
+                'debounce' => 200,
+            ],
+        ]);
+
+        $link = $this->context->link->getModuleLink(
             'meilisearchprestashop',
             'meilisearch'
         );
@@ -237,6 +263,40 @@ class Meilisearchprestashop extends Module
             'meilisearch_facets_css',
             'modules/' . $this->name . '/views/css/front/meilisearch_facets.css'
         );
+    }
+
+    /**
+     * Neutralise le param `order` côté serveur sur les pages listing quand il
+     * référence un critère de tri propre à Meilisearch (ex: `sales`) que la requête
+     * SQL native de PrestaShop ne connaît pas.
+     *
+     * Ces pages sont rendues par le contrôleur natif PS (puis masquées et remplacées
+     * via AJAX). Au rechargement d'une page triée par ventes, le natif tenterait
+     * `ORDER BY sales` → colonne inconnue → PrestaShopDatabaseException. On retire donc
+     * `order` du contexte serveur (le natif rend avec son tri par défaut, invisible car
+     * masqué) ; l'URL du navigateur reste intacte, donc le JS relit `order` et réapplique
+     * le bon tri via l'appel AJAX à listing.php.
+     *
+     * S'exécute dans setMedia(), donc avant initContent() et la construction de la requête.
+     */
+    public function hookActionFrontControllerSetMedia()
+    {
+        $phpSelf = $this->context->controller->php_self ?? '';
+        if (!in_array($phpSelf, self::LISTING_PAGES, true)) {
+            return;
+        }
+
+        $order = (string) Tools::getValue('order', '');
+        if ($order === '') {
+            return;
+        }
+
+        foreach (self::MEILI_ONLY_SORT_FIELDS as $field) {
+            if (strpos($order, $field) !== false) {
+                unset($_GET['order'], $_REQUEST['order']);
+                break;
+            }
+        }
     }
 
     public function hookDisplayLeftColumn()
@@ -313,6 +373,48 @@ class Meilisearchprestashop extends Module
         }
     }
 
+    // ── Réindexation temps réel produit ───────────────────────────────────────
+
+    public function hookActionObjectProductAddAfter($params)
+    {
+        $this->reindexProductFromHook($params);
+    }
+
+    public function hookActionObjectProductUpdateAfter($params)
+    {
+        $this->reindexProductFromHook($params);
+    }
+
+    public function hookActionObjectProductDeleteAfter($params)
+    {
+        $product = isset($params['object']) ? $params['object'] : null;
+        if (!$product || empty($product->id)) {
+            return;
+        }
+        try {
+            (new PrestaShop\Module\MeiliSearch\Service\ProductIndexer($this))->deleteProduct((int) $product->id);
+        } catch (Throwable $th) {
+            PrestaShopLogger::addLog('Meilisearch: échec suppression index produit ' . (int) $product->id . ' : ' . $th->getMessage(), 3);
+        }
+    }
+
+    /**
+     * Réindexe un produit unique. N'interrompt jamais l'enregistrement produit
+     * si Meilisearch est indisponible (erreurs avalées + loguées).
+     */
+    private function reindexProductFromHook($params)
+    {
+        $product = isset($params['object']) ? $params['object'] : null;
+        if (!$product || empty($product->id)) {
+            return;
+        }
+        try {
+            (new PrestaShop\Module\MeiliSearch\Service\ProductIndexer($this))->indexProduct((int) $product->id);
+        } catch (Throwable $th) {
+            PrestaShopLogger::addLog('Meilisearch: échec réindexation produit ' . (int) $product->id . ' : ' . $th->getMessage(), 3);
+        }
+    }
+
     // ── Helpers pages listing ─────────────────────────────────────────────────
 
     /**
@@ -337,7 +439,7 @@ class Meilisearchprestashop extends Module
         }
 
         // Requête facettes (limit=0 = pas de produits, juste la distribution)
-        $response = $this->requestCurl($meiliUrl, json_encode([
+        $response = $this->requestCurlSearch($meiliUrl, json_encode([
             'q' => '',
             'limit' => 0,
             'filter' => $baseFilter,
@@ -351,7 +453,7 @@ class Meilisearchprestashop extends Module
         $facets = json_decode(json_encode($response->facetDistribution), true) ?? [];
 
         // Comptage stock en stock (estimatedTotalHits avec quantity >= 1, limit=0)
-        $stockResponse = $this->requestCurl($meiliUrl, json_encode([
+        $stockResponse = $this->requestCurlSearch($meiliUrl, json_encode([
             'q' => '',
             'limit' => 0,
             'filter' => array_merge($baseFilter, ['quantity >= 1']),
@@ -456,9 +558,29 @@ class Meilisearchprestashop extends Module
         return $value;
     }
 
-    // ── cURL helper ───────────────────────────────────────────────────────────
+    // ── cURL helpers ──────────────────────────────────────────────────────────
 
-    public function requestCurl($url, $payload = null, $request = false)
+    /**
+     * Requête cURL vers Meilisearch pour les lectures de recherche (front + lectures
+     * admin légères). Timeouts courts : si Meili est lent/down, on abandonne vite pour
+     * ne pas saturer les workers PHP-FPM (mécanisme de l'incident crawl Googlebot).
+     */
+    public function requestCurlSearch($url, $payload = null, $request = false)
+    {
+        return $this->requestCurlRaw($url, $payload, $request, 3, 5);
+    }
+
+    /**
+     * Requête cURL vers Meilisearch pour l'indexation (création d'index, envoi de
+     * documents par chunks, settings, suppressions). Timeouts longs : ces opérations
+     * peuvent légitimement durer et ne sont pas sur le chemin critique front.
+     */
+    public function requestCurlIndex($url, $payload = null, $request = false)
+    {
+        return $this->requestCurlRaw($url, $payload, $request, 5, 60);
+    }
+
+    private function requestCurlRaw($url, $payload, $request, $connectTimeout, $timeout)
     {
         $authorization = 'Authorization: Bearer ' . Configuration::get('MEILISEARCHPRESTASHOP_KEY');
         $options = [
@@ -468,8 +590,8 @@ class Meilisearchprestashop extends Module
             CURLOPT_ENCODING => '',       // handle all encodings
             CURLOPT_USERAGENT => 'spider', // who am i
             CURLOPT_AUTOREFERER => true,     // set referer on redirect
-            CURLOPT_CONNECTTIMEOUT => 120,      // timeout on connect
-            CURLOPT_TIMEOUT => 120,      // timeout on response
+            CURLOPT_CONNECTTIMEOUT => $connectTimeout,      // timeout on connect
+            CURLOPT_TIMEOUT => $timeout,      // timeout on response
             CURLOPT_MAXREDIRS => 10,       // stop after 10 redirects
             CURLOPT_SSL_VERIFYPEER => true,
         ];

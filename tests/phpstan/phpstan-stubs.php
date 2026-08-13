@@ -732,7 +732,18 @@ namespace {
          *
          * @return mixed
          */
-        public function requestCurl($url, $payload = null, $request = false)
+        public function requestCurlSearch($url, $payload = null, $request = false)
+        {
+        }
+
+        /**
+         * @param string $url
+         * @param string|null $payload
+         * @param bool|string $request
+         *
+         * @return mixed
+         */
+        public function requestCurlIndex($url, $payload = null, $request = false)
         {
         }
     }

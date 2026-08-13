@@ -9,6 +9,10 @@ $finder->in(__DIR__)->exclude([
     'vendor',
     'tests',
 ]);
-$config->setParallelConfig(PhpCsFixer\Runner\Parallel\ParallelConfigFactory::detect());
+// ParallelConfigFactory::detect() n'existe que sur php-cs-fixer >= 3.48 : garde de compat.
+$parallelFactory = 'PhpCsFixer\Runner\Parallel\ParallelConfigFactory';
+if (method_exists($parallelFactory, 'detect')) {
+    $config->setParallelConfig($parallelFactory::detect());
+}
 
 return $config;

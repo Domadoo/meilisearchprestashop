@@ -1,4 +1,19 @@
 /**
+ * 2007-2025 PrestaShop
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License (AFL 3.0)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * http://opensource.org/licenses/afl-3.0.php
+ *
+ * @author    Doudeau Adam, Johan Vivien
+ * @copyright 2007-2026 Domadoo
+ * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
+ */
+
+/**
  * meilisearch_facets.js
  * Système de filtres dynamique — aucune valeur en dur.
  * S'appuie sur window.meilisearch_facets_config injecté par le controller PHP.
@@ -277,8 +292,46 @@ function meilisearchUpdateProducts(data) {
         }
     }
 
+    // Sur les pages listing, le dropdown de tri est rendu par le contrôleur natif PS
+    // (pas d'override) et n'expose donc pas les tris Meilisearch (ex: "Meilleures ventes").
+    // On remplace son contenu par celui rendu côté serveur via le provider Meilisearch.
+    if (window.meilisearch_listing_context) {
+        meilisearchUpdateSortControl(data);
+    }
+
     if (data.meilisearch_facets) {
         meilisearchUpdateFacetCounts(data.meilisearch_facets);
+    }
+}
+
+/**
+ * Remplace le widget de tri natif par celui rendu côté serveur via le provider
+ * Meilisearch (data.rendered_products_top), afin d'exposer les tris personnalisés.
+ * Les handlers de clic (.js-search-link) et change (select[name="order"]) étant
+ * délégués sur document, aucun rebinding n'est nécessaire après le remplacement.
+ */
+function meilisearchUpdateSortControl(data) {
+    if (!data || !data.rendered_products_top) return;
+
+    const tmp = document.createElement('div');
+    tmp.innerHTML = data.rendered_products_top;
+
+    // Thème Classic : dropdown de tri (.products-sort-order)
+    const newSort = tmp.querySelector('.products-sort-order');
+    const curSort = document.querySelector('#js-product-list-top .products-sort-order')
+                 || document.querySelector('.products-sort-order');
+    if (newSort && curSort) {
+        curSort.innerHTML = newSort.innerHTML;
+        return;
+    }
+
+    // Fallback : <select name="order">
+    const newSelect = tmp.querySelector('select[name="order"]');
+    const curSelect = document.querySelector('#js-product-list-top select[name="order"]')
+                   || document.querySelector('select[name="order"]');
+    if (newSelect && curSelect) {
+        curSelect.innerHTML = newSelect.innerHTML;
+        curSelect.value = newSelect.value;
     }
 }
 

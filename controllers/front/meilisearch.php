@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * 2007-2025 PrestaShop
  *
@@ -16,6 +14,8 @@ declare(strict_types=1);
  * @copyright 2007-2025 Domadoo
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
+declare(strict_types=1);
+
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -68,12 +68,14 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
 
     public function getDefaultProductSearchProvider()
     {
-        return new MeiliSearchProductSearchProvider($this->getTranslator());
+        return new MeiliSearchProductSearchProvider($this->getTranslator(), $this->context);
     }
 
     public function getListingLabel()
     {
-        $this->module = Module::getInstanceByName('meilisearchprestashop');
+        /** @var Module|null $module */
+        $module = Module::getInstanceByName('meilisearchprestashop') ?: null;
+        $this->module = $module;
 
         return $this->module->l('Search results', 'meilisearch');
     }
@@ -147,8 +149,9 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
 
         $this->setTemplate($template, $params, $locale);
 
-        $cookie = Context::getContext()->cookie;
+        $cookie = $this->context->cookie;
         Media::addJsDef([
+            // @phpstan-ignore-next-line
             'id_statssearch' => (int) $cookie->meilisearch_id,
         ]);
     }
@@ -157,7 +160,9 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
     {
         parent::setMedia();
 
-        $this->module = Module::getInstanceByName('meilisearchprestashop');
+        /** @var Module|null $module */
+        $module = Module::getInstanceByName('meilisearchprestashop') ?: null;
+        $this->module = $module;
         $page = Tools::getValue('page') ?: 1;
 
         Media::addJsDef([

@@ -41,7 +41,94 @@
 }
 
 .search-bar-wrapper{
-    width: 100%; 
+    width: 100%;
     padding: 0.65rem;
     padding-right: 2.5rem;
+}
+
+/* ── Autocomplétion ──────────────────────────────────────────────────────── */
+.meilisearch-autocomplete {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    margin-top: 4px;
+    max-height: 70vh;
+    overflow-y: auto;
+    background: #fff;
+    color: #333;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.meilisearch-ac-section-title {
+    padding: 8px 12px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #888;
+}
+
+.meilisearch-ac-divider {
+    height: 1px;
+    margin: 6px 0;
+    background: #e0e0e0;
+}
+
+.meilisearch-ac-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    cursor: pointer;
+    color: inherit;
+    text-decoration: none;
+}
+
+.meilisearch-ac-item--active,
+.meilisearch-ac-item:hover {
+    background: var(--domadoo-primary-color, #f0f0f0);
+}
+
+/* Force le texte blanc sur la ligne active (bat la couleur de lien du thème sur les <a> produits) */
+.meilisearch-ac-item--active,
+.meilisearch-ac-item--active .meilisearch-ac-product-name,
+.meilisearch-ac-item--active .meilisearch-ac-product-price,
+.meilisearch-ac-item:hover,
+.meilisearch-ac-item:hover .meilisearch-ac-product-name,
+.meilisearch-ac-item:hover .meilisearch-ac-product-price {
+    color: #fff !important;
+}
+
+.meilisearch-ac-query strong {
+    font-weight: 700;
+}
+
+.meilisearch-ac-product-img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    margin-right: 10px;
+    flex-shrink: 0;
+    background: #fff;
+    border-radius: 4px;
+}
+
+.meilisearch-ac-product-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.meilisearch-ac-product-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.meilisearch-ac-product-price {
+    font-size: 13px;
+    opacity: 0.8;
 }

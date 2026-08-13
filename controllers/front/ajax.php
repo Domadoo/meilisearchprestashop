@@ -32,13 +32,22 @@ class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontControll
 
     public function postProcess()
     {
+        $action = Tools::getValue('action');
+        $cookie = $this->context->cookie;
+
+        // Endpoint public d'autocomplétion (données de recherche publiques, pas de token requis)
+        if ($action === 'autocomplete') {
+            $this->autocompleteAction();
+
+            return;
+        }
+
+        // Les autres actions (tracking) restent protégées par le token.
         $token = Tools::getValue('token');
         if ($token !== '1') {
             http_response_code(403);
             exit(json_encode(['error' => 'Access denied']));
         }
-        $action = Tools::getValue('action');
-        $cookie = $this->context->cookie;
 
         switch ($action) {
             case 'productClick':
@@ -78,5 +87,109 @@ class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontControll
 
         header('Content-Type: application/json; charset=utf-8');
         exit(json_encode(['success' => true]));
+    }
+
+    /**
+     * Autocomplétion de la barre de recherche : renvoie des suggestions de recherches
+     * populaires (stats) + un aperçu de produits correspondants (préfixe Meilisearch).
+     */
+    private function autocompleteAction()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        $q = trim((string) Tools::getValue('s'));
+        $q = mb_substr($q, 0, 100);
+
+        if (mb_strlen($q) < 2) {
+            exit(json_encode(['queries' => [], 'products' => []]));
+        }
+
+        $idLang = (int) $this->context->language->id;
+        $isoLang = $this->context->language->iso_code;
+
+        // 1) Recherches populaires (préfixe)
+        $queries = MeilisearchStatssearch::getSuggestionsByPrefix($q, 3, $idLang);
+
+        // 2) Produits correspondants via Meilisearch (préfixe natif)
+        $products = [];
+        $meiliUrl = Configuration::get('MEILISEARCHPRESTASHOP_URL');
+
+        if ($meiliUrl) {
+            $searchUrl = $meiliUrl . 'indexes/' . Configuration::get('MEILISEARCHPRESTASHOP_PREFIX')
+                . 'products_' . $isoLang . '/search';
+
+            $payload = [
+                'q' => $q,
+                'limit' => 5,
+                'attributesToRetrieve' => ['id_product'],
+                'attributesToSearchOn' => ['name', 'manufacturer_name'],
+                'filter' => [['visibility = both'], ['available_for_order = true']],
+                'sort' => ['sales:desc'],
+            ];
+
+            // @phpstan-ignore-next-line
+            $response = $this->module->requestCurlSearch($searchUrl, json_encode($payload));
+
+            if ($response instanceof stdClass && isset($response->hits) && is_array($response->hits)) {
+                foreach ($response->hits as $hit) {
+                    $idProduct = (int) (is_object($hit) ? ($hit->id_product ?? 0) : ($hit['id_product'] ?? 0));
+                    if ($idProduct <= 0) {
+                        continue;
+                    }
+                    $card = $this->buildProductCard($idProduct, $idLang);
+                    if ($card !== null) {
+                        $products[] = $card;
+                    }
+                }
+            }
+        }
+
+        exit(json_encode(['queries' => $queries, 'products' => $products]));
+    }
+
+    /**
+     * Construit une carte produit légère (nom, prix formaté, image, url) pour l'aperçu.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function buildProductCard(int $idProduct, int $idLang): ?array
+    {
+        $product = new Product($idProduct, false, $idLang);
+        if (!Validate::isLoadedObject($product)) {
+            return null;
+        }
+
+        $link = $this->context->link;
+
+        // Image de couverture (fallback : pas d'image)
+        // getCover() renvoie une ligne DB (array) ou false ; le PHPDoc du core PS
+        // le déclare `bool`, d'où l'annotation qui rétablit le type réel pour PHPStan.
+        $image = '';
+        /** @var array<string, mixed>|false $cover */
+        $cover = Image::getCover($idProduct);
+        if (is_array($cover) && isset($cover['id_image'])) {
+            $rewrite = is_array($product->link_rewrite) ? reset($product->link_rewrite) : $product->link_rewrite;
+            $image = $link->getImageLink($rewrite, (string) $cover['id_image'], 'home_default');
+        }
+
+        // Prix TTC formaté selon la locale/devise du contexte
+        $price = Product::getPriceStatic($idProduct, true);
+        try {
+            $priceFormatted = $this->context->getCurrentLocale()->formatPrice((float) $price, $this->context->currency->iso_code);
+        } catch (Throwable $th) {
+            // Fallback si le formatage locale échoue. Tools::displayPrice() a été
+            // supprimé en PS 9 : on reste sur un formatage natif, valable 1.7 → 9.
+            $priceFormatted = number_format((float) $price, 2, '.', ' ') . ' ' . $this->context->currency->iso_code;
+        }
+
+        $name = is_array($product->name) ? reset($product->name) : $product->name;
+
+        return [
+            'id' => $idProduct,
+            'name' => $name,
+            'price' => $priceFormatted,
+            'image' => $image,
+            'url' => $link->getProductLink($product),
+        ];
     }
 }

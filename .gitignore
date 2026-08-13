@@ -411,3 +411,8 @@ FodyWeavers.xsd
 
 # Composer
 /vendor/
+
+# Dev tooling & generated output — not part of the shipped Addons package
+.claude/
+.cursor/
+graphify-out/

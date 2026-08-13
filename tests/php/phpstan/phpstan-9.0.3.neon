@@ -11,5 +11,3 @@ parameters:
     - '#^Property .*\:\:\$module \(Module\|null\) does not accept ModuleCore\|false\.$#'
     # PS 9 : constructeur FrameworkBundleAdminController non reconnu comme statique
     - '#^Call to an undefined static method PrestaShopBundle\\Controller\\Admin\\FrameworkBundleAdminController\:\:__construct\(\)\.$#'
-    # PS 9 : TranslatorInterface non reconnue (namespace Symfony différent entre PS versions)
-    - '#^Parameter \$translator of method PrestaShop\\Module\\MeiliSearch\\Search\\MeiliSearchProductSearchProvider\:\:__construct\(\) has invalid type Symfony\\Component\\Translation\\TranslatorInterface\.$#'

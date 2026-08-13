@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * 2007-2025 PrestaShop
  *
@@ -16,6 +14,7 @@ declare(strict_types=1);
  * @copyright Since 2016 Domadoo
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
+declare(strict_types=1);
 
 /**
  * NOTICE OF LICENSE
@@ -86,6 +85,36 @@ class MeilisearchStatssearch extends \ObjectModel
         $results = \Db::getInstance()->executeS($sql);
 
         return $results ? $results : [];
+    }
+
+    /**
+     * Suggestions de recherche par préfixe (autocomplétion) : requêtes passées les plus
+     * fréquentes commençant par $prefix, hors requêtes à 0 résultat.
+     *
+     * @return string[] liste de requêtes (label)
+     */
+    public static function getSuggestionsByPrefix(string $prefix, int $limit = 5, int $id_lang = 0): array
+    {
+        $prefix = trim($prefix);
+        if ($prefix === '') {
+            return [];
+        }
+
+        // Échappe les wildcards LIKE (\ % _) avant pSQL
+        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $prefix);
+
+        $where = '';
+        if ($id_lang && $id_lang > 0) {
+            $where .= ' AND id_lang = ' . (int) $id_lang;
+        }
+
+        $sql = 'SELECT query AS `label`, count(*) AS `value`
+            FROM ' . _DB_PREFIX_ . 'meilisearch_statssearch A
+            WHERE nb_results > 0 AND query LIKE \'%' . pSQL($escaped) . '%\' ' . $where . '
+            GROUP BY A.query ORDER BY value DESC LIMIT ' . (int) $limit;
+        $results = \Db::getInstance()->executeS($sql);
+
+        return $results ? array_column($results, 'label') : [];
     }
 
     public static function getMostSearchedEmptyQueries($limit = 10, $dateBegin = null, $dateEnd = null, $id_lang = 0)

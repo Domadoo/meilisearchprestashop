@@ -27,22 +27,28 @@ use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchProviderInterface;
 use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchQuery;
 use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchResult;
 use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
-use Symfony\Component\Translation\TranslatorInterface;
 
 class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 {
     private $translator;
     private $module;
 
+    /** @var \Context */
+    private $context;
+
     public static $lastFacetDistribution;
 
     /** @var array Filtres de contexte non-utilisateur (ex: page catégorie, fabricant) */
     public static $contextFilters = [];
 
-    public function __construct(TranslatorInterface $translator)
+    /**
+     * @param \Context $context Contexte PS (injecté depuis le contrôleur front)
+     */
+    public function __construct($translator, $context)
     {
         $this->translator = $translator;
         $this->module = \Module::getInstanceByName('meilisearchprestashop');
+        $this->context = $context;
     }
 
     public function runQuery(ProductSearchContext $context, ProductSearchQuery $query)
@@ -68,7 +74,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
     private function getFeatureMap(): array
     {
-        $idLang = (int) \Context::getContext()->language->id;
+        $idLang = (int) $this->context->language->id;
 
         $cache_id = 'meilisearchprestashop::getFeatureMap_' . $idLang;
         if (\Cache::isStored($cache_id)) {
@@ -196,8 +202,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
     private function searchInMeili($query)
     {
-        $context = \Context::getContext();
-        $iso_lang = $context->language->iso_code;
+        $iso_lang = $this->context->language->iso_code;
 
         $search = $query->getSearchString();
         $page = $query->getPage();
@@ -212,7 +217,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $baseData = [
             'q' => $search,
             'limit' => 9999,
-            'attributesToRetrieve' => ['*'],
+            'attributesToRetrieve' => ['id_product', 'sales'],
             'filter' => [],
             'facets' => ['*'],
         ];
@@ -230,7 +235,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         // Requête principale avec tous les filtres
         $data = $baseData;
         $data['filter'] = $this->buildFilterArray($groupedFilters);
-        $response = $this->module->requestCurl($meiliUrl, json_encode($data));
+        $response = $this->module->requestCurlSearch($meiliUrl, json_encode($data));
 
         if (!$response instanceof \stdClass || !isset($response->hits) || !is_array($response->hits)) {
             return [
@@ -240,6 +245,10 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                 'facets' => null,
             ];
         }
+
+        // echo '<pre>';
+        // print_r($response);
+        // exit();
 
         // Calcul manuel du stock (quantity > 0)
         $mergedFacets = json_decode(json_encode($response->facetDistribution), true) ?? [];
@@ -257,7 +266,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                 // Pour availability on a besoin des hits pour compter la quantité
                 $dataForGroup['limit'] = 9999;
                 $dataForGroup['attributesToRetrieve'] = ['quantity'];
-                $resp = $this->module->requestCurl($meiliUrl, json_encode($dataForGroup));
+                $resp = $this->module->requestCurlSearch($meiliUrl, json_encode($dataForGroup));
                 if ($resp && isset($resp->hits)) {
                     $mergedFacets['availability'] = [
                         'in_stock' => $this->countInStock($resp->hits),
@@ -266,7 +275,7 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
             } else {
                 $dataForGroup['limit'] = 0;
                 $dataForGroup['attributesToRetrieve'] = [];
-                $resp = $this->module->requestCurl($meiliUrl, json_encode($dataForGroup));
+                $resp = $this->module->requestCurlSearch($meiliUrl, json_encode($dataForGroup));
                 if (!$resp || !isset($resp->facetDistribution)) {
                     continue;
                 }
@@ -295,22 +304,21 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         }
 
         // Stats de recherche
-        $cookie = $context->cookie;
-        if (
-            (!isset($cookie->meilisearch_id)
-            || !isset($cookie->meilisearch_query)
-            || $cookie->meilisearch_query != $search)
-            && !empty($search)
-        ) {
+        $cookie = $this->context->cookie;
+        // @phpstan-ignore-next-line
+        if ((!isset($cookie->meilisearch_id) || !isset($cookie->meilisearch_query) || $cookie->meilisearch_query != $search) && !empty($search)) {
             $newSearch = new MeilisearchStatssearch();
             $newSearch->query = mb_strtolower($search);
             $newSearch->nb_results = $response->estimatedTotalHits;
-            $newSearch->id_customer = isset($context->customer) ? $context->customer->id : null;
-            $newSearch->id_lang = $context->language->id;
+            $newSearch->id_customer = isset($this->context->customer) ? $this->context->customer->id : null;
+            $newSearch->id_lang = $this->context->language->id;
             $newSearch->save();
 
+            // @phpstan-ignore-next-line
             $cookie->meilisearch_id = $newSearch->id;
+            // @phpstan-ignore-next-line
             $cookie->meilisearch_query = $search;
+            // @phpstan-ignore-next-line
             unset($cookie->meilisearch_product_id);
         }
 
@@ -348,6 +356,8 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                 ->setLabel($this->translator->trans('Newest first', [], 'Shop.Theme.Catalog')),
             (new SortOrder('meilisearch', 'quantity', 'desc'))
                 ->setLabel($this->translator->trans('Quantity', [], 'Shop.Theme.Catalog')),
+            (new SortOrder('meilisearch', 'sales', 'desc'))
+                ->setLabel($this->translator->trans('Sales, highest to lowest', [], 'Shop.Theme.Catalog')),
         ];
     }
 }

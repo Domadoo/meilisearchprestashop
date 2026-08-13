@@ -1,3 +1,15 @@
+{*
+ * 2007-2025 PrestaShop
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License (AFL 3.0)
+ * that is bundled with this package in the file LICENSE.txt.
+ *
+ * @author    Doudeau Adam, Johan Vivien
+ * @copyright 2007-2026 Domadoo
+ * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
+ *}
 {if isset($meilisearch_hidden_facets) && $meilisearch_hidden_facets|@count > 0}
   {assign var=hidden_facets value=$meilisearch_hidden_facets}
 {else}
@@ -39,7 +51,7 @@
       <button class="meilisearch-facet-toggle{if $is_open} open{/if}" type="button"
               aria-expanded="{if $is_open}true{else}false{/if}"
               onclick="meilisearchToggle(this)">
-        <span>{$group_label}</span>
+        <span>{$group_label|escape:'html':'UTF-8'}</span>
         <span class="meilisearch-facet-chevron">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -53,7 +65,7 @@
 
           {foreach from=$meilisearch_grouped_features key=feature_id item=feature_data}
             <div class="meilisearch-facet-sub-group">
-              <p class="meilisearch-facet-sub-label">{$feature_data.label}</p>
+              <p class="meilisearch-facet-sub-label">{$feature_data.label|escape:'html':'UTF-8'}</p>
               {assign var=i value=0}
               {foreach from=$feature_data.values key=val item=count}
                 {assign var=i value=$i+1}
@@ -63,22 +75,22 @@
                   {assign var=val_label value=$meilisearch_facet_labels['feature_values'][$val]}
                 {/if}
                 <div class="meilisearch-facet-item{if $i > 8} meilisearch-facet-item--hidden{/if}{if $count == 0} meilisearch-facet-item--empty{/if}">
-                  <input type="checkbox" id="{$input_id}" class="meilisearch-facet-checkbox"
-                         name="facets[{$group_key}][]"
+                  <input type="checkbox" id="{$input_id|escape:'html':'UTF-8'}" class="meilisearch-facet-checkbox"
+                         name="facets[{$group_key|escape:'html':'UTF-8'}][]"
                          value="{$val|escape:'html':'UTF-8'}"
-                         data-group="{$group_key}"
+                         data-group="{$group_key|escape:'html':'UTF-8'}"
                          data-label="{$val_label|escape:'html':'UTF-8'}"
                          data-value="{$val|escape:'html':'UTF-8'}"
                          {if $count == 0}disabled{/if}>
-                  <label for="{$input_id}">
-                    <span class="meilisearch-facet-name">{$val_label}</span>
-                    <span class="meilisearch-facet-count">{$count}</span>
+                  <label for="{$input_id|escape:'html':'UTF-8'}">
+                    <span class="meilisearch-facet-name">{$val_label|escape:'html':'UTF-8'}</span>
+                    <span class="meilisearch-facet-count">{$count|intval}</span>
                   </label>
                 </div>
               {/foreach}
               {if $i > 8}
                 <button type="button" class="meilisearch-btn-show-more" onclick="meilisearchShowMore(this)">
-                  + {$i - 8} {l s='more' mod='meilisearchprestashop'}
+                  + {($i - 8)|intval} {l s='more' mod='meilisearchprestashop'}
                 </button>
               {/if}
             </div>
@@ -103,23 +115,23 @@
             {/if}
 
             <div class="meilisearch-facet-item{if $i > 5} meilisearch-facet-item--hidden{/if}{if $count == 0} meilisearch-facet-item--empty{/if}">
-              <input type="checkbox" id="{$input_id}" class="meilisearch-facet-checkbox"
-                     name="facets[{$group_key}][]"
+              <input type="checkbox" id="{$input_id|escape:'html':'UTF-8'}" class="meilisearch-facet-checkbox"
+                     name="facets[{$group_key|escape:'html':'UTF-8'}][]"
                      value="{$val|escape:'html':'UTF-8'}"
-                     data-group="{$group_key}"
+                     data-group="{$group_key|escape:'html':'UTF-8'}"
                      data-label="{$val_label|escape:'html':'UTF-8'}"
                      data-value="{$val|escape:'html':'UTF-8'}"
                      {if $count == 0}disabled{/if}>
-              <label for="{$input_id}">
-                <span class="meilisearch-facet-name">{$val_label}</span>
-                <span class="meilisearch-facet-count">{$count}</span>
+              <label for="{$input_id|escape:'html':'UTF-8'}">
+                <span class="meilisearch-facet-name">{$val_label|escape:'html':'UTF-8'}</span>
+                <span class="meilisearch-facet-count">{$count|intval}</span>
               </label>
             </div>
           {/foreach}
 
           {if $i > 5}
             <button type="button" class="meilisearch-btn-show-more" onclick="meilisearchShowMore(this)">
-              + {$i - 5} {l s='more' mod='meilisearchprestashop'}
+              + {($i - 5)|intval} {l s='more' mod='meilisearchprestashop'}
             </button>
           {/if}
 
