@@ -337,6 +337,10 @@ function meilisearchUpdateSortControl(data) {
 
 
 function meilisearchUpdateFacetCounts(facets) {
+    // Dès qu'un filtre est actif, on masque complètement les filtres à 0 produit
+    // (au lieu de les griser). Sans filtre actif, on conserve l'affichage grisé.
+    const hasActiveFilters = document.querySelectorAll('.meilisearch-facet-checkbox:checked').length > 0;
+
     document.querySelectorAll('.meilisearch-facet-checkbox').forEach(cb => {
         const group    = cb.dataset.group;
         const value    = cb.dataset.value;
@@ -355,9 +359,20 @@ function meilisearchUpdateFacetCounts(facets) {
         const count = newCount !== null ? newCount : 0;
         countEl.textContent = count;
 
-        if (item) {
+        if (!item) return;
+
+        const isEmpty = count === 0 && !cb.checked;
+
+        if (isEmpty && hasActiveFilters) {
+            // Filtre vide + au moins un filtre déjà sélectionné → on le cache
+            item.style.display = 'none';
+            item.classList.add('meilisearch-facet-item--empty');
+            cb.disabled = true;
+        } else {
+            // On rétablit l'affichage (utile quand les filtres sont retirés)
+            item.style.display = '';
             item.style.opacity = count === 0 ? '0.4' : '1';
-            if (count === 0 && !cb.checked) {
+            if (isEmpty) {
                 cb.disabled = true;
                 item.classList.add('meilisearch-facet-item--empty');
             } else {
@@ -365,6 +380,38 @@ function meilisearchUpdateFacetCounts(facets) {
                 item.classList.remove('meilisearch-facet-item--empty');
             }
         }
+    });
+
+    meilisearchRefreshFacetVisibility();
+}
+
+/**
+ * Après masquage des filtres à 0 produit :
+ * - masque le bouton « voir plus » s'il ne reste plus rien à révéler
+ * - masque les sous-groupes / groupes de facettes devenus totalement vides
+ */
+function meilisearchRefreshFacetVisibility() {
+    // Boutons « voir plus » : masqués s'il ne reste aucun item replié à révéler
+    document.querySelectorAll('.meilisearch-btn-show-more').forEach(btn => {
+        const group = btn.closest('.meilisearch-facet-body, .meilisearch-facet-sub-group');
+        if (!group) return;
+        const collapsedRemaining = Array.from(group.querySelectorAll('.meilisearch-facet-item--hidden'))
+            .some(it => it.style.display !== 'none');
+        btn.style.display = collapsedRemaining ? '' : 'none';
+    });
+
+    // Sous-groupes (feature_values) sans aucun item visible
+    document.querySelectorAll('.meilisearch-facet-sub-group').forEach(sub => {
+        const hasVisible = Array.from(sub.querySelectorAll('.meilisearch-facet-item'))
+            .some(it => it.style.display !== 'none');
+        sub.style.display = hasVisible ? '' : 'none';
+    });
+
+    // Groupes de facettes complets sans aucun item visible
+    document.querySelectorAll('.meilisearch-facet-group').forEach(grp => {
+        const hasVisible = Array.from(grp.querySelectorAll('.meilisearch-facet-item'))
+            .some(it => it.style.display !== 'none');
+        grp.style.display = hasVisible ? '' : 'none';
     });
 }
 
