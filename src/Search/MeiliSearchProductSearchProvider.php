@@ -217,7 +217,9 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $baseData = [
             'q' => $search,
             'limit' => 9999,
-            'attributesToRetrieve' => ['id_product', 'sales'],
+            // 'quantity' est indispensable à countInStock() (facette "availability") :
+            // sans lui, $hit->quantity est absent et le compteur "en stock" reste à 0.
+            'attributesToRetrieve' => ['id_product', 'sales', 'quantity'],
             'filter' => [],
             'facets' => ['*'],
         ];

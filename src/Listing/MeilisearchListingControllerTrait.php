@@ -243,9 +243,12 @@ trait MeilisearchListingControllerTrait
             $mergedFacets[$groupKey] = array_fill_keys(array_keys($values), 0);
         }
 
-        // Stock total : somme des tranches quantity >= 1 de la distribution de base
+        // Stock : somme des tranches quantity >= 1 de la requête principale, qui
+        // reflète déjà tous les filtres utilisateurs actifs (comportement disjunctif
+        // correct tant que le filtre stock lui-même n'est pas coché — auquel cas le
+        // bloc 'avail' plus bas le recalcule en excluant son propre filtre).
         $mergedFacets['availability'] = [
-            'in_stock' => $this->computeInStockCount($allFacets),
+            'in_stock' => $this->computeInStockCount($currentFacets),
         ];
 
         // Écrase avec les compteurs de la requête filtrée principale
