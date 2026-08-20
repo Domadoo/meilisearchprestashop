@@ -129,6 +129,36 @@ trait MeilisearchListingControllerTrait
         return $config;
     }
 
+    /**
+     * Compte les produits en stock (quantity >= 1) pour la facette synthétique
+     * "availability", à partir de la distribution de facette `quantity` déjà
+     * renvoyée par Meilisearch — et NON via un filtre `quantity >= 1`.
+     *
+     * Raison : sur les index où `quantity` est stocké en chaîne, Meilisearch
+     * ignore les valeurs non numériques lors d'une comparaison `>=`, donc le
+     * filtre renvoie 0 alors que des produits sont bien en stock. Sommer les
+     * tranches de la distribution (clé >= 1) est insensible au type stocké.
+     * "availability" étant absente de la facetDistribution native, on la
+     * reconstruit ici, sinon le compteur retombe à 0.
+     *
+     * @param array $facets facetDistribution pouvant contenir la clé `quantity`
+     */
+    private function computeInStockCount(array $facets): int
+    {
+        if (!isset($facets['quantity']) || !is_array($facets['quantity'])) {
+            return 0;
+        }
+
+        $total = 0;
+        foreach ($facets['quantity'] as $qty => $count) {
+            if ((int) $qty >= 1) {
+                $total += (int) $count;
+            }
+        }
+
+        return $total;
+    }
+
     private function getDisjunctiveFacets(array $currentFacets, string $encodedFacets): array
     {
         $module = \Module::getInstanceByName('meilisearchprestashop');
@@ -213,18 +243,9 @@ trait MeilisearchListingControllerTrait
             $mergedFacets[$groupKey] = array_fill_keys(array_keys($values), 0);
         }
 
-        // Calcul du stock total
-        $dataAllStock = [
-            'q' => $search,
-            'limit' => 0,
-            'filter' => array_merge($baseFilter, ['quantity >= 1']),
-            'facets' => [],
-        ];
-        $responseAllStock = $module->requestCurlSearch($meiliUrl, json_encode($dataAllStock));
+        // Stock total : somme des tranches quantity >= 1 de la distribution de base
         $mergedFacets['availability'] = [
-            'in_stock' => $responseAllStock && isset($responseAllStock->estimatedTotalHits)
-                ? (int) $responseAllStock->estimatedTotalHits
-                : 0,
+            'in_stock' => $this->computeInStockCount($allFacets),
         ];
 
         // Écrase avec les compteurs de la requête filtrée principale
@@ -249,17 +270,19 @@ trait MeilisearchListingControllerTrait
             }
 
             if ($groupKey === 'avail') {
+                // Distribution quantity avec les AUTRES filtres actifs, puis somme des tranches >= 1
                 $dataCount = [
                     'q' => $search,
                     'limit' => 0,
-                    'filter' => array_merge($filter, ['quantity >= 1']),
-                    'facets' => [],
+                    'filter' => $filter,
+                    'facets' => ['quantity'],
                 ];
                 $respCount = $module->requestCurlSearch($meiliUrl, json_encode($dataCount));
+                $qtyFacets = $respCount && isset($respCount->facetDistribution)
+                    ? json_decode(json_encode($respCount->facetDistribution), true)
+                    : [];
                 $mergedFacets['availability'] = [
-                    'in_stock' => $respCount && isset($respCount->estimatedTotalHits)
-                        ? (int) $respCount->estimatedTotalHits
-                        : 0,
+                    'in_stock' => $this->computeInStockCount($qtyFacets),
                 ];
                 continue;
             }

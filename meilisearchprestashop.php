@@ -452,17 +452,10 @@ class Meilisearchprestashop extends Module
 
         $facets = json_decode(json_encode($response->facetDistribution), true) ?? [];
 
-        // Comptage stock en stock (estimatedTotalHits avec quantity >= 1, limit=0)
-        $stockResponse = $this->requestCurlSearch($meiliUrl, json_encode([
-            'q' => '',
-            'limit' => 0,
-            'filter' => array_merge($baseFilter, ['quantity >= 1']),
-            'facets' => [],
-        ]));
+        // Comptage stock en stock (facette synthétique) : somme des tranches
+        // quantity >= 1 de la distribution déjà récupérée ci-dessus.
         $facets['availability'] = [
-            'in_stock' => ($stockResponse && isset($stockResponse->estimatedTotalHits))
-                ? (int) $stockResponse->estimatedTotalHits
-                : 0,
+            'in_stock' => $this->computeInStockCount($facets),
         ];
 
         $facetLabels = $this->getFacetLabels();

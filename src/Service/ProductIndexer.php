@@ -116,14 +116,21 @@ class ProductIndexer
             $idFilter = ' AND p.`id_product` IN (' . implode(',', $ids) . ')';
         }
 
+        // Le stock réel vit dans stock_available (id_product_attribute = 0 = agrégat produit),
+        // pas dans ps_product.quantity qui n'est pas maintenu en PS 1.7/8. On écrase donc
+        // `quantity` avec la valeur de stock_available (même pattern que le cœur PrestaShop).
         $sql = '
             SELECT p.*, product_shop.*, pl.*,
                 m.`name` AS manufacturer_name,
-                s.`name` AS supplier_name
+                s.`name` AS supplier_name,
+                IFNULL(sa.`quantity`, 0) AS quantity
             FROM `' . _DB_PREFIX_ . 'product` p
             ' . \Shop::addSqlAssociation('product', 'p') . '
             LEFT JOIN `' . _DB_PREFIX_ . 'product_lang` pl
                 ON (p.`id_product` = pl.`id_product` ' . \Shop::addSqlRestrictionOnLang('pl') . ')
+            LEFT JOIN `' . _DB_PREFIX_ . 'stock_available` sa
+                ON (sa.`id_product` = p.`id_product` AND sa.`id_product_attribute` = 0'
+                . \StockAvailable::addSqlShopRestriction(null, null, 'sa') . ')
             LEFT JOIN `' . _DB_PREFIX_ . 'manufacturer` m
                 ON (m.`id_manufacturer` = p.`id_manufacturer`)
             LEFT JOIN `' . _DB_PREFIX_ . 'supplier` s
@@ -215,6 +222,10 @@ class ProductIndexer
         $base = $this->meiliUrl . 'indexes/' . $this->indexUid($isoCode) . '/settings/';
 
         $this->module->requestCurlIndex($base . 'pagination', json_encode(['maxTotalHits' => 9999]), 'PATCH');
+        // Le compteur "en stock" somme les tranches de la distribution `quantity` :
+        // on relève la limite par facette (défaut 100) pour ne pas sous-compter
+        // sur les catalogues à nombreuses valeurs de stock distinctes.
+        $this->module->requestCurlIndex($base . 'faceting', json_encode(['maxValuesPerFacet' => 1000]), 'PATCH');
         $this->module->requestCurlIndex($base . 'sortable-attributes', json_encode(['name', 'price', 'date_add', 'quantity', 'sales']), 'PUT');
         $this->module->requestCurlIndex($base . 'ranking-rules', json_encode(['sort', 'words', 'typo', 'proximity', 'attribute', 'exactness']), 'PUT');
         $this->module->requestCurlIndex($base . 'filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'ids_category', 'quantity', 'feature_values', 'visibility', 'available_for_order']), 'PUT');

@@ -89,6 +89,11 @@ class MeilisearchprestashopListingModuleFrontController extends ProductListingFr
             MeiliSearchProductSearchProvider::$contextFilters = $contextFilters;
             $facets = $this->getDisjunctiveFacets($facets, $encodedFacets);
             MeiliSearchProductSearchProvider::$contextFilters = [];
+        } else {
+            // Meilisearch ne renvoie pas la facette synthétique "availability" :
+            // on la reconstruit depuis la distribution `quantity`, sinon l'AJAX
+            // initial écrase le compteur serveur par 0.
+            $facets['availability'] = ['in_stock' => $this->computeInStockCount($facets)];
         }
 
         $variables['meilisearch_facets'] = $facets;
