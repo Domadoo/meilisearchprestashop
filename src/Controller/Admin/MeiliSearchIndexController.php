@@ -53,6 +53,11 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
                     if ($meiliPrefix && strpos($index->uid, $meiliPrefix) !== 0) {
                         continue;
                     }
+                    // Index temporaire transitoire d'une réindexation en cours : ne pas
+                    // l'exposer (ni le rendre cliquable pour un reindex/flush accidentel).
+                    if (substr($index->uid, -4) === '_tmp') {
+                        continue;
+                    }
                     $index->numberOfDocuments = isset($indexStats[$index->uid]) ? $indexStats[$index->uid]->numberOfDocuments : null;
                     $indexes[] = $index;
                 }
@@ -92,7 +97,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             'btnReindex' => $this->module->l('Reindex', $ctx),
             'btnFlush' => $this->module->l('Flush', $ctx),
             'btnDelete' => $this->module->l('Delete', $ctx),
-            'confirmReindexMsg' => $this->module->l('Reindex index "%s" (replaces all documents)?', $ctx),
+            'confirmReindexMsg' => $this->module->l('Rebuild index "%s" from the catalog? Products no longer for sale will be removed, with zero downtime.', $ctx),
             'confirmFlushMsg' => $this->module->l('Flush index "%s" (delete all documents)?', $ctx),
             'confirmDeleteMsg' => $this->module->l('Delete index "%s"?', $ctx),
             'confirmBulkReindex' => $this->module->l('Reindex the %d selected index(es)?', $ctx),

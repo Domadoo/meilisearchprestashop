@@ -42,6 +42,9 @@ class ProductIndexer
     /** @var string Préfixe des index */
     private $prefix;
 
+    /** @var bool|null Cache de la compatibilité /swap-indexes (Meilisearch >= 0.29) */
+    private static $swapSupported = null;
+
     /**
      * @param \Meilisearchprestashop|null $module si null, résolu via Module::getInstanceByName (contexte CLI)
      */
@@ -98,17 +101,174 @@ class ProductIndexer
     /**
      * Cœur de l'indexation pour une langue.
      *
+     * Deux modes :
+     * - FULL (`$productIds === null`) : reconstruction atomique via index temporaire
+     *   + `swap-indexes` (voir {@see fullReindexLanguage()}). Élimine les documents
+     *   orphelins (produits désactivés/supprimés hors hooks) sans downtime.
+     * - SOUS-ENSEMBLE (`$productIds !== null`) : upsert direct sur l'index live +
+     *   purge des IDs demandés absents. Utilisé par les hooks produit unique.
+     *
      * @param array $language ligne Language::getLanguages()
      * @param int[]|null $productIds sous-ensemble de produits (null = tous). En mode
      *                               sous-ensemble, un produit absent (inactif/supprimé)
      *                               est retiré de l'index.
-     * @param bool $applySettings appliquer les settings Meili (uniquement en full reindex)
+     * @param bool $applySettings appliquer les settings Meili (ignoré en full : toujours appliqués)
      */
     public function indexLanguage(array $language, ?array $productIds = null, bool $applySettings = true, int $batchSize = 200): void
     {
-        $idLang = (int) $language['id_lang'];
+        if ($productIds === null) {
+            $this->fullReindexLanguage($language, $batchSize);
+
+            return;
+        }
+
+        // ── Mode sous-ensemble (hooks produit unique) : upsert direct + purge ────────
+        $uid = $this->indexUid($language['iso_code']);
+        $docs = $this->buildDocuments($language, $productIds);
+
+        // Les produits demandés absents du résultat (inactifs/supprimés/hors contexte
+        // boutique) doivent être retirés de l'index.
+        $found = array_map('intval', array_column($docs, 'id_product'));
+        foreach (array_map('intval', $productIds) as $requestedId) {
+            if (!in_array($requestedId, $found, true)) {
+                $this->module->requestCurlIndex(
+                    $this->meiliUrl . 'indexes/' . $uid . '/documents/' . $requestedId,
+                    null,
+                    'DELETE'
+                );
+            }
+        }
+
+        // L'index doit exister avant tout POST (idempotent).
+        $this->ensureIndex($uid);
+
+        if (!empty($docs)) {
+            $this->pushDocuments($uid, $docs, $batchSize);
+        }
+
+        if ($applySettings) {
+            $this->applySettings($uid);
+        }
+    }
+
+    /**
+     * Réindexation complète atomique d'une langue : on reconstruit un index temporaire
+     * ({uid}_tmp) à partir du catalogue courant (produits `active = 1`), puis on bascule
+     * atomiquement live ⇄ tmp via `POST /swap-indexes` (zéro downtime), enfin on supprime
+     * le tmp (qui contient désormais l'ancien contenu). Le live n'est JAMAIS vidé ni
+     * exposé partiel : tout échec laisse l'index live intact et fonctionnel.
+     */
+    private function fullReindexLanguage(array $language, int $batchSize): void
+    {
+        // Les attentes de tâches (waitForTask) allongent le temps mur : sous SAPI web
+        // (cron/admin) max_execution_time peut couper à 30 s.
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(0);
+        }
+
         $isoCode = $language['iso_code'];
-        $uid = $this->indexUid($isoCode);
+        $live = $this->indexUid($isoCode);
+        $tmp = $this->tmpUid($isoCode);
+        $lockName = 'meili_ridx_' . md5($live);
+
+        // Verrou anti-concurrence (cron + admin simultanés utiliseraient le même _tmp).
+        if (!$this->acquireLock($lockName)) {
+            \PrestaShopLogger::addLog('Meilisearch: réindexation "' . $live . '" ignorée (verrou pris, run concurrent)', 2);
+
+            return;
+        }
+
+        try {
+            // Meili < 0.29 : /swap-indexes indisponible → repli sur l'upsert additif
+            // historique (sans purge des orphelins), pour ne pas casser l'indexation.
+            if (!$this->supportsSwap()) {
+                \PrestaShopLogger::addLog('Meilisearch: /swap-indexes non supporté (< 0.29), réindexation additive sur "' . $live . '"', 2);
+                $this->ensureIndex($live);
+                $docs = $this->buildDocuments($language, null);
+                if (!empty($docs)) {
+                    $this->pushDocuments($live, $docs, $batchSize);
+                }
+                $this->applySettings($live);
+
+                return;
+            }
+
+            // Pré-nettoyage d'un tmp résiduel (run précédent interrompu) — sûr sous verrou.
+            $this->deleteIndexUid($tmp);
+
+            // Les settings vont sur le tmp : le swap échange documents ET settings, l'UID
+            // ne bouge pas → le live héritera des settings du tmp après bascule.
+            $this->ensureIndex($tmp);
+            $this->applySettings($tmp);
+
+            $docs = $this->buildDocuments($language, null);
+            $expected = count($docs);
+            if ($expected === 0) {
+                // On ne swappe jamais un index vide : live conservé.
+                \PrestaShopLogger::addLog('Meilisearch: aucun produit à indexer pour "' . $live . '", live conservé', 2);
+                $this->deleteIndexUid($tmp);
+
+                return;
+            }
+
+            $lastPush = $this->pushDocuments($tmp, $docs, $batchSize);
+
+            // Gate 1 : peuplement du tmp terminé (file FIFO → couvre create + settings + batches).
+            if (!$this->waitForTask($lastPush)) {
+                \PrestaShopLogger::addLog('Meilisearch: échec/timeout peuplement "' . $tmp . '", swap annulé, live conservé', 3);
+                $this->deleteIndexUid($tmp);
+
+                return;
+            }
+
+            // Gate 2 : le tmp doit contenir le nombre de documents attendu (clé primaire
+            // id_product ⇒ 1 doc/produit ; un batch échoué donne un compte inférieur).
+            $count = $this->getNumberOfDocuments($tmp);
+            if ($count === null || $count < $expected) {
+                \PrestaShopLogger::addLog('Meilisearch: "' . $tmp . '" incomplet (' . var_export($count, true) . '/' . $expected . '), swap annulé, live conservé', 3);
+                $this->deleteIndexUid($tmp);
+
+                return;
+            }
+
+            // Le swap exige que les deux index existent (premier run : le live n'existe pas).
+            if (!$this->indexExists($live)) {
+                $this->waitForTask($this->ensureIndex($live));
+            }
+
+            $swapTask = $this->swapIndexes($live, $tmp);
+            if (!$this->waitForTask($swapTask)) {
+                // Swap non confirmé : un swap tardif pourrait encore aboutir → on NE
+                // supprime PAS le tmp (le pré-nettoyage du prochain run s'en chargera).
+                \PrestaShopLogger::addLog('Meilisearch: swap "' . $live . '" ⇄ "' . $tmp . '" non confirmé, live conservé', 3);
+
+                return;
+            }
+
+            // Swap confirmé : le tmp contient l'ancien contenu → on le supprime.
+            $this->deleteIndexUid($tmp);
+        } catch (\Throwable $e) {
+            \PrestaShopLogger::addLog('Meilisearch: exception réindexation "' . $live . '" : ' . $e->getMessage(), 3);
+            // Best-effort : nettoyage du tmp, jamais du live.
+            $this->deleteIndexUid($tmp);
+        } finally {
+            $this->releaseLock($lockName);
+        }
+    }
+
+    /**
+     * Construit les documents produits prêts à indexer pour une langue : SELECT
+     * (produits `active = 1`), cast selon le typeMap, enrichissement feature_values /
+     * ids_category / sales. Partagé par le mode full et le mode sous-ensemble.
+     *
+     * @param array $language ligne Language::getLanguages()
+     * @param int[]|null $productIds null = tous les produits, sinon sous-ensemble
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildDocuments(array $language, ?array $productIds): array
+    {
+        $idLang = (int) $language['id_lang'];
 
         $idFilter = '';
         if ($productIds !== null) {
@@ -140,68 +300,65 @@ class ProductIndexer
         ';
 
         $products = \Db::getInstance(true)->executeS($sql);
-
-        // Mode sous-ensemble : les produits demandés absents du résultat (inactifs/supprimés/
-        // hors contexte boutique) doivent être retirés de l'index.
-        if ($productIds !== null) {
-            $found = array_map('intval', array_column($products ?: [], 'id_product'));
-            foreach (array_map('intval', $productIds) as $requestedId) {
-                if (!in_array($requestedId, $found, true)) {
-                    $this->module->requestCurlIndex(
-                        $this->meiliUrl . 'indexes/' . $uid . '/documents/' . $requestedId,
-                        null,
-                        'DELETE'
-                    );
-                }
-            }
+        if (empty($products)) {
+            return [];
         }
 
-        // L'index doit exister avant tout POST (idempotent).
-        $this->ensureIndex($isoCode);
+        $productIdsStr = implode(',', array_map('intval', array_column($products, 'id_product')));
 
-        if (!empty($products)) {
-            $productIdsStr = implode(',', array_map('intval', array_column($products, 'id_product')));
+        $productFeatureValues = $this->buildFeatureValues($productIdsStr);
+        $productCategoryIds = $this->buildCategoryIds($productIdsStr);
+        $productSales = $this->buildSales($productIdsStr);
 
-            $productFeatureValues = $this->buildFeatureValues($productIdsStr);
-            $productCategoryIds = $this->buildCategoryIds($productIdsStr);
-            $productSales = $this->buildSales($productIdsStr);
-
-            $typeMap = $this->typeMap();
-            foreach ($products as &$product) {
-                foreach ($typeMap as $field => $type) {
-                    if (array_key_exists($field, $product) && $product[$field] !== null) {
-                        switch ($type) {
-                            case 'int':
-                                $product[$field] = (int) $product[$field];
-                                break;
-                            case 'float':
-                                $product[$field] = (float) $product[$field];
-                                break;
-                            case 'bool':
-                                $product[$field] = (bool) $product[$field];
-                                break;
-                        }
+        $typeMap = $this->typeMap();
+        foreach ($products as &$product) {
+            foreach ($typeMap as $field => $type) {
+                if (array_key_exists($field, $product) && $product[$field] !== null) {
+                    switch ($type) {
+                        case 'int':
+                            $product[$field] = (int) $product[$field];
+                            break;
+                        case 'float':
+                            $product[$field] = (float) $product[$field];
+                            break;
+                        case 'bool':
+                            $product[$field] = (bool) $product[$field];
+                            break;
                     }
                 }
-                $id = $product['id_product'];
-                $product['feature_values'] = $productFeatureValues[$id] ?? [];
-                $product['ids_category'] = $productCategoryIds[$id] ?? [];
-                $product['sales'] = $productSales[$id] ?? 0;
             }
+            $id = $product['id_product'];
+            $product['feature_values'] = $productFeatureValues[$id] ?? [];
+            $product['ids_category'] = $productCategoryIds[$id] ?? [];
+            $product['sales'] = $productSales[$id] ?? 0;
+        }
 
-            unset($product);
+        unset($product);
 
-            foreach (array_chunk($products, $batchSize) as $chunk) {
-                $this->module->requestCurlIndex(
-                    $this->meiliUrl . 'indexes/' . $uid . '/documents',
-                    json_encode($chunk)
-                );
+        return $products;
+    }
+
+    /**
+     * Envoie les documents vers un index par batches (POST /documents = upsert).
+     *
+     * @param array<int, array<string, mixed>> $products
+     *
+     * @return int|null taskUid du dernier batch (null si aucun envoi / échec réseau)
+     */
+    private function pushDocuments(string $uid, array $products, int $batchSize): ?int
+    {
+        $lastTask = null;
+        foreach (array_chunk($products, $batchSize) as $chunk) {
+            $resp = $this->module->requestCurlIndex(
+                $this->meiliUrl . 'indexes/' . $uid . '/documents',
+                json_encode($chunk)
+            );
+            if (isset($resp->taskUid)) {
+                $lastTask = (int) $resp->taskUid;
             }
         }
 
-        if ($applySettings) {
-            $this->applySettings($isoCode);
-        }
+        return $lastTask;
     }
 
     private function indexUid(string $isoCode): string
@@ -209,17 +366,30 @@ class ProductIndexer
         return $this->prefix . 'products_' . $isoCode;
     }
 
-    private function ensureIndex(string $isoCode): void
+    /**
+     * Crée l'index (idempotent). Accepte un UID complet (live ou tmp).
+     *
+     * @return int|null taskUid (null si échec réseau ou réponse inattendue)
+     */
+    private function ensureIndex(string $uid): ?int
     {
-        $this->module->requestCurlIndex($this->meiliUrl . 'indexes', json_encode([
-            'uid' => $this->indexUid($isoCode),
+        $resp = $this->module->requestCurlIndex($this->meiliUrl . 'indexes', json_encode([
+            'uid' => $uid,
             'primaryKey' => 'id_product',
         ]));
+
+        return isset($resp->taskUid) ? (int) $resp->taskUid : null;
     }
 
-    private function applySettings(string $isoCode): void
+    /**
+     * Applique les settings Meili à un index (UID complet, live ou tmp). Le swap
+     * échangeant documents ET settings, on peut les poser sur le tmp avant bascule.
+     *
+     * @return int|null taskUid du dernier PUT (null si échec réseau)
+     */
+    private function applySettings(string $uid): ?int
     {
-        $base = $this->meiliUrl . 'indexes/' . $this->indexUid($isoCode) . '/settings/';
+        $base = $this->meiliUrl . 'indexes/' . $uid . '/settings/';
 
         $this->module->requestCurlIndex($base . 'pagination', json_encode(['maxTotalHits' => 9999]), 'PATCH');
         // Le compteur "en stock" somme les tranches de la distribution `quantity` :
@@ -228,7 +398,131 @@ class ProductIndexer
         $this->module->requestCurlIndex($base . 'faceting', json_encode(['maxValuesPerFacet' => 1000]), 'PATCH');
         $this->module->requestCurlIndex($base . 'sortable-attributes', json_encode(['name', 'price', 'date_add', 'quantity', 'sales']), 'PUT');
         $this->module->requestCurlIndex($base . 'ranking-rules', json_encode(['sort', 'words', 'typo', 'proximity', 'attribute', 'exactness']), 'PUT');
-        $this->module->requestCurlIndex($base . 'filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'ids_category', 'quantity', 'feature_values', 'visibility', 'available_for_order']), 'PUT');
+        $resp = $this->module->requestCurlIndex($base . 'filterable-attributes', json_encode(['id_manufacturer', 'out_of_stock', 'condition', 'ids_category', 'quantity', 'feature_values', 'visibility', 'available_for_order']), 'PUT');
+
+        return isset($resp->taskUid) ? (int) $resp->taskUid : null;
+    }
+
+    /** UID de l'index temporaire de reconstruction pour une langue. */
+    private function tmpUid(string $isoCode): string
+    {
+        return $this->indexUid($isoCode) . '_tmp';
+    }
+
+    /** Supprime un index entier (idempotent : DELETE sur index inexistant est sans effet). */
+    private function deleteIndexUid(string $uid): void
+    {
+        $this->module->requestCurlIndex($this->meiliUrl . 'indexes/' . $uid, null, 'DELETE');
+    }
+
+    /** Vrai si l'index existe (GET /indexes/{uid} renvoie un objet avec `uid`). */
+    private function indexExists(string $uid): bool
+    {
+        $resp = $this->module->requestCurlSearch($this->meiliUrl . 'indexes/' . $uid);
+
+        return isset($resp->uid);
+    }
+
+    /**
+     * Nombre de documents effectivement indexés (documents TRAITÉS) dans un index.
+     *
+     * @return int|null null si l'index n'existe pas / réponse inattendue
+     */
+    private function getNumberOfDocuments(string $uid): ?int
+    {
+        $resp = $this->module->requestCurlSearch($this->meiliUrl . 'indexes/' . $uid . '/stats');
+
+        return isset($resp->numberOfDocuments) ? (int) $resp->numberOfDocuments : null;
+    }
+
+    /**
+     * Bascule atomique du contenu (documents + settings) entre deux index. Les UID
+     * ne changent pas : le front continue d'interroger le même nom d'index.
+     *
+     * @return int|null taskUid du swap (null si échec réseau)
+     */
+    private function swapIndexes(string $uidA, string $uidB): ?int
+    {
+        $resp = $this->module->requestCurlIndex(
+            $this->meiliUrl . 'swap-indexes',
+            json_encode([['indexes' => [$uidA, $uidB]]]),
+            'POST'
+        );
+
+        return isset($resp->taskUid) ? (int) $resp->taskUid : null;
+    }
+
+    /**
+     * Attend la fin d'une tâche Meilisearch (polling GET /tasks/{uid}), avec backoff.
+     * Ne suit QUE la tâche donnée (ne pas scanner /tasks : ensureIndex sur un index
+     * existant enfile un `index_already_exists` en échec, légitime).
+     *
+     * @return bool true si `succeeded` ; false si `failed`/`canceled`/timeout/taskUid null
+     */
+    private function waitForTask(?int $taskUid, int $timeoutSeconds = 300): bool
+    {
+        if ($taskUid === null) {
+            return false;
+        }
+
+        $deadline = time() + $timeoutSeconds;
+        $sleepUs = 200000; // 200 ms
+        $maxSleepUs = 2000000; // 2 s
+
+        while (time() < $deadline) {
+            $task = $this->module->requestCurlSearch($this->meiliUrl . 'tasks/' . $taskUid);
+            if (isset($task->status)) {
+                if ($task->status === 'succeeded') {
+                    return true;
+                }
+                if ($task->status === 'failed' || $task->status === 'canceled') {
+                    return false;
+                }
+                // enqueued / processing → on continue à attendre
+            }
+            // $task null (réseau/timeout transitoire) → on retente jusqu'au deadline
+            usleep($sleepUs);
+            $sleepUs = min($sleepUs * 2, $maxSleepUs);
+        }
+
+        return false;
+    }
+
+    /**
+     * Compatibilité /swap-indexes (Meilisearch >= 0.29), mise en cache sur la durée
+     * du process (indexAllProducts boucle sur les langues). Version indéterminée =>
+     * considérée supportée (déploiements modernes en v1.x ; le chemin swap est de
+     * toute façon auto-protégé : un échec laisse le live intact).
+     */
+    private function supportsSwap(): bool
+    {
+        if (self::$swapSupported !== null) {
+            return self::$swapSupported;
+        }
+
+        $resp = $this->module->requestCurlSearch($this->meiliUrl . 'version');
+        self::$swapSupported = !isset($resp->pkgVersion)
+            || version_compare((string) $resp->pkgVersion, '0.29.0', '>=');
+
+        return self::$swapSupported;
+    }
+
+    /**
+     * Verrou applicatif MySQL non-bloquant (auto-libéré si le process meurt). Empêche
+     * deux réindexations complètes concurrentes d'utiliser le même index temporaire.
+     */
+    private function acquireLock(string $name): bool
+    {
+        $safe = \pSQL($name);
+        $res = \Db::getInstance()->getValue("SELECT GET_LOCK('" . $safe . "', 0)");
+
+        return (string) $res === '1';
+    }
+
+    private function releaseLock(string $name): void
+    {
+        $safe = \pSQL($name);
+        \Db::getInstance()->execute("SELECT RELEASE_LOCK('" . $safe . "')");
     }
 
     /**
