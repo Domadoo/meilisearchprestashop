@@ -101,11 +101,22 @@ function meilisearchLoadListingProducts() {
     meilisearchHideNativeListing();
     meilisearchShowLoader();
 
+    // Repli si Meili ne répond pas assez vite : au-delà du délai, on abandonne l'AJAX
+    // (-> .catch) et on garde le listing PrestaShop natif déjà rendu.
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function () { controller.abort(); }, 8000);
+
     fetch(fetchUrl.toString(), {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        signal: controller.signal
     })
     .then(function (r) { return r.json(); })
     .then(function (data) {
+        // Meili KO côté serveur : on révèle le natif SANS écraser les produits par du vide.
+        if (data && data.meilisearch_failed) {
+            meilisearchRevealListing();
+            return;
+        }
         meilisearchUpdateProducts(data);
         meilisearchRevealListing();
         if (data.meilisearch_facets) {
@@ -114,10 +125,12 @@ function meilisearchLoadListingProducts() {
         meilisearchUpdateSortUrls();
     })
     .catch(function (err) {
-        console.error('[Meilisearch] Erreur chargement listing:', err);
+        // Timeout (AbortError) ou erreur réseau : repli sur le natif déjà rendu.
+        console.error('[Meilisearch] Repli natif (listing) :', err);
         meilisearchRevealListing();
     })
     .finally(function () {
+        clearTimeout(timeoutId);
         meilisearchHideLoader();
     });
 }

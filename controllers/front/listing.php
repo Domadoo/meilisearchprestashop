@@ -80,6 +80,23 @@ class MeilisearchprestashopListingModuleFrontController extends ProductListingFr
     {
         $variables = parent::getAjaxProductSearchVariables();
 
+        // Meili injoignable / en erreur : on ne renvoie PAS de produits, pour que le JS
+        // conserve le listing PrestaShop natif déjà rendu côté serveur (repli anti-page-vide).
+        if (MeiliSearchProductSearchProvider::$lastRequestFailed) {
+            $info = $this->module->lastCurlInfo;
+            PrestaShopLogger::addLog(
+                sprintf(
+                    'Meilisearch indisponible (page listing) — repli PrestaShop natif (HTTP %s, errno %s: %s)',
+                    $info['http_code'] ?? '?',
+                    $info['errno'] ?? '?',
+                    $info['errmsg'] ?? ''
+                ),
+                2
+            );
+
+            return ['meilisearch_failed' => true];
+        }
+
         $facetDistribution = MeiliSearchProductSearchProvider::$lastFacetDistribution;
         $facets = json_decode(json_encode($facetDistribution), true) ?? [];
 

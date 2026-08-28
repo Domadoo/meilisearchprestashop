@@ -47,6 +47,9 @@ class Meilisearchprestashop extends Module
     /** @var array|null Cache des données de facettes pour les pages listing */
     private $listingFacetsCache;
 
+    /** @var array Diagnostic cURL du dernier appel Meili (http_code, errno, errmsg) */
+    public $lastCurlInfo = [];
+
     /** Pages de listing gérées par Meilisearch */
     private const LISTING_PAGES = ['category', 'manufacturer', 'new-products', 'best-sales'];
 
@@ -61,7 +64,7 @@ class Meilisearchprestashop extends Module
     {
         $this->name = 'meilisearchprestashop';
         $this->tab = 'search_filter';
-        $this->version = '1.3.1';
+        $this->version = '1.3.2';
         $this->author = 'Doudeau Adam, Johan Vivien';
         $this->need_instance = 0;
 
@@ -610,6 +613,9 @@ class Meilisearchprestashop extends Module
         $header['errno'] = $err;
         $header['errmsg'] = $errmsg;
         $header['content'] = $content;
+
+        // Diagnostic conservé pour le repli natif / les logs (http_code, errno, errmsg).
+        $this->lastCurlInfo = $header;
 
         return json_decode($content);
     }

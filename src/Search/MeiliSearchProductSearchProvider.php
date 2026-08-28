@@ -42,6 +42,13 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     public static $contextFilters = [];
 
     /**
+     * @var bool Vrai si la dernière requête produits Meili a échoué (null réseau / 5xx /
+     *           réponse malformée), à distinguer d'un « 0 résultat légitime ». Lu par
+     *           listing.php pour basculer sur l'affichage PrestaShop natif.
+     */
+    public static $lastRequestFailed = false;
+
+    /**
      * @param \Context $context Contexte PS (injecté depuis le contrôleur front)
      */
     public function __construct($translator, $context)
@@ -202,6 +209,8 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
     private function searchInMeili($query)
     {
+        self::$lastRequestFailed = false;
+
         $iso_lang = $this->context->language->iso_code;
 
         $search = $query->getSearchString();
@@ -240,6 +249,10 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $response = $this->module->requestCurlSearch($meiliUrl, json_encode($data));
 
         if (!$response instanceof \stdClass || !isset($response->hits) || !is_array($response->hits)) {
+            // Panne Meili (null réseau / 5xx / réponse malformée) — jamais un « 0 résultat
+            // légitime », qui renvoie un tableau `hits` vide et ne passe donc pas ici.
+            self::$lastRequestFailed = true;
+
             return [
                 'products' => [],
                 'allProducts' => [],

@@ -139,9 +139,10 @@ class ProductIndexer
             }
         }
 
-        // L'index doit exister avant tout POST (idempotent).
-        $this->ensureIndex($uid);
-
+        // Pas d'ensureIndex ici : il enqueue une tâche « Index creation » à CHAQUE
+        // sauvegarde produit × langue (échouant en index_already_exists), ce qui sature
+        // la file. Le POST des documents auto-crée l'index si besoin, avec la bonne clé
+        // primaire grâce au ?primaryKey=id_product posé dans pushDocuments().
         if (!empty($docs)) {
             $this->pushDocuments($uid, $docs, $batchSize);
         }
@@ -349,8 +350,10 @@ class ProductIndexer
     {
         $lastTask = null;
         foreach (array_chunk($products, $batchSize) as $chunk) {
+            // ?primaryKey=id_product : garantit la bonne clé si l'index est auto-créé
+            // par cet ajout (le catalogue a plusieurs champs id_* → inférence ambiguë).
             $resp = $this->module->requestCurlIndex(
-                $this->meiliUrl . 'indexes/' . $uid . '/documents',
+                $this->meiliUrl . 'indexes/' . $uid . '/documents?primaryKey=id_product',
                 json_encode($chunk)
             );
             if (isset($resp->taskUid)) {
