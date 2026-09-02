@@ -59,7 +59,7 @@ class ProductIndexer
      *
      * @param string[]|null $isoFilter iso_code à indexer (null = toutes les langues)
      */
-    public function indexAllProducts(?array $isoFilter = null, int $batchSize = 200): void
+    public function indexAllProducts(?array $isoFilter = null, int $batchSize = 100): void
     {
         foreach (\Language::getLanguages() as $language) {
             if ($isoFilter !== null && !in_array($language['iso_code'], $isoFilter, true)) {
@@ -104,7 +104,7 @@ class ProductIndexer
      *                               est retiré de l'index.
      * @param bool $applySettings appliquer les settings Meili (uniquement en full reindex)
      */
-    public function indexLanguage(array $language, ?array $productIds = null, bool $applySettings = true, int $batchSize = 200): void
+    public function indexLanguage(array $language, ?array $productIds = null, bool $applySettings = true, int $batchSize = 100): void
     {
         $idLang = (int) $language['id_lang'];
         $isoCode = $language['iso_code'];
