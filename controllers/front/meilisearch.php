@@ -50,7 +50,7 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
         if ($encodedSortOrder = Tools::getValue('order')) {
             $query->setSortOrder(SortOrder::newFromString($encodedSortOrder));
         } else {
-            $query->setSortOrder(new SortOrder('meilisearch', 'relevance', 'ASC'));
+            $query->setSortOrder(new SortOrder('meilisearch', 'sales', 'DESC'));
         }
 
         $encodedFacets = Tools::getValue('encodedFacets', '');

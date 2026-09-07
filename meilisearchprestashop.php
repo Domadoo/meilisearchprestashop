@@ -36,6 +36,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 // Pour transformer l'url
 
 use PrestaShop\Module\Classes\MeilisearchStatssearch;
+use PrestaShop\Module\MeiliSearch\Cache\MeilisearchResponseCache;
 use PrestaShop\Module\MeiliSearch\Listing\MeilisearchListingControllerTrait;
 
 class Meilisearchprestashop extends Module
@@ -46,6 +47,9 @@ class Meilisearchprestashop extends Module
 
     /** @var array|null Cache des données de facettes pour les pages listing */
     private $listingFacetsCache;
+
+    /** @var MeilisearchResponseCache|null Cache persistant des réponses Meili (listing non filtré) */
+    private $responseCache;
 
     /** @var array Diagnostic cURL du dernier appel Meili (http_code, errno, errmsg) */
     public $lastCurlInfo = [];
@@ -59,6 +63,9 @@ class Meilisearchprestashop extends Module
      * côté serveur pour éviter un `ORDER BY` sur une colonne inexistante.
      */
     private const MEILI_ONLY_SORT_FIELDS = ['sales', 'relevance'];
+
+    /** Durée de vie (s) du cache de réponses Meili pour les listings non filtrés. */
+    private const CACHE_TTL = 300;
 
     public function __construct()
     {
@@ -222,15 +229,20 @@ class Meilisearchprestashop extends Module
         $this->context->controller->addJS($this->_path . 'views/js/front/meilisearch_searchbar.js');
         $this->context->controller->addCSS($this->_path . 'views/css/front/meilisearch_searchbar.css');
 
+        // SEO : noindex des pages filtrées / triées / paginées / de recherche (anti-crawl Googlebot).
+        // Ces URLs (?encodedFacets=…, ?order=…, ?page=N, ?s=…) forment des combinaisons quasi infinies.
+        // noindex,follow : hors index, mais liens toujours suivis (jus SEO + découverte produits préservés).
+        $robots = $this->getNoindexRobotsMeta();
+
         // Injection pour les pages de listing (catégorie, fabricant, nouveaux, meilleures ventes)
         $phpSelf = $this->context->controller->php_self ?? '';
         if (!in_array($phpSelf, self::LISTING_PAGES)) {
-            return;
+            return $robots;
         }
 
         $facetsData = $this->getListingFacetsData($phpSelf);
         if (!$facetsData) {
-            return;
+            return $robots;
         }
 
         $listingAjaxUrl = $this->context->link->getModuleLink($this->name, 'listing', [], true);
@@ -266,6 +278,27 @@ class Meilisearchprestashop extends Module
             'meilisearch_facets_css',
             'modules/' . $this->name . '/views/css/front/meilisearch_facets.css'
         );
+
+        return $robots;
+    }
+
+    /**
+     * Meta robots « noindex,follow » pour les pages filtrées, triées, paginées ou de recherche.
+     *
+     * Ces URLs (?encodedFacets=…, ?order=…, ?page=N, ?s=…) sont des combinaisons quasi infinies
+     * crawlées par Googlebot (incident de saturation Meili). On les retire de l'index tout en
+     * laissant suivre les liens (jus SEO et découverte des produits préservés).
+     *
+     * @return string chaîne <meta …> à concaténer dans $HOOK_HEADER, ou '' si la page est indexable
+     */
+    private function getNoindexRobotsMeta(): string
+    {
+        $isFiltered = (string) Tools::getValue('encodedFacets', '') !== ''
+            || (string) Tools::getValue('s', '') !== ''
+            || (string) Tools::getValue('order', '') !== ''
+            || (int) Tools::getValue('page', 1) > 1;
+
+        return $isFiltered ? '<meta name="robots" content="noindex,follow">' . "\n" : '';
     }
 
     /**
@@ -441,8 +474,9 @@ class Meilisearchprestashop extends Module
             $baseFilter[] = $cf;
         }
 
-        // Requête facettes (limit=0 = pas de produits, juste la distribution)
-        $response = $this->requestCurlSearch($meiliUrl, json_encode([
+        // Requête facettes (limit=0 = pas de produits, juste la distribution).
+        // Toujours non filtrée → cache persistant de la réponse brute.
+        $response = $this->requestCurlSearchCached($meiliUrl, json_encode([
             'q' => '',
             'limit' => 0,
             'filter' => $baseFilter,
@@ -564,6 +598,82 @@ class Meilisearchprestashop extends Module
     public function requestCurlSearch($url, $payload = null, $request = false)
     {
         return $this->requestCurlRaw($url, $payload, $request, 3, 5);
+    }
+
+    /**
+     * Variante cachée de requestCurlSearch pour les lectures Meili NON filtrées
+     * (facettes SSR + requête produits de base). Cache le corps JSON BRUT (lossless).
+     *
+     * - Ne cache JAMAIS un échec (préserve le repli natif / $lastRequestFailed).
+     * - Dégrade en silence vers un appel direct si le cache est indisponible.
+     * - Kill-switch `MEILISEARCHPRESTASHOP_CACHE_ENABLED` (activé par défaut) ;
+     *   TTL overridable via `MEILISEARCHPRESTASHOP_CACHE_TTL`.
+     *
+     * @param string $url
+     * @param string $payload JSON déterministe (sert de clé de cache)
+     * @param int $ttl durée de vie souhaitée (secondes)
+     *
+     * @return mixed réponse Meili décodée (stdClass) ou résultat de requestCurlSearch
+     */
+    public function requestCurlSearchCached($url, $payload, $ttl = self::CACHE_TTL)
+    {
+        // Kill-switch : désactivé uniquement si la clé existe ET est falsy.
+        if (Configuration::hasKey('MEILISEARCHPRESTASHOP_CACHE_ENABLED')
+            && !Configuration::get('MEILISEARCHPRESTASHOP_CACHE_ENABLED')) {
+            return $this->requestCurlSearch($url, $payload);
+        }
+
+        $configTtl = (int) Configuration::get('MEILISEARCHPRESTASHOP_CACHE_TTL');
+        $ttl = $configTtl > 0 ? $configTtl : (int) $ttl;
+
+        $cache = $this->getResponseCache();
+        $key = $cache->key($url, $payload);
+
+        $body = $cache->get($key, $ttl);
+        if ($body !== null) {
+            $cached = json_decode($body);
+            if ($this->isWellFormedSearchResponse($cached)) {
+                return $cached;
+            }
+            // Fichier corrompu/tronqué : on ignore et on repart en live.
+        }
+
+        $response = $this->requestCurlSearch($url, $payload);
+        // Lire le corps brut IMMÉDIATEMENT (avant tout autre appel cURL qui écraserait lastCurlInfo).
+        $raw = isset($this->lastCurlInfo['content']) ? $this->lastCurlInfo['content'] : null;
+
+        if (is_string($raw) && $this->isWellFormedSearchResponse($response)) {
+            $cache->set($key, $raw);
+        }
+
+        return $response;
+    }
+
+    /**
+     * @return MeilisearchResponseCache
+     */
+    private function getResponseCache()
+    {
+        if ($this->responseCache === null) {
+            $this->responseCache = new MeilisearchResponseCache();
+        }
+
+        return $this->responseCache;
+    }
+
+    /**
+     * Une réponse de recherche Meili valide = objet avec un tableau `hits` (jamais un
+     * échec réseau/5xx/malformé). Miroir de la sentinelle de searchInMeili().
+     *
+     * @param mixed $response
+     *
+     * @return bool
+     */
+    private function isWellFormedSearchResponse($response)
+    {
+        return $response instanceof \stdClass
+            && isset($response->hits)
+            && is_array($response->hits);
     }
 
     /**

@@ -246,7 +246,14 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         // Requête principale avec tous les filtres
         $data = $baseData;
         $data['filter'] = $this->buildFilterArray($groupedFilters);
-        $response = $this->module->requestCurlSearch($meiliUrl, json_encode($data));
+        // Listing NON filtré (q vide + aucun facet actif) → cache persistant de la
+        // réponse brute. Les pages filtrées/recherche restent en direct (clés quasi
+        // infinies + sous-requêtes disjunctives inhérentes ci-dessous).
+        if ($search === '' && empty($filtersArray)) {
+            $response = $this->module->requestCurlSearchCached($meiliUrl, json_encode($data));
+        } else {
+            $response = $this->module->requestCurlSearch($meiliUrl, json_encode($data));
+        }
 
         if (!$response instanceof \stdClass || !isset($response->hits) || !is_array($response->hits)) {
             // Panne Meili (null réseau / 5xx / réponse malformée) — jamais un « 0 résultat

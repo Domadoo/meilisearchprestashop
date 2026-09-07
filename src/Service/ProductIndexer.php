@@ -45,6 +45,16 @@ class ProductIndexer
     /** @var bool|null Cache de la compatibilité /swap-indexes (Meilisearch >= 0.29) */
     private static $swapSupported = null;
 
+    /** Tentatives d'enfilement d'un batch avant abandon (échecs réseau/timeout transitoires). */
+    private const PUSH_MAX_ATTEMPTS = 3;
+
+    /**
+     * Backpressure : attendre le drainage de la file Meili toutes les N batches. Empêche
+     * l'accumulation de dizaines de tâches d'affilée qui finit par saturer Meili et faire
+     * timeouter les POST tardifs (symptôme observé : « batch #25+ sans taskUid »).
+     */
+    private const BACKPRESSURE_EVERY = 10;
+
     /**
      * @param \Meilisearchprestashop|null $module si null, résolu via Module::getInstanceByName (contexte CLI)
      */
@@ -62,7 +72,7 @@ class ProductIndexer
      *
      * @param string[]|null $isoFilter iso_code à indexer (null = toutes les langues)
      */
-    public function indexAllProducts(?array $isoFilter = null, int $batchSize = 200): void
+    public function indexAllProducts(?array $isoFilter = null, int $batchSize = 100): void
     {
         foreach (\Language::getLanguages() as $language) {
             if ($isoFilter !== null && !in_array($language['iso_code'], $isoFilter, true)) {
@@ -114,7 +124,7 @@ class ProductIndexer
      *                               est retiré de l'index.
      * @param bool $applySettings appliquer les settings Meili (ignoré en full : toujours appliqués)
      */
-    public function indexLanguage(array $language, ?array $productIds = null, bool $applySettings = true, int $batchSize = 200): void
+    public function indexLanguage(array $language, ?array $productIds = null, bool $applySettings = true, int $batchSize = 100): void
     {
         if ($productIds === null) {
             $this->fullReindexLanguage($language, $batchSize);
@@ -180,10 +190,24 @@ class ProductIndexer
         }
 
         try {
-            // Meili < 0.29 : /swap-indexes indisponible → repli sur l'upsert additif
-            // historique (sans purge des orphelins), pour ne pas casser l'indexation.
-            if (!$this->supportsSwap()) {
-                \PrestaShopLogger::addLog('Meilisearch: /swap-indexes non supporté (< 0.29), réindexation additive sur "' . $live . '"', 2);
+            $liveExists = $this->indexExists($live);
+
+            // Deux cas où l'on remplit DIRECTEMENT le live (sans tmp ni swap) :
+            //  - Meili < 0.29 : /swap-indexes indisponible → repli sur l'upsert additif
+            //    historique (sans purge des orphelins), pour ne pas casser l'indexation.
+            //  - Premier run (aucun index live existant) : il n'y a rien à préserver ni
+            //    aucun downtime à éviter. Passer par un tmp est ici un risque net : si un
+            //    gate échoue (catalogue jugé incomplet, /stats lent) ou que le worker web
+            //    est coupé (SAPI), on supprimerait le tmp et la boutique se retrouverait
+            //    AVEC ZÉRO index. Un remplissage direct laisse au pire un live partiel
+            //    (complété au prochain run, qui empruntera alors la voie swap), jamais vide.
+            if (!$this->supportsSwap() || !$liveExists) {
+                \PrestaShopLogger::addLog(
+                    $liveExists
+                        ? 'Meilisearch: /swap-indexes non supporté (< 0.29), réindexation additive sur "' . $live . '"'
+                        : 'Meilisearch: premier remplissage direct de "' . $live . '" (aucun index existant, sans swap)',
+                    2
+                );
                 $this->ensureIndex($live);
                 $docs = $this->buildDocuments($language, null);
                 if (!empty($docs)) {
@@ -203,7 +227,13 @@ class ProductIndexer
             $this->applySettings($tmp);
 
             $docs = $this->buildDocuments($language, null);
-            $expected = count($docs);
+            // Meili dédoublonne par clé primaire (id_product) : en multiboutique / partage
+            // de stock, buildDocuments peut renvoyer plusieurs lignes pour un même produit
+            // (fan-out des JOIN stock_available / product_shop). Le nombre de docs RÉELLEMENT
+            // stockés = nb d'id_product DISTINCTS. Compter les lignes brutes rendrait le
+            // Gate 2 (count < expected) systématiquement faux → swap jamais confirmé, live
+            // figé sur les installs concernées.
+            $expected = count(array_unique(array_column($docs, 'id_product')));
             if ($expected === 0) {
                 // On ne swappe jamais un index vide : live conservé.
                 \PrestaShopLogger::addLog('Meilisearch: aucun produit à indexer pour "' . $live . '", live conservé', 2);
@@ -232,7 +262,9 @@ class ProductIndexer
                 return;
             }
 
-            // Le swap exige que les deux index existent (premier run : le live n'existe pas).
+            // Le swap exige que les deux index existent. Le live existait au début du run
+            // (vérifié sous verrou) ; ce garde-fou ne couvre que la course rare d'une
+            // suppression concurrente du live (action admin « Supprimer ») entre-temps.
             if (!$this->indexExists($live)) {
                 $this->waitForTask($this->ensureIndex($live));
             }
@@ -248,12 +280,29 @@ class ProductIndexer
 
             // Swap confirmé : le tmp contient l'ancien contenu → on le supprime.
             $this->deleteIndexUid($tmp);
+
+            // Le live vient de changer d'un coup → invalide le cache de réponses Meili.
+            $this->bumpResponseCacheGeneration();
         } catch (\Throwable $e) {
             \PrestaShopLogger::addLog('Meilisearch: exception réindexation "' . $live . '" : ' . $e->getMessage(), 3);
             // Best-effort : nettoyage du tmp, jamais du live.
             $this->deleteIndexUid($tmp);
         } finally {
             $this->releaseLock($lockName);
+        }
+    }
+
+    /**
+     * Invalide le cache de réponses Meili (listings non filtrés) après un swap confirmé,
+     * en bumpant le jeton de génération. Best-effort : une erreur ne doit jamais
+     * compromettre la réindexation (le cache expirerait de toute façon par TTL).
+     */
+    private function bumpResponseCacheGeneration()
+    {
+        try {
+            (new \PrestaShop\Module\MeiliSearch\Cache\MeilisearchResponseCache())->bumpGeneration();
+        } catch (\Throwable $e) {
+            \PrestaShopLogger::addLog('Meilisearch: échec bump génération cache après swap : ' . $e->getMessage(), 2);
         }
     }
 
@@ -348,20 +397,128 @@ class ProductIndexer
      */
     private function pushDocuments(string $uid, array $products, int $batchSize): ?int
     {
+        // JSON_INVALID_UTF8_SUBSTITUTE (PHP >= 7.2, garanti par la contrainte 8.1) :
+        // un octet UTF-8 invalide dans UN seul produit (contenu importé/synchronisé)
+        // est remplacé par U+FFFD au lieu de faire échouer json_encode() sur TOUT le
+        // batch. Sans ce flag, json_encode() renvoyait false → corps POST vide (la garde
+        // `$payload != null` de requestCurlRaw ne pose pas CURLOPT_POSTFIELDS) → le batch
+        // entier (jusqu'à $batchSize produits sains) n'était pas indexé, SANS erreur.
+        // Régression rendue visible en 1.3 : la réindexation repart d'un index vide
+        // (tmp + swap) et n'accumule plus les runs précédents qui masquaient la perte.
+        $jsonFlags = defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0;
+
         $lastTask = null;
-        foreach (array_chunk($products, $batchSize) as $chunk) {
-            // ?primaryKey=id_product : garantit la bonne clé si l'index est auto-créé
-            // par cet ajout (le catalogue a plusieurs champs id_* → inférence ambiguë).
-            $resp = $this->module->requestCurlIndex(
-                $this->meiliUrl . 'indexes/' . $uid . '/documents?primaryKey=id_product',
-                json_encode($chunk)
-            );
-            if (isset($resp->taskUid)) {
-                $lastTask = (int) $resp->taskUid;
+        $batchIndex = 0;
+        $chunks = array_chunk($products, $batchSize);
+        $batchCount = count($chunks);
+        foreach ($chunks as $chunk) {
+            ++$batchIndex;
+            $payload = json_encode($chunk, $jsonFlags);
+
+            // Garde anti-batch-vide : si l'encodage échoue malgré tout (float INF/NAN,
+            // profondeur, ou UTF-8 sur un PHP sans le flag), on NE POSTe PAS un corps vide
+            // (qui indexerait zéro doc silencieusement). On log les id_product concernés.
+            if ($payload === false) {
+                \PrestaShopLogger::addLog(
+                    'Meilisearch: batch #' . $batchIndex . ' de "' . $uid . '" non encodable ('
+                    . json_last_error_msg() . '), ' . count($chunk) . ' produits ignorés '
+                    . $this->idRange($chunk),
+                    3
+                );
+                continue;
+            }
+
+            $taskUid = $this->pushBatchWithRetry($uid, $payload, $chunk, $batchIndex);
+            if ($taskUid !== null) {
+                $lastTask = $taskUid;
+            }
+
+            // Backpressure anti-saturation : sur un gros catalogue, enfiler des dizaines de
+            // batches d'affilée sature Meili et fait timeouter les POST tardifs. Toutes les
+            // BACKPRESSURE_EVERY batches, on attend que le dernier batch enfilé soit traité
+            // pour laisser la file se vider avant de continuer. Inutile sur le dernier batch
+            // (le Gate 1 l'attendra) → on l'exclut pour ne pas doubler l'attente finale.
+            if ($lastTask !== null
+                && $batchIndex < $batchCount
+                && $batchIndex % self::BACKPRESSURE_EVERY === 0) {
+                $this->waitForTask($lastTask);
             }
         }
 
         return $lastTask;
+    }
+
+    /**
+     * POST d'un batch de documents, avec réessais sur échec transitoire.
+     *
+     * Meili renvoie {taskUid} (202 enqueued) au succès. Une absence de taskUid :
+     *  - SANS message → réponse null de requestCurl = réseau/timeout (Meili saturé par la
+     *    file) → TRANSITOIRE : on réessaie avec backoff (le délai laisse Meili drainer sa
+     *    file, cause la plus fréquente de l'échec sur gros catalogue) ;
+     *  - AVEC message → rejet applicatif 4xx (payload invalide, etc.) = DÉTERMINISTE : on
+     *    n'insiste pas.
+     * Après échec définitif, on loggue les id_product perdus pour rendre la perte VISIBLE.
+     *
+     * @param array<int, array<string, mixed>> $chunk lot courant (pour la plage d'id du log)
+     *
+     * @return int|null taskUid en cas de succès, null si le batch n'a pas pu être enfilé
+     */
+    private function pushBatchWithRetry(string $uid, string $payload, array $chunk, int $batchIndex): ?int
+    {
+        // ?primaryKey=id_product : garantit la bonne clé si l'index est auto-créé par cet
+        // ajout (le catalogue a plusieurs champs id_* → inférence ambiguë).
+        $url = $this->meiliUrl . 'indexes/' . $uid . '/documents?primaryKey=id_product';
+        $sleepUs = 1000000; // 1 s, doublé à chaque essai (plafonné à 8 s)
+
+        for ($attempt = 1; $attempt <= self::PUSH_MAX_ATTEMPTS; ++$attempt) {
+            $resp = $this->module->requestCurlIndex($url, $payload);
+
+            if (isset($resp->taskUid)) {
+                return (int) $resp->taskUid;
+            }
+
+            // Rejet applicatif (Meili renvoie un message) : réessayer ne changerait rien.
+            if (isset($resp->message)) {
+                \PrestaShopLogger::addLog(
+                    'Meilisearch: batch #' . $batchIndex . ' de "' . $uid . '" rejeté ('
+                    . (string) $resp->message . '), ' . count($chunk) . ' produits non indexés '
+                    . $this->idRange($chunk),
+                    3
+                );
+
+                return null;
+            }
+
+            // null = réseau/timeout : transitoire → backoff puis nouvel essai.
+            if ($attempt < self::PUSH_MAX_ATTEMPTS) {
+                usleep($sleepUs);
+                $sleepUs = min($sleepUs * 2, 8000000);
+            }
+        }
+
+        \PrestaShopLogger::addLog(
+            'Meilisearch: échec du batch #' . $batchIndex . ' de "' . $uid . '" après '
+            . self::PUSH_MAX_ATTEMPTS . ' tentatives (réseau/timeout ?), ' . count($chunk)
+            . ' produits non indexés ' . $this->idRange($chunk),
+            3
+        );
+
+        return null;
+    }
+
+    /**
+     * Plage d'id_product d'un lot pour les logs (borné : min–max, pas la liste complète).
+     *
+     * @param array<int, array<string, mixed>> $chunk
+     */
+    private function idRange(array $chunk): string
+    {
+        $ids = array_map('intval', array_column($chunk, 'id_product'));
+        if (empty($ids)) {
+            return '[]';
+        }
+
+        return '[id_product ' . min($ids) . '–' . max($ids) . ']';
     }
 
     private function indexUid(string $isoCode): string

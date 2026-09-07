@@ -139,7 +139,7 @@ class MeilisearchprestashopListingModuleFrontController extends ProductListingFr
                     $query->setSortOrder(new SortOrder('meilisearch', 'quantity', 'DESC'));
                     break;
                 default:
-                    $query->setSortOrder(new SortOrder('meilisearch', 'relevance', 'ASC'));
+                    $query->setSortOrder(new SortOrder('meilisearch', 'sales', 'DESC'));
                     break;
             }
         }

@@ -50,7 +50,7 @@ class IndexProductsCommand extends Command
                 'b',
                 InputOption::VALUE_OPTIONAL,
                 'Number of products per batch sent to Meilisearch',
-                200
+                100
             );
     }
 
