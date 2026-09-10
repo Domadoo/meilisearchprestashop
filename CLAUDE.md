@@ -25,6 +25,11 @@ src/
   Controller/Admin/
     MeiliSearchConfigurationController.php
     MeiliSearchStatsController.php
+    MeiliSearchIndexController.php      # Page d'indexation (liste des index, vidage, suppression)
+    MeiliSearchIndexAjaxController.php  # Endpoints AJAX de la réindexation pas à pas
+  Service/
+    ProductIndexer.php        # Point unique de la logique d'indexation (SQL, typeMap, settings, swap)
+    IndexRun.php              # Orchestrateur du run AJAX (état persisté, budget par requête)
   Listing/
     MeilisearchListingControllerTrait.php  # Trait partagé : facettes, labels, disjunctive queries
   Search/
@@ -32,6 +37,7 @@ src/
 classes/
   MeilisearchStatssearch.php  # ObjectModel pour les stats de recherche
 views/
+  js/admin/meilisearch_index.js     # Page d'indexation admin : barre de progression + actions
   js/front/meilisearch_searchbar.js
   js/front/meilisearch_facets.js    # Système de facettes (filtres, tags, AJAX)
   js/front/meilisearch_listing.js   # Init spécifique aux pages listing
@@ -51,15 +57,62 @@ views/
 | `MEILISEARCHPRESTASHOP_KEY` | Clé API Meilisearch |
 | `MEILISEARCHPRESTASHOP_PREFIX` | Préfixe des index (ex: `shop1_`) |
 | `MEILISEARCHPRESTASHOP_TOKEN_CRON` | Token secret pour le cron HTTP |
+| `MEILISEARCHPRESTASHOP_INDEX_RUN` | État JSON du run de réindexation AJAX en cours (technique, écrit/effacé par `IndexRun`) |
 
 ## Indexation produits
 
-La logique d'indexation est dupliquée en trois points :
-- `controllers/front/cron.php` → `indexProductsAction()` (appel HTTP)
+Toute la logique (SQL, typeMap, `feature_values`, `ids_category` récursif, settings, swap
+atomique) vit dans **`src/Service/ProductIndexer.php`** : c'est le seul endroit à modifier.
+Les points d'entrée ne font que l'appeler :
+- `controllers/front/cron.php` → `indexAllProducts()` (appel HTTP, token requis)
 - `src/Command/IndexProductsCommand.php` → commande CLI Symfony
-- `src/Controller/Admin/MeiliSearchIndexController.php` → `indexLanguage()` (indexation manuelle depuis l'admin)
+- `src/Service/IndexRun.php` → réindexation admin en AJAX (voir ci-dessous)
+- `meilisearchprestashop.php` → hooks produit unique (`indexProduct()` / `deleteProduct()`)
 
-Si on modifie la logique SQL, le typeMap ou les settings Meilisearch, **modifier les trois**.
+### Réindexation admin en AJAX (pas à pas)
+
+La page d'indexation ne déclenche plus de requête longue : le navigateur appelle
+`.../index/ajax/start` puis `.../index/ajax/step` en boucle, chaque appel faisant un
+travail borné (budget ~4 s) et renvoyant l'avancement affiché dans une barre de
+progression. Plus de coupure `max_execution_time` ni de 504 de proxy sur gros catalogue.
+
+```
+start   → file des langues + COUNT produits (dénominateur de la barre)
+step ×N → prepare (index cible + settings)
+          → pushSlice × N (pagination par clé : id_product > lastId, 100/tranche)
+          → finishLanguage (attente tâche, gate comptage, swap, nettoyage — polling non bloquant)
+        → langue suivante, jusqu'à la fin
+abort   → supprime l'index temporaire, conserve le live
+status  → avancement sans rien exécuter (reprise après rechargement de page)
+```
+
+**Envoi perdu ⇒ tranche divisée par deux, puis arrêt.** Si un POST de documents n'est pas
+enfilé (pas de `taskUid` après les 3 tentatives de `pushBatchWithRetry`), `lastId`
+n'avance pas : la tranche est réessayée avec deux fois moins de produits (100 → 50 → 25,
+plancher `SLICE_MIN`), la réduction étant propagée aux langues suivantes. Cause n°1 : un
+payload trop gros pour le reverse-proxy devant Meilisearch (`client_max_body_size`), les
+descriptions produits pesant lourd. Au plancher, la langue est abandonnée immédiatement
+(tmp supprimé, live conservé) plutôt que de pousser tout le catalogue pour rien — la
+bascule serait annulée de toute façon par le gate de comptage.
+
+`ProductIndexer::curlDiagnostic()` journalise le code HTTP, l'`errno` cURL et un extrait
+du corps non-JSON (page d'erreur d'un proxy) + la taille du payload : c'est ce qui
+distingue un 413 de proxy d'un timeout (errno 28) ou d'une file Meili saturée. Le message
+remonte aussi dans le journal du panneau d'indexation.
+
+Points à ne pas casser :
+- **Les garde-fous du swap sont identiques au mode synchrone** : live jamais vidé, gate de
+  peuplement, gate de comptage (`expected` = documents envoyés, batch échoué inclus → un
+  batch perdu annule la bascule), swap non confirmé ⇒ tmp conservé pour le prochain run.
+- `GET_LOCK` étant lié à la connexion MySQL, il ne survit pas à une requête : l'exclusion
+  mutuelle avec cron/CLI passe par `IndexRun::isActiveFor()` (consulté par
+  `fullReindexLanguage()`) et `ProductIndexer::isFullReindexRunning()` (consulté par
+  `IndexRun::start()`). Deux `step()` concurrents sont sérialisés par un verrou de requête.
+- L'état du run est persisté dans `MEILISEARCHPRESTASHOP_INDEX_RUN` avec un heartbeat :
+  au-delà de 120 s sans battement, le run est considéré abandonné (onglet fermé) et peut
+  être remplacé. Un rechargement de page, lui, reprend le run en cours.
+- Les routes synchrones (`index_products`, `reindex_language`, `bulk_reindex`) restent en
+  place comme filet sans JS, mais l'UI ne les utilise plus.
 
 Index créés : `{prefix}products_{iso_code}` (ex: `shop1_products_fr`)
 

@@ -41,7 +41,15 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
     {
         $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL');
         $meiliPrefix = \Configuration::get('MEILISEARCHPRESTASHOP_PREFIX');
+        $languages = \Language::getLanguages();
         $indexes = [];
+
+        // uid d'index → iso_code : seuls les index correspondant à une langue de la
+        // boutique sont réindexables (les autres n'ont pas de bouton « Réindexer »).
+        $isoByUid = [];
+        foreach ($languages as $language) {
+            $isoByUid[$meiliPrefix . 'products_' . $language['iso_code']] = $language['iso_code'];
+        }
 
         if ($meiliUrl) {
             $response = $this->module->requestCurlSearch($meiliUrl . 'indexes?limit=100');
@@ -59,6 +67,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
                         continue;
                     }
                     $index->numberOfDocuments = isset($indexStats[$index->uid]) ? $indexStats[$index->uid]->numberOfDocuments : null;
+                    $index->iso_code = isset($isoByUid[$index->uid]) ? $isoByUid[$index->uid] : null;
                     $indexes[] = $index;
                 }
             }
@@ -68,7 +77,7 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             $this->getTranslatedText(),
             [
                 'indexes' => $indexes,
-                'languages' => \Language::getLanguages(),
+                'languages' => $languages,
             ]
         ));
     }
@@ -107,6 +116,16 @@ class MeiliSearchIndexController extends FrameworkBundleAdminController
             'confirmReindexLang' => $this->module->l('Reindex language "%s"?', $ctx),
             'backToList' => $this->module->l('Back to list', $ctx),
             'pageUnderConstruction' => $this->module->l('Page under construction.', $ctx),
+            // Réindexation AJAX (barre de progression)
+            'progressTitle' => $this->module->l('Indexation in progress', $ctx),
+            'btnCancelIndexation' => $this->module->l('Cancel indexation', $ctx),
+            'confirmCancelIndexation' => $this->module->l('Cancel the running indexation? The live indexes are kept as-is.', $ctx),
+            'indexationDone' => $this->module->l('Indexation completed.', $ctx),
+            'indexationDoneErrors' => $this->module->l('Indexation completed with errors: see the details below. The live indexes concerned were kept as-is.', $ctx),
+            'indexationResumed' => $this->module->l('An indexation is already running: resuming its progress.', $ctx),
+            'indexationNetworkError' => $this->module->l('Connection lost with the shop. The indexation keeps its progress: reload the page to resume it.', $ctx),
+            'productsProgress' => $this->module->l('%1$s / %2$s products', $ctx),
+            'languageProgress' => $this->module->l('%1$s (language %2$d of %3$d)', $ctx),
         ];
     }
 

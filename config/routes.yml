@@ -10,6 +10,30 @@ admin_meilisearch_index_products:
   defaults:
     _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchIndexController::indexProductsAction'
 
+admin_meilisearch_index_ajax_start:
+  path: /admin/meilisearch/index/ajax/start
+  methods: [POST]
+  defaults:
+    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchIndexAjaxController::startAction'
+
+admin_meilisearch_index_ajax_step:
+  path: /admin/meilisearch/index/ajax/step
+  methods: [POST]
+  defaults:
+    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchIndexAjaxController::stepAction'
+
+admin_meilisearch_index_ajax_status:
+  path: /admin/meilisearch/index/ajax/status
+  methods: [GET]
+  defaults:
+    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchIndexAjaxController::statusAction'
+
+admin_meilisearch_index_ajax_abort:
+  path: /admin/meilisearch/index/ajax/abort
+  methods: [POST]
+  defaults:
+    _controller: 'PrestaShop\Module\MeiliSearch\Controller\Admin\MeiliSearchIndexAjaxController::abortAction'
+
 admin_meilisearch_index_settings:
   path: /admin/meilisearch/index/{uid}/settings
   methods: [GET]

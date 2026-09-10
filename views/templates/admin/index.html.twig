@@ -3,19 +3,6 @@
 {% block pageTitle %}{{ indexationTitle }}{% endblock %}
 
 {% block content %}
-<script>
-  var msI18n = {
-    confirmReindex: {{ confirmReindexMsg|json_encode|raw }},
-    confirmFlush: {{ confirmFlushMsg|json_encode|raw }},
-    confirmDelete: {{ confirmDeleteMsg|json_encode|raw }},
-    confirmBulkReindex: {{ confirmBulkReindex|json_encode|raw }},
-    confirmBulkFlush: {{ confirmBulkFlush|json_encode|raw }},
-    confirmBulkDelete: {{ confirmBulkDelete|json_encode|raw }},
-    pleaseChooseLang: {{ pleaseChooseLang|json_encode|raw }},
-    confirmReindexLang: {{ confirmReindexLang|json_encode|raw }}
-  };
-</script>
-
 <div class="nav-tabs-custom mb-3">
   <ul class="nav nav-tabs" role="tablist">
     <li class="nav-item">
@@ -33,28 +20,45 @@
       <h3>{{ indexingMeilisearchText }}</h3>
     </div>
     <div class="card-body">
-      <form method="POST" action="{{ path('admin_meilisearch_index_products') }}">
-        <input type="hidden" name="_token" value="{{ csrf_token('index_products') }}">
-        <button type="submit" class="btn btn-primary">
-          {{ indexingMeillisearchProductsText }}
-        </button>
-      </form>
+      <button type="button" class="btn btn-primary" data-ms-index-action="all">
+        {{ indexingMeillisearchProductsText }}
+      </button>
       <hr>
-      <form method="POST" action="" id="reindex-lang-form" class="form-inline mt-2">
-        <input type="hidden" name="_token" id="reindex-lang-token" value="">
-        <select name="_lang" class="form-control form-control-sm mr-2" id="reindex-lang-select">
+      <div class="form-inline mt-2">
+        <select class="form-control form-control-sm mr-2" id="ms-lang-select">
           <option value="">{{ chooseLanguage }}</option>
           {% for lang in languages %}
-            {% set uid = lang.iso_code %}
-            <option
-              value="{{ uid }}"
-              data-action="{{ path('admin_meilisearch_index_reindex_language', {uid: uid}) }}"
-              data-token="{{ csrf_token('reindex_index_' ~ uid) }}"
-            >{{ lang.name }} ({{ lang.iso_code }})</option>
+            <option value="{{ lang.iso_code }}">{{ lang.name }} ({{ lang.iso_code }})</option>
           {% endfor %}
         </select>
-        <button type="button" class="btn btn-sm btn-outline-primary" id="reindex-lang-btn">{{ reindexLanguageBtn }}</button>
-      </form>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-ms-index-action="language">{{ reindexLanguageBtn }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Progression de la réindexation AJAX : masquée tant qu'aucun run n'est en cours #}
+<div class="row" id="ms-progress-row" style="display:none">
+  <div class="card col">
+    <div class="card-header">
+      <h3>{{ progressTitle }}</h3>
+    </div>
+    <div class="card-body">
+      <div class="d-flex justify-content-between mb-1">
+        <strong id="ms-progress-label"></strong>
+        <span id="ms-progress-counter" class="text-muted"></span>
+      </div>
+      <div class="progress mb-2" style="height:20px">
+        <div id="ms-progress-bar"
+             class="progress-bar progress-bar-striped"
+             role="progressbar"
+             style="width:0%"
+             aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0 %</div>
+      </div>
+      <p id="ms-progress-phase" class="text-muted mb-2"></p>
+      <div id="ms-progress-alert" class="alert" style="display:none"></div>
+      <ul id="ms-progress-log" class="list-unstyled small mb-2" style="max-height:160px;overflow-y:auto"></ul>
+      <button type="button" class="btn btn-sm btn-outline-danger" data-ms-index-action="abort">{{ btnCancelIndexation }}</button>
     </div>
   </div>
 </div>
@@ -71,7 +75,6 @@
         {# Formulaire suppression individuelle #}
         <form id="single-delete-form" method="POST" action="" style="display:none">
           <input type="hidden" name="_token" id="single-delete-token" value="">
-          <input type="hidden" name="_method" value="POST">
         </form>
 
         {# Formulaire flush individuel #}
@@ -89,16 +92,6 @@
           <input type="hidden" name="_token" value="{{ csrf_token('bulk_flush_indexes') }}">
         </form>
 
-        {# Formulaire bulk reindex #}
-        <form id="bulk-reindex-form" method="POST" action="{{ path('admin_meilisearch_index_bulk_reindex') }}" style="display:none">
-          <input type="hidden" name="_token" value="{{ csrf_token('bulk_reindex_indexes') }}">
-        </form>
-
-        {# Formulaire réindexation individuelle #}
-        <form id="single-reindex-form" method="POST" action="" style="display:none">
-          <input type="hidden" name="_token" id="single-reindex-token" value="">
-        </form>
-
         <div class="d-flex align-items-center mb-2 px-1">
           <select class="form-control form-control-sm w-auto mr-2" id="bulk-action-select">
             <option value="">{{ bulkActionsPlaceholder }}</option>
@@ -106,7 +99,7 @@
             <option value="flush">{{ bulkFlushLabel }}</option>
             <option value="delete">{{ bulkDeleteLabel }}</option>
           </select>
-          <button type="button" class="btn btn-sm btn-outline-danger" id="bulk-action-apply">{{ applyLabel }}</button>
+          <button type="button" class="btn btn-sm btn-outline-danger" data-ms-index-action="bulk">{{ applyLabel }}</button>
         </div>
 
         <table class="table mb-0">
@@ -123,103 +116,71 @@
           <tbody>
             {% for index in indexes %}
             <tr>
-              <td><input type="checkbox" name="uids[]" value="{{ index.uid }}" class="row-checkbox" form="bulk-delete-form"></td>
+              <td><input type="checkbox" name="uids[]" value="{{ index.uid }}" class="row-checkbox" data-iso="{{ index.iso_code }}"></td>
               <td>{{ index.uid }}</td>
               <td>{{ index.numberOfDocuments ?? '—' }}</td>
               <td>{{ index.createdAt ? index.createdAt|slice(0, 19)|replace({'T': ' '}) : '—' }}</td>
               <td>{{ index.updatedAt ? index.updatedAt|slice(0, 19)|replace({'T': ' '}) : '—' }}</td>
               <td>
                 <a href="{{ path('admin_meilisearch_index_settings', {uid: index.uid}) }}" class="btn btn-sm btn-outline-secondary">{{ btnEdit }}</a>
+                {# Réindexable seulement si l'index correspond à une langue de la boutique #}
+                {% if index.iso_code %}
                 <button type="button" class="btn btn-sm btn-outline-primary"
-                  data-action="{{ path('admin_meilisearch_index_reindex_language', {uid: index.uid}) }}"
-                  data-token="{{ csrf_token('reindex_index_' ~ index.uid) }}"
-                  data-uid="{{ index.uid }}"
-                  onclick="confirmReindex(this)">{{ btnReindex }}</button>
+                  data-ms-index-action="reindex"
+                  data-iso="{{ index.iso_code }}"
+                  data-uid="{{ index.uid }}">{{ btnReindex }}</button>
+                {% endif %}
                 <button type="button" class="btn btn-sm btn-outline-warning"
+                  data-ms-index-action="flush"
                   data-action="{{ path('admin_meilisearch_index_flush', {uid: index.uid}) }}"
                   data-token="{{ csrf_token('flush_index_' ~ index.uid) }}"
-                  data-uid="{{ index.uid }}"
-                  onclick="confirmFlush(this)">{{ btnFlush }}</button>
+                  data-uid="{{ index.uid }}">{{ btnFlush }}</button>
                 <button type="button" class="btn btn-sm btn-outline-danger"
+                  data-ms-index-action="delete"
                   data-action="{{ path('admin_meilisearch_index_delete', {uid: index.uid}) }}"
                   data-token="{{ csrf_token('delete_index_' ~ index.uid) }}"
-                  data-uid="{{ index.uid }}"
-                  onclick="confirmDelete(this)">{{ btnDelete }}</button>
+                  data-uid="{{ index.uid }}">{{ btnDelete }}</button>
               </td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
-
-        <script>
-          function confirmReindex(btn) {
-            if (!confirm(msI18n.confirmReindex.replace('%s', btn.dataset.uid))) return;
-            var form = document.getElementById('single-reindex-form');
-            form.action = btn.dataset.action;
-            document.getElementById('single-reindex-token').value = btn.dataset.token;
-            form.submit();
-          }
-
-          function confirmFlush(btn) {
-            if (!confirm(msI18n.confirmFlush.replace('%s', btn.dataset.uid))) return;
-            var form = document.getElementById('single-flush-form');
-            form.action = btn.dataset.action;
-            document.getElementById('single-flush-token').value = btn.dataset.token;
-            form.submit();
-          }
-
-          function confirmDelete(btn) {
-            if (!confirm(msI18n.confirmDelete.replace('%s', btn.dataset.uid))) return;
-            var form = document.getElementById('single-delete-form');
-            form.action = btn.dataset.action;
-            document.getElementById('single-delete-token').value = btn.dataset.token;
-            form.submit();
-          }
-
-          document.getElementById('select-all').addEventListener('change', function () {
-            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = this.checked);
-          });
-
-          document.getElementById('bulk-action-apply').addEventListener('click', function () {
-            var action = document.getElementById('bulk-action-select').value;
-            var checked = document.querySelectorAll('.row-checkbox:checked');
-            if (!action || !checked.length) return;
-
-            var messages = {
-              reindex: msI18n.confirmBulkReindex.replace('%d', checked.length),
-              flush: msI18n.confirmBulkFlush.replace('%d', checked.length),
-              delete: msI18n.confirmBulkDelete.replace('%d', checked.length)
-            };
-            var forms = { reindex: 'bulk-reindex-form', flush: 'bulk-flush-form', delete: 'bulk-delete-form' };
-
-            if (confirm(messages[action])) {
-              var form = document.getElementById(forms[action]);
-              checked.forEach(function (cb) {
-                var input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'uids[]';
-                input.value = cb.value;
-                form.appendChild(input);
-              });
-              form.submit();
-            }
-          });
-        </script>
       {% endif %}
     </div>
   </div>
 </div>
 
 <script>
-  document.getElementById('reindex-lang-btn').addEventListener('click', function () {
-    var select = document.getElementById('reindex-lang-select');
-    var opt = select.options[select.selectedIndex];
-    if (!opt.value) { alert(msI18n.pleaseChooseLang); return; }
-    if (!confirm(msI18n.confirmReindexLang.replace('%s', opt.text))) return;
-    var form = document.getElementById('reindex-lang-form');
-    form.action = opt.dataset.action;
-    document.getElementById('reindex-lang-token').value = opt.dataset.token;
-    form.submit();
-  });
+  window.msIndexAjax = {
+    endpoints: {
+      start: {{ path('admin_meilisearch_index_ajax_start')|json_encode|raw }},
+      step: {{ path('admin_meilisearch_index_ajax_step')|json_encode|raw }},
+      status: {{ path('admin_meilisearch_index_ajax_status')|json_encode|raw }},
+      abort: {{ path('admin_meilisearch_index_ajax_abort')|json_encode|raw }}
+    },
+    token: {{ csrf_token('meilisearch_index_ajax')|json_encode|raw }},
+    i18n: {
+      confirmReindex: {{ confirmReindexMsg|json_encode|raw }},
+      confirmFlush: {{ confirmFlushMsg|json_encode|raw }},
+      confirmDelete: {{ confirmDeleteMsg|json_encode|raw }},
+      confirmBulkReindex: {{ confirmBulkReindex|json_encode|raw }},
+      confirmBulkFlush: {{ confirmBulkFlush|json_encode|raw }},
+      confirmBulkDelete: {{ confirmBulkDelete|json_encode|raw }},
+      pleaseChooseLang: {{ pleaseChooseLang|json_encode|raw }},
+      confirmReindexLang: {{ confirmReindexLang|json_encode|raw }},
+      confirmCancelIndexation: {{ confirmCancelIndexation|json_encode|raw }},
+      indexationDone: {{ indexationDone|json_encode|raw }},
+      indexationDoneErrors: {{ indexationDoneErrors|json_encode|raw }},
+      indexationResumed: {{ indexationResumed|json_encode|raw }},
+      indexationNetworkError: {{ indexationNetworkError|json_encode|raw }},
+      productsProgress: {{ productsProgress|json_encode|raw }},
+      languageProgress: {{ languageProgress|json_encode|raw }}
+    }
+  };
 </script>
+{% endblock %}
+
+{% block javascripts %}
+  {{ parent() }}
+  <script src="{{ asset('../modules/meilisearchprestashop/views/js/admin/meilisearch_index.js') }}"></script>
 {% endblock %}

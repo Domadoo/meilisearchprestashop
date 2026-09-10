@@ -45,6 +45,12 @@ class ProductIndexer
     /** @var bool|null Cache de la compatibilité /swap-indexes (Meilisearch >= 0.29) */
     private static $swapSupported = null;
 
+    /**
+     * @var string|null Cause du dernier envoi de documents échoué (code HTTP, errno cURL,
+     *                  message Meili). Lu par pushSlice() pour l'afficher dans l'admin.
+     */
+    private $lastPushError;
+
     /** Tentatives d'enfilement d'un batch avant abandon (échecs réseau/timeout transitoires). */
     private const PUSH_MAX_ATTEMPTS = 3;
 
@@ -54,6 +60,13 @@ class ProductIndexer
      * timeouter les POST tardifs (symptôme observé : « batch #25+ sans taskUid »).
      */
     private const BACKPRESSURE_EVERY = 10;
+
+    /**
+     * Borne d'attente (s) d'une phase de fin en mode « pas à pas » : au-delà, la tâche
+     * Meili est considérée perdue (serveur injoignable) et le swap est annulé. Aligné
+     * sur le timeout de waitForTask().
+     */
+    private const FINISH_TIMEOUT = 300;
 
     /**
      * @param \Meilisearchprestashop|null $module si null, résolu via Module::getInstanceByName (contexte CLI)
@@ -180,7 +193,7 @@ class ProductIndexer
         $isoCode = $language['iso_code'];
         $live = $this->indexUid($isoCode);
         $tmp = $this->tmpUid($isoCode);
-        $lockName = 'meili_ridx_' . md5($live);
+        $lockName = $this->lockName($live);
 
         // Verrou anti-concurrence (cron + admin simultanés utiliseraient le même _tmp).
         if (!$this->acquireLock($lockName)) {
@@ -190,6 +203,14 @@ class ProductIndexer
         }
 
         try {
+            // Une réindexation AJAX (admin) en cours reconstruit le même index temporaire :
+            // la piétiner (pré-nettoyage du tmp) ferait échouer ses gates pour rien.
+            if (IndexRun::isActiveFor($isoCode)) {
+                \PrestaShopLogger::addLog('Meilisearch: réindexation "' . $live . '" ignorée (réindexation AJAX admin en cours)', 2);
+
+                return;
+            }
+
             $liveExists = $this->indexExists($live);
 
             // Deux cas où l'on remplit DIRECTEMENT le live (sans tmp ni swap) :
@@ -292,6 +313,315 @@ class ProductIndexer
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    // API « pas à pas » — réindexation AJAX pilotée depuis l'admin
+    //
+    // Même algorithme que fullReindexLanguage() (index temporaire + swap atomique,
+    // gate peuplement, gate comptage, live jamais vidé), mais découpé en unités de
+    // travail bornées tenant chacune dans une requête HTTP courte :
+    //   prepareLanguage()  → index cible créé + settings posés
+    //   pushSlice() × N    → un POST de documents par tranche (pagination par clé)
+    //   finishLanguage()   → attentes / gates / swap / nettoyage, en polling non bloquant
+    //
+    // L'état entre deux requêtes est porté par {@see IndexRun}. Le verrou MySQL
+    // (GET_LOCK) étant lié à la connexion, il ne survit pas à une requête : l'exclusion
+    // mutuelle avec le cron/CLI repose sur isFullReindexRunning() ici, et sur
+    // IndexRun::isActiveFor() dans fullReindexLanguage().
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Nombre de produits indexables pour une langue — dénominateur de la barre de
+     * progression (le compte qui sert de gate, lui, est dérivé des envois réels).
+     */
+    public function countProducts(array $language): int
+    {
+        return (int) \Db::getInstance(true)->getValue('
+            SELECT COUNT(DISTINCT p.`id_product`)
+            FROM `' . _DB_PREFIX_ . 'product` p
+            ' . \Shop::addSqlAssociation('product', 'p') . '
+            LEFT JOIN `' . _DB_PREFIX_ . 'product_lang` pl
+                ON (p.`id_product` = pl.`id_product` ' . \Shop::addSqlRestrictionOnLang('pl') . ')
+            WHERE pl.`id_lang` = ' . (int) $language['id_lang'] . '
+            AND product_shop.`active` = 1
+        ');
+    }
+
+    /**
+     * Première unité de travail d'une langue : choix du mode, création de l'index
+     * cible et pose des settings.
+     *
+     * @return array{mode: string, target: string, live: string} mode ∈ swap|direct
+     */
+    public function prepareLanguage(array $language): array
+    {
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(0);
+        }
+
+        $live = $this->indexUid($language['iso_code']);
+        $tmp = $this->tmpUid($language['iso_code']);
+        $liveExists = $this->indexExists($live);
+
+        // Mêmes deux cas de remplissage direct que fullReindexLanguage() : Meili < 0.29
+        // (pas de /swap-indexes), ou premier run (aucun live à préserver — passer par un
+        // tmp risquerait de laisser la boutique sans aucun index si le run échoue).
+        if (!$this->supportsSwap() || !$liveExists) {
+            \PrestaShopLogger::addLog(
+                $liveExists
+                    ? 'Meilisearch: /swap-indexes non supporté (< 0.29), réindexation additive sur "' . $live . '"'
+                    : 'Meilisearch: premier remplissage direct de "' . $live . '" (aucun index existant, sans swap)',
+                2
+            );
+            $this->ensureIndex($live);
+            $this->applySettings($live);
+
+            return ['mode' => 'direct', 'target' => $live, 'live' => $live];
+        }
+
+        // Pré-nettoyage d'un tmp résiduel (run précédent interrompu), puis création +
+        // settings sur le tmp : le swap échange documents ET settings.
+        $this->deleteIndexUid($tmp);
+        $this->ensureIndex($tmp);
+        $this->applySettings($tmp);
+
+        return ['mode' => 'swap', 'target' => $tmp, 'live' => $live];
+    }
+
+    /**
+     * Indexe une tranche de produits. Pagination par clé (`id_product > $afterId`)
+     * et non par OFFSET : stable même si le catalogue bouge pendant le run, et les
+     * tranches restent disjointes (donc `unique` s'additionne sans double compte).
+     *
+     * @return array{rows: int, unique: int, lastId: int, taskUid: int|null, exhausted: bool, error: string|null}
+     */
+    public function pushSlice(array $language, string $target, int $afterId, int $limit): array
+    {
+        $docs = $this->buildDocuments($language, null, $afterId, $limit);
+
+        if (empty($docs)) {
+            return ['rows' => 0, 'unique' => 0, 'lastId' => $afterId, 'taskUid' => null, 'exhausted' => true, 'error' => null];
+        }
+
+        $ids = array_map('intval', array_column($docs, 'id_product'));
+
+        // batchSize = taille de la tranche → un seul POST, sans attente interne : le
+        // découpage et la backpressure sont pilotés par l'appelant, requête par requête.
+        $taskUid = $this->pushDocuments($target, $docs, count($docs));
+
+        return [
+            'rows' => count($docs),
+            // Meili dédoublonne par clé primaire : les documents réellement stockés se
+            // comptent en id_product distincts (fan-out des JOIN multiboutique/stock).
+            'unique' => count(array_unique($ids)),
+            'lastId' => max($ids),
+            'taskUid' => $taskUid,
+            'exhausted' => count($docs) < $limit,
+            'error' => $taskUid === null ? $this->lastPushError : null,
+        ];
+    }
+
+    /**
+     * Fin de réindexation d'une langue, en polling non bloquant : un seul contrôle
+     * (ou une seule action) par appel, l'état étant porté par $ctx.
+     *
+     * Garde-fous identiques à fullReindexLanguage() : le live n'est jamais vidé, un
+     * swap non confirmé laisse le tmp en place (le pré-nettoyage du prochain run s'en
+     * chargera), tout échec conserve le live.
+     *
+     * @param array $ctx clés mode, target, live, expected, taskUid, finishPhase, waitSince
+     *
+     * @return array{ctx: array, status: string, message: string|null} status ∈ pending|done|error
+     */
+    public function finishLanguage(array $language, array $ctx): array
+    {
+        $tmp = (string) ($ctx['target'] ?? '');
+        $live = (string) ($ctx['live'] ?? '');
+        $taskUid = isset($ctx['taskUid']) && $ctx['taskUid'] !== null ? (int) $ctx['taskUid'] : null;
+        $phase = !empty($ctx['finishPhase']) ? (string) $ctx['finishPhase'] : 'wait_push';
+
+        // Mode direct : rien à basculer, les settings sont déjà posés.
+        if (($ctx['mode'] ?? '') !== 'swap') {
+            return ['ctx' => $ctx, 'status' => 'done', 'message' => null];
+        }
+
+        // On ne swappe JAMAIS un index vide : aucun document envoyé (catalogue vide pour
+        // cette langue, ou tous les batches perdus) ⇒ live conservé tel quel.
+        if ((int) ($ctx['expected'] ?? 0) === 0) {
+            \PrestaShopLogger::addLog('Meilisearch: aucun produit à indexer pour "' . $live . '", live conservé', 2);
+            $this->deleteIndexUid($tmp);
+            $ctx['finishPhase'] = 'error';
+
+            return [
+                'ctx' => $ctx,
+                'status' => 'error',
+                'message' => $this->module->l('No product was indexed for this language: the live index was kept as-is.', 'productindexer'),
+            ];
+        }
+
+        // Un Meili injoignable répondrait « pending » indéfiniment : borne d'attente par
+        // phase, alignée sur le timeout de waitForTask().
+        if (empty($ctx['waitSince'])) {
+            $ctx['waitSince'] = time();
+        }
+        $expired = (time() - (int) $ctx['waitSince']) > self::FINISH_TIMEOUT;
+
+        switch ($phase) {
+            case 'wait_push':
+                // Gate 1 : peuplement du tmp terminé (file FIFO → couvre create + settings + batches).
+                $state = $this->taskState($taskUid);
+                if ($state === 'pending' && !$expired) {
+                    return ['ctx' => $ctx, 'status' => 'pending', 'message' => null];
+                }
+                if ($state !== 'succeeded') {
+                    return $this->finishFail(
+                        $ctx,
+                        'Meilisearch: échec/timeout peuplement "' . $tmp . '", swap annulé, live conservé',
+                        $this->module->l('Filling of the temporary index failed or timed out: swap cancelled, live index kept.', 'productindexer'),
+                        true
+                    );
+                }
+
+                return $this->finishAdvance($ctx, 'verify', $taskUid);
+
+            case 'verify':
+                // Gate 2 : le tmp doit contenir le nombre de documents attendu (1 doc/produit).
+                $count = $this->getNumberOfDocuments($tmp);
+                $expected = (int) ($ctx['expected'] ?? 0);
+                if ($count === null || $count < $expected) {
+                    return $this->finishFail(
+                        $ctx,
+                        'Meilisearch: "' . $tmp . '" incomplet (' . var_export($count, true) . '/' . $expected . '), swap annulé, live conservé',
+                        sprintf(
+                            $this->module->l('Temporary index incomplete (%s/%d documents): swap cancelled, live index kept.', 'productindexer'),
+                            $count === null ? '?' : (string) $count,
+                            $expected
+                        ),
+                        true
+                    );
+                }
+
+                // Le swap exige que les deux index existent. Ne couvre que la course rare
+                // d'une suppression concurrente du live (action admin « Supprimer »).
+                if (!$this->indexExists($live)) {
+                    return $this->finishAdvance($ctx, 'wait_live', $this->ensureIndex($live));
+                }
+
+                return $this->finishAdvance($ctx, 'wait_swap', $this->swapIndexes($live, $tmp));
+
+            case 'wait_live':
+                if ($this->taskState($taskUid) === 'pending' && !$expired) {
+                    return ['ctx' => $ctx, 'status' => 'pending', 'message' => null];
+                }
+
+                return $this->finishAdvance($ctx, 'wait_swap', $this->swapIndexes($live, $tmp));
+
+            case 'wait_swap':
+                $state = $this->taskState($taskUid);
+                if ($state === 'pending' && !$expired) {
+                    return ['ctx' => $ctx, 'status' => 'pending', 'message' => null];
+                }
+                if ($state !== 'succeeded') {
+                    // Swap non confirmé : un swap tardif pourrait encore aboutir → on NE
+                    // supprime PAS le tmp (le pré-nettoyage du prochain run s'en chargera).
+                    return $this->finishFail(
+                        $ctx,
+                        'Meilisearch: swap "' . $live . '" ⇄ "' . $tmp . '" non confirmé, live conservé',
+                        $this->module->l('Index swap not confirmed: live index kept.', 'productindexer'),
+                        false
+                    );
+                }
+
+                // Swap confirmé : le tmp contient l'ancien contenu → on le supprime, et le
+                // live vient de changer d'un coup → on invalide le cache de réponses.
+                $this->deleteIndexUid($tmp);
+                $this->bumpResponseCacheGeneration();
+                $ctx['finishPhase'] = 'done';
+
+                return ['ctx' => $ctx, 'status' => 'done', 'message' => null];
+        }
+
+        return ['ctx' => $ctx, 'status' => 'done', 'message' => null];
+    }
+
+    /**
+     * Abandon d'une langue en cours (annulation admin, exception) : supprime l'index
+     * temporaire, ne touche JAMAIS au live.
+     */
+    public function cancelLanguage(array $ctx): void
+    {
+        if (($ctx['mode'] ?? '') === 'swap' && !empty($ctx['target'])) {
+            $this->deleteIndexUid((string) $ctx['target']);
+        }
+    }
+
+    /**
+     * Vrai si une réindexation complète cron/CLI de cette langue est en cours (verrou
+     * MySQL détenu par une autre connexion).
+     */
+    public function isFullReindexRunning(string $isoCode): bool
+    {
+        try {
+            $held = \Db::getInstance()->getValue(
+                "SELECT IS_USED_LOCK('" . \pSQL($this->lockName($this->indexUid($isoCode))) . "')"
+            );
+        } catch (\Throwable $e) {
+            // IS_USED_LOCK indisponible : ne pas bloquer l'indexation pour autant (le
+            // chemin swap est de toute façon auto-protégé, un échec laisse le live intact).
+            return false;
+        }
+
+        return $held !== null && $held !== false && (string) $held !== '';
+    }
+
+    /**
+     * État d'une tâche Meili en un seul appel (non bloquant).
+     *
+     * @return string succeeded|failed|pending (réseau/timeout transitoire inclus)|none
+     */
+    public function taskState(?int $taskUid): string
+    {
+        if ($taskUid === null) {
+            return 'none';
+        }
+
+        $task = $this->module->requestCurlSearch($this->meiliUrl . 'tasks/' . $taskUid);
+        if (!isset($task->status)) {
+            // Réponse absente/inattendue = transitoire : l'appelant réessaiera jusqu'à sa
+            // borne d'attente (FINISH_TIMEOUT).
+            return 'pending';
+        }
+        if ($task->status === 'succeeded') {
+            return 'succeeded';
+        }
+        if ($task->status === 'failed' || $task->status === 'canceled') {
+            return 'failed';
+        }
+
+        return 'pending';
+    }
+
+    /** Passage à la phase de fin suivante : réarme la borne d'attente. */
+    private function finishAdvance(array $ctx, string $phase, ?int $taskUid): array
+    {
+        $ctx['finishPhase'] = $phase;
+        $ctx['taskUid'] = $taskUid;
+        $ctx['waitSince'] = time();
+
+        return ['ctx' => $ctx, 'status' => 'pending', 'message' => null];
+    }
+
+    /** Échec d'une phase de fin : log technique + message admin, live toujours conservé. */
+    private function finishFail(array $ctx, string $logMessage, string $userMessage, bool $dropTmp): array
+    {
+        \PrestaShopLogger::addLog($logMessage, 3);
+        if ($dropTmp && !empty($ctx['target'])) {
+            $this->deleteIndexUid((string) $ctx['target']);
+        }
+        $ctx['finishPhase'] = 'error';
+
+        return ['ctx' => $ctx, 'status' => 'error', 'message' => $userMessage];
+    }
+
     /**
      * Invalide le cache de réponses Meili (listings non filtrés) après un swap confirmé,
      * en bumpant le jeton de génération. Best-effort : une erreur ne doit jamais
@@ -313,10 +643,12 @@ class ProductIndexer
      *
      * @param array $language ligne Language::getLanguages()
      * @param int[]|null $productIds null = tous les produits, sinon sous-ensemble
+     * @param int|null $afterId pagination par clé : ne renvoie que les id_product > $afterId
+     * @param int|null $limit taille de la fenêtre (null = pas de fenêtrage)
      *
      * @return array<int, array<string, mixed>>
      */
-    private function buildDocuments(array $language, ?array $productIds): array
+    private function buildDocuments(array $language, ?array $productIds, ?int $afterId = null, ?int $limit = null): array
     {
         $idLang = (int) $language['id_lang'];
 
@@ -324,6 +656,15 @@ class ProductIndexer
         if ($productIds !== null) {
             $ids = array_map('intval', $productIds);
             $idFilter = ' AND p.`id_product` IN (' . implode(',', $ids) . ')';
+        }
+
+        // Fenêtre de pagination par clé (mode « pas à pas ») : ORDER BY id_product +
+        // `> $afterId` garde les tranches disjointes et stables si le catalogue bouge
+        // pendant le run, contrairement à un LIMIT/OFFSET.
+        $window = '';
+        if ($limit !== null) {
+            $window = ' AND p.`id_product` > ' . (int) $afterId
+                . ' ORDER BY p.`id_product` ASC LIMIT ' . max(1, (int) $limit);
         }
 
         // Le stock réel vit dans stock_available (id_product_attribute = 0 = agrégat produit),
@@ -346,7 +687,7 @@ class ProductIndexer
             LEFT JOIN `' . _DB_PREFIX_ . 'supplier` s
                 ON (s.`id_supplier` = p.`id_supplier`)
             WHERE pl.`id_lang` = ' . $idLang . '
-            AND product_shop.`active` = 1' . $idFilter . '
+            AND product_shop.`active` = 1' . $idFilter . $window . '
         ';
 
         $products = \Db::getInstance(true)->executeS($sql);
@@ -407,6 +748,7 @@ class ProductIndexer
         // (tmp + swap) et n'accumule plus les runs précédents qui masquaient la perte.
         $jsonFlags = defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0;
 
+        $this->lastPushError = null;
         $lastTask = null;
         $batchIndex = 0;
         $chunks = array_chunk($products, $batchSize);
@@ -419,6 +761,7 @@ class ProductIndexer
             // profondeur, ou UTF-8 sur un PHP sans le flag), on NE POSTe PAS un corps vide
             // (qui indexerait zéro doc silencieusement). On log les id_product concernés.
             if ($payload === false) {
+                $this->lastPushError = 'JSON: ' . json_last_error_msg();
                 \PrestaShopLogger::addLog(
                     'Meilisearch: batch #' . $batchIndex . ' de "' . $uid . '" non encodable ('
                     . json_last_error_msg() . '), ' . count($chunk) . ' produits ignorés '
@@ -479,6 +822,7 @@ class ProductIndexer
 
             // Rejet applicatif (Meili renvoie un message) : réessayer ne changerait rien.
             if (isset($resp->message)) {
+                $this->lastPushError = 'Meilisearch: ' . (string) $resp->message;
                 \PrestaShopLogger::addLog(
                     'Meilisearch: batch #' . $batchIndex . ' de "' . $uid . '" rejeté ('
                     . (string) $resp->message . '), ' . count($chunk) . ' produits non indexés '
@@ -489,7 +833,10 @@ class ProductIndexer
                 return null;
             }
 
-            // null = réseau/timeout : transitoire → backoff puis nouvel essai.
+            // null = réseau/timeout : transitoire → backoff puis nouvel essai. On retient
+            // le diagnostic cURL de la tentative (écrasé par l'appel suivant).
+            $this->lastPushError = $this->curlDiagnostic();
+
             if ($attempt < self::PUSH_MAX_ATTEMPTS) {
                 usleep($sleepUs);
                 $sleepUs = min($sleepUs * 2, 8000000);
@@ -498,12 +845,46 @@ class ProductIndexer
 
         \PrestaShopLogger::addLog(
             'Meilisearch: échec du batch #' . $batchIndex . ' de "' . $uid . '" après '
-            . self::PUSH_MAX_ATTEMPTS . ' tentatives (réseau/timeout ?), ' . count($chunk)
-            . ' produits non indexés ' . $this->idRange($chunk),
+            . self::PUSH_MAX_ATTEMPTS . ' tentatives, ' . count($chunk)
+            . ' produits non indexés ' . $this->idRange($chunk)
+            . ' — payload ' . round(strlen($payload) / 1024) . ' Ko, '
+            . (string) $this->lastPushError,
             3
         );
 
         return null;
+    }
+
+    /**
+     * Diagnostic du dernier appel cURL. Sans lui, tout échec d'envoi se lit
+     * « réseau/Meilisearch » sans distinguer les causes réelles, qui appellent des
+     * corrections très différentes : 413 d'un reverse-proxy (client_max_body_size trop
+     * bas pour un batch de grosses descriptions), errno 28 (timeout de réponse),
+     * errno 7 (connexion refusée), 5xx de Meilisearch (file saturée).
+     */
+    private function curlDiagnostic(): string
+    {
+        $info = is_array($this->module->lastCurlInfo) ? $this->module->lastCurlInfo : [];
+        $httpCode = isset($info['http_code']) ? (int) $info['http_code'] : 0;
+        $errno = isset($info['errno']) ? (int) $info['errno'] : 0;
+        $errmsg = isset($info['errmsg']) ? trim((string) $info['errmsg']) : '';
+
+        $diagnostic = 'HTTP ' . $httpCode . ', curl errno ' . $errno;
+        if ($errmsg !== '') {
+            $diagnostic .= ' (' . $errmsg . ')';
+        }
+
+        // Un corps non-JSON (page d'erreur HTML d'un proxy) est justement le symptôme le
+        // plus parlant : on en garde un extrait court, aplati et tronqué proprement.
+        $body = isset($info['content']) ? (string) $info['content'] : '';
+        if ($body !== '' && json_decode($body) === null) {
+            $flat = trim((string) preg_replace('/\s+/', ' ', strip_tags($body)));
+            if ($flat !== '') {
+                $diagnostic .= ', réponse: ' . \Tools::substr($flat, 0, 160);
+            }
+        }
+
+        return $diagnostic;
     }
 
     /**
@@ -671,6 +1052,12 @@ class ProductIndexer
      * Verrou applicatif MySQL non-bloquant (auto-libéré si le process meurt). Empêche
      * deux réindexations complètes concurrentes d'utiliser le même index temporaire.
      */
+    /** Nom du verrou de réindexation complète d'un index live (partagé cron/CLI/admin). */
+    private function lockName(string $liveUid): string
+    {
+        return 'meili_ridx_' . md5($liveUid);
+    }
+
     private function acquireLock(string $name): bool
     {
         $safe = \pSQL($name);
