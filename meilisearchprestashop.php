@@ -38,6 +38,8 @@ require_once __DIR__ . '/vendor/autoload.php';
 use PrestaShop\Module\Classes\MeilisearchStatssearch;
 use PrestaShop\Module\MeiliSearch\Cache\MeilisearchResponseCache;
 use PrestaShop\Module\MeiliSearch\Listing\MeilisearchListingControllerTrait;
+use PrestaShop\Module\MeiliSearch\Resilience\MeilisearchCircuitBreaker;
+use PrestaShop\Module\MeiliSearch\Service\IndexRun;
 
 class Meilisearchprestashop extends Module
 {
@@ -50,6 +52,9 @@ class Meilisearchprestashop extends Module
 
     /** @var MeilisearchResponseCache|null Cache persistant des réponses Meili (listing non filtré) */
     private $responseCache;
+
+    /** @var MeilisearchCircuitBreaker|null Breaker des lectures Meili du front */
+    private $circuitBreaker;
 
     /** @var array Diagnostic cURL du dernier appel Meili (http_code, errno, errmsg) */
     public $lastCurlInfo = [];
@@ -66,6 +71,15 @@ class Meilisearchprestashop extends Module
 
     /** Durée de vie (s) du cache de réponses Meili pour les listings non filtrés. */
     private const CACHE_TTL = 300;
+
+    /**
+     * Budget mural (s) alloué aux sous-requêtes disjunctives d'une page filtrée.
+     * Le breaker couvre le cas « Meili down » ; ce budget couvre le cas « Meili UP mais
+     * lent », où la boucle coûte sinon (1+N) × 5 s dans un worker PHP-FPM. Une fois le
+     * budget épuisé, les compteurs de facettes restants restent conjonctifs (dégradés)
+     * plutôt que de bloquer le worker.
+     */
+    public const DISJUNCTIVE_BUDGET = 4.0;
 
     public function __construct()
     {
@@ -112,6 +126,21 @@ class Meilisearchprestashop extends Module
 
     public function uninstall()
     {
+        // Clés TECHNIQUES écrites en cours de vie du module (état de run, jeton de
+        // génération du cache, kill-switches) : sans purge elles survivent à la
+        // désinstallation. Les clés de configuration saisies par le marchand
+        // (URL / KEY / PREFIX / TOKEN_CRON) sont volontairement conservées : une
+        // réinstallation ne doit pas lui faire ressaisir sa connexion Meilisearch.
+        foreach ([
+            MeilisearchResponseCache::GENERATION_KEY,
+            IndexRun::CONFIG_KEY,
+            'MEILISEARCHPRESTASHOP_CACHE_ENABLED',
+            'MEILISEARCHPRESTASHOP_CACHE_TTL',
+            'MEILISEARCHPRESTASHOP_BREAKER_ENABLED',
+        ] as $key) {
+            Configuration::deleteByName($key);
+        }
+
         return parent::uninstall()
             && $this->uninstallTab();
     }
@@ -601,6 +630,119 @@ class Meilisearchprestashop extends Module
     }
 
     /**
+     * Variante de requestCurlSearch protégée par le circuit breaker, réservée aux
+     * lectures du FRONT (listing, recherche, facettes, autocomplete).
+     *
+     * Quand Meili est injoignable, renvoie `null` SANS aucun appel cURL : le provider
+     * pose alors `$lastRequestFailed` et les contrôleurs retombent sur le listing
+     * PrestaShop natif. C'est ce qui empêche les workers PHP-FPM de s'empiler à 5 s par
+     * requête pendant un crawl massif (incident Googlebot).
+     *
+     * N'est PAS utilisée par l'indexation ni par les écrans admin : ceux-ci doivent
+     * continuer à joindre Meili même quand le front est en repli (`requestCurlSearch`).
+     *
+     * @param string $url
+     * @param string|null $payload
+     * @param string|false $request
+     *
+     * @return mixed réponse Meili décodée, ou null si le circuit est ouvert / l'appel a échoué
+     */
+    public function requestCurlSearchGuarded($url, $payload = null, $request = false)
+    {
+        if (!$this->isBreakerEnabled()) {
+            return $this->requestCurlSearch($url, $payload, $request);
+        }
+
+        $breaker = $this->getCircuitBreaker();
+        if (!$breaker->allow()) {
+            // Court-circuit : 0 appel réseau. On renseigne lastCurlInfo pour que les logs
+            // de repli des contrôleurs restent lisibles.
+            $this->lastCurlInfo = [
+                'http_code' => 0,
+                'errno' => 0,
+                'errmsg' => 'circuit breaker open',
+                'content' => false,
+            ];
+
+            return null;
+        }
+
+        $response = $this->requestCurlSearch($url, $payload, $request);
+
+        if ($this->isCurlOutage($this->lastCurlInfo)) {
+            if ($breaker->recordFailure()) {
+                $this->logBreakerTransition('ouvert', $this->lastCurlInfo);
+            }
+        } elseif ($breaker->recordSuccess()) {
+            $this->logBreakerTransition('refermé', $this->lastCurlInfo);
+        }
+
+        return $response;
+    }
+
+    /**
+     * Le breaker est-il actif ? Kill-switch `MEILISEARCHPRESTASHOP_BREAKER_ENABLED`,
+     * activé par défaut : désactivé uniquement si la clé existe ET est falsy.
+     *
+     * @return bool
+     */
+    private function isBreakerEnabled()
+    {
+        return !(Configuration::hasKey('MEILISEARCHPRESTASHOP_BREAKER_ENABLED')
+            && !Configuration::get('MEILISEARCHPRESTASHOP_BREAKER_ENABLED'));
+    }
+
+    /**
+     * Une indisponibilité = panne réseau/timeout (errno), pas de réponse HTTP, ou 5xx.
+     * Un 4xx est une erreur de requête (filtre invalide, index absent) : ce n'est pas un
+     * motif d'ouverture du circuit.
+     *
+     * @param array $info diagnostic issu de requestCurlRaw
+     *
+     * @return bool
+     */
+    private function isCurlOutage(array $info)
+    {
+        $httpCode = isset($info['http_code']) ? (int) $info['http_code'] : 0;
+        $errno = isset($info['errno']) ? (int) $info['errno'] : 0;
+
+        return $errno !== 0 || $httpCode === 0 || $httpCode >= 500;
+    }
+
+    /**
+     * Log d'une transition du breaker — une seule ligne à l'ouverture et à la fermeture,
+     * jamais par appel (le volume de logs est lui-même un facteur de saturation).
+     *
+     * @param string $transition
+     * @param array $info
+     */
+    private function logBreakerTransition($transition, array $info)
+    {
+        PrestaShopLogger::addLog(
+            sprintf(
+                'Meilisearch : circuit %s — lectures front en repli PrestaShop natif (HTTP %s, errno %s: %s)',
+                $transition,
+                isset($info['http_code']) ? $info['http_code'] : '?',
+                isset($info['errno']) ? $info['errno'] : '?',
+                isset($info['errmsg']) ? $info['errmsg'] : ''
+            ),
+            2
+        );
+    }
+
+    /**
+     * @return MeilisearchCircuitBreaker
+     */
+    private function getCircuitBreaker()
+    {
+        if ($this->circuitBreaker === null) {
+            $this->circuitBreaker = new MeilisearchCircuitBreaker();
+        }
+
+        return $this->circuitBreaker;
+    }
+
+    /**
      * Variante cachée de requestCurlSearch pour les lectures Meili NON filtrées
      * (facettes SSR + requête produits de base). Cache le corps JSON BRUT (lossless).
      *
@@ -620,7 +762,7 @@ class Meilisearchprestashop extends Module
         // Kill-switch : désactivé uniquement si la clé existe ET est falsy.
         if (Configuration::hasKey('MEILISEARCHPRESTASHOP_CACHE_ENABLED')
             && !Configuration::get('MEILISEARCHPRESTASHOP_CACHE_ENABLED')) {
-            return $this->requestCurlSearch($url, $payload);
+            return $this->requestCurlSearchGuarded($url, $payload);
         }
 
         $configTtl = (int) Configuration::get('MEILISEARCHPRESTASHOP_CACHE_TTL');
@@ -638,7 +780,7 @@ class Meilisearchprestashop extends Module
             // Fichier corrompu/tronqué : on ignore et on repart en live.
         }
 
-        $response = $this->requestCurlSearch($url, $payload);
+        $response = $this->requestCurlSearchGuarded($url, $payload);
         // Lire le corps brut IMMÉDIATEMENT (avant tout autre appel cURL qui écraserait lastCurlInfo).
         $raw = isset($this->lastCurlInfo['content']) ? $this->lastCurlInfo['content'] : null;
 

@@ -34,6 +34,11 @@ src/
     MeilisearchListingControllerTrait.php  # Trait partagé : facettes, labels, disjunctive queries
   Search/
     MeiliSearchProductSearchProvider.php
+  Cache/
+    MeilisearchCacheInterface.php     # Contrat du cache de réponses
+    MeilisearchResponseCache.php      # Cache FS gzip des réponses Meili (listings NON filtrés)
+  Resilience/
+    MeilisearchCircuitBreaker.php     # Circuit breaker des lectures Meili du FRONT
 classes/
   MeilisearchStatssearch.php  # ObjectModel pour les stats de recherche
 views/
@@ -58,6 +63,14 @@ views/
 | `MEILISEARCHPRESTASHOP_PREFIX` | Préfixe des index (ex: `shop1_`) |
 | `MEILISEARCHPRESTASHOP_TOKEN_CRON` | Token secret pour le cron HTTP |
 | `MEILISEARCHPRESTASHOP_INDEX_RUN` | État JSON du run de réindexation AJAX en cours (technique, écrit/effacé par `IndexRun`) |
+| `MEILISEARCHPRESTASHOP_CACHE_GEN` | Jeton de génération du cache de réponses (technique, bumpé au swap confirmé) |
+| `MEILISEARCHPRESTASHOP_CACHE_ENABLED` | Kill-switch du cache de réponses — **activé par défaut** (désactivé seulement si la clé existe ET est falsy) |
+| `MEILISEARCHPRESTASHOP_CACHE_TTL` | TTL (s) du cache de réponses ; défaut `CACHE_TTL = 300` |
+| `MEILISEARCHPRESTASHOP_BREAKER_ENABLED` | Kill-switch du circuit breaker — **activé par défaut** (même idiome que ci-dessus) |
+
+Les clés **techniques** (`INDEX_RUN`, `CACHE_GEN`) et les kill-switches sont purgés par
+`uninstall()`. Les clés saisies par le marchand (`URL`, `KEY`, `PREFIX`, `TOKEN_CRON`) sont
+volontairement **conservées** : une réinstallation ne doit pas faire ressaisir la connexion.
 
 ## Indexation produits
 
@@ -186,6 +199,69 @@ Partagé entre `meilisearch.php` et `listing.php` (et `meilisearchprestashop.php
 | Catégorie | `ids_category` (+ toujours : `out_of_stock`, `visibility`, `quantity`, `available_for_order`) |
 | Fabricant | `id_manufacturer` |
 | Nouveaux / Meilleures ventes | aucune de plus |
+
+## Résilience front (Meili down ou lent)
+
+Contexte : un crawl massif de combinaisons `?encodedFacets=…&page=N` sature Meilisearch,
+et chaque worker PHP-FPM brûle alors 5 s **par** requête — or une page filtrée en émet
+`1 + N` (requête principale + une sous-requête disjunctive par groupe de facettes actif).
+
+**Deux appels cURL de recherche distincts, à ne pas confondre :**
+
+| Méthode | Pour qui | Breaker |
+|---------|----------|---------|
+| `requestCurlSearch()` | indexation, écrans admin | ❌ non — l'admin doit joindre Meili même si le front est en repli |
+| `requestCurlSearchGuarded()` | **front** : listing, recherche, facettes SSR, autocomplete | ✅ oui |
+
+`requestCurlSearchCached()` (listings NON filtrés) délègue au variant **gardé** en cas de MISS ;
+un HIT sert le cache sans consulter le breaker (servir le cache pendant une panne est voulu).
+La clé étant `sha1(url | payload | génération)`, **changer `MEILISEARCHPRESTASHOP_URL` invalide
+tout le cache** — correct (on ne resert pas les résultats d'une autre instance), mais ça rend le
+swap d'URL inutilisable pour simuler une panne quand on veut observer le cache.
+Attention aussi : facettes SSR et requête produits sont **deux clés distinctes** ; si l'entrée
+facettes manque, les hooks sortent tôt et la page part en natif même si les produits sont cachés.
+
+**Circuit breaker** — `src/Resilience/MeilisearchCircuitBreaker.php`, état filesystem dans
+`_PS_CACHE_DIR_/meilisearchprestashop/breaker.state` (aucune dépendance APCu). Attention :
+`_PS_CACHE_DIR_` vaut `var/cache/<env>/`, donc **vider le cache PS supprime l'état** (sans
+danger : pas d'état = circuit fermé) et changer de mode debug change de dossier. Cycle :
+fermé → **5 échecs en 60 s** → ouvert **30 s** (0 appel cURL) → semi-ouvert (**une seule**
+sonde toutes les 5 s, anti-ruée) → succès = fermé / échec = réouverture pleine durée.
+Un 4xx **n'est pas** une panne (seuls errno cURL, absence de réponse et 5xx comptent).
+Toute erreur d'E/S dégrade en `allow() === true` — jamais de fatal en front.
+Log **uniquement** aux transitions ouverture/fermeture, jamais par appel.
+
+**Budget disjunctif** — `Meilisearchprestashop::DISJUNCTIVE_BUDGET` (4 s) borne les boucles
+de sous-requêtes du provider et du trait. Couvre le cas « Meili UP mais lent » que le
+breaker ne voit pas. Budget épuisé ⇒ compteurs de facettes restants conjonctifs (dégradés),
+page servie quand même.
+
+⚠️ Il borne la **boucle**, pas les appels : le test est en tête d'itération, donc la
+**première sous-requête part toujours**, budget nul ou non. Pire cas d'une page filtrée =
+requête principale + requête « toutes valeurs » + 1 sous-requête ≈ 15 s, au lieu de
+`(1+N)×5s`. Une version stricte devrait réduire le timeout cURL au budget restant.
+Corollaire pour les tests : un budget minuscule ne dégrade rien s'il n'y a qu'**un** groupe
+de facettes actif (la boucle itère sur les groupes, pas sur les filtres) — utiliser une
+valeur négative pour tout couper.
+
+Effet visible côté client : dans un groupe filtré, les valeurs retombées à 0 sont
+**masquées** et non grisées (`meilisearch_facets.js`, `display:none` dès qu'un filtre est
+actif). Budget épuisé ⇒ le visiteur ne peut plus basculer d'une valeur à l'autre dans un
+groupe déjà filtré, il doit décocher d'abord. Aucun compteur faux n'est jamais affiché.
+
+⚠️ Sur une page listing **filtrée**, les deux boucles disjunctives tournent : celle du
+provider (`searchInMeili` lit `encodedFacets` via `Tools::getValue`) **puis** celle du trait
+(`listing.php` → `getDisjunctiveFacets`), dont le résultat écrase le premier. Les
+sous-requêtes du provider sont donc intégralement jetées — coût doublé sur exactement les
+URLs que le crawl martèle. Piste d'optimisation non traitée.
+
+**Chaîne de repli** : appel gardé → `null` → `MeiliSearchProductSearchProvider::$lastRequestFailed`
+→ `listing.php` renvoie `{meilisearch_failed:true}` → le JS révèle le listing PrestaShop natif.
+Sur le rendu serveur, `getListingFacetsData()` renvoie `null` → les hooks sortent tôt, **aucun
+JS Meili n'est injecté**, et comme le masquage `opacity:0` est posé *par ce JS*, le natif reste
+visible. Ne jamais déplacer ce masquage en CSS : la page deviendrait blanche en panne.
+
+> La page **recherche** (`meilisearch.php`) n'a **pas** encore de repli (Surface B, #4 étapes 2+5).
 
 ## Hooks utilisés
 

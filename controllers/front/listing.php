@@ -83,7 +83,12 @@ class MeilisearchprestashopListingModuleFrontController extends ProductListingFr
         // Meili injoignable / en erreur : on ne renvoie PAS de produits, pour que le JS
         // conserve le listing PrestaShop natif déjà rendu côté serveur (repli anti-page-vide).
         if (MeiliSearchProductSearchProvider::$lastRequestFailed) {
-            $info = $this->module->lastCurlInfo;
+            // Cette classe étend ProductListingFrontController, pas ModuleFrontController :
+            // il n'existe donc AUCUNE propriété $module ici. La lire émettait un notice —
+            // converti en ContextErrorException par le mode debug, ce qui remplaçait le JSON
+            // de repli par une page d'erreur — et laissait le diagnostic cURL vide en prod.
+            $module = Module::getInstanceByName('meilisearchprestashop');
+            $info = $module instanceof Meilisearchprestashop ? $module->lastCurlInfo : [];
             PrestaShopLogger::addLog(
                 sprintf(
                     'Meilisearch indisponible (page listing) — repli PrestaShop natif (HTTP %s, errno %s: %s)',

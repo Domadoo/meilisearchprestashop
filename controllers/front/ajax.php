@@ -128,7 +128,7 @@ class MeilisearchprestashopAjaxModuleFrontController extends ModuleFrontControll
             ];
 
             // @phpstan-ignore-next-line
-            $response = $this->module->requestCurlSearch($searchUrl, json_encode($payload));
+            $response = $this->module->requestCurlSearchGuarded($searchUrl, json_encode($payload));
 
             if ($response instanceof stdClass && isset($response->hits) && is_array($response->hits)) {
                 foreach ($response->hits as $hit) {

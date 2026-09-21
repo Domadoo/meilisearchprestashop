@@ -416,3 +416,6 @@ FodyWeavers.xsd
 .claude/
 .cursor/
 graphify-out/
+
+# Paquets construits localement (git archive + vendor d'autoload)
+/*.zip

@@ -232,7 +232,7 @@ trait MeilisearchListingControllerTrait
             'filter' => $baseFilter,
             'facets' => ['*'],
         ];
-        $responseAll = $module->requestCurlSearch($meiliUrl, json_encode($dataAll));
+        $responseAll = $module->requestCurlSearchGuarded($meiliUrl, json_encode($dataAll));
         $allFacets = $responseAll && isset($responseAll->facetDistribution)
             ? json_decode(json_encode($responseAll->facetDistribution), true)
             : [];
@@ -263,8 +263,17 @@ trait MeilisearchListingControllerTrait
             }
         }
 
-        // Requêtes disjunctives : une par groupe actif
+        // Requêtes disjunctives : une par groupe actif. Sérialisées et chacune bornée au
+        // timeout de recherche : on plafonne le total pour ne pas immobiliser un worker
+        // PHP-FPM quand Meili est UP mais lent (budget épuisé = compteurs restants
+        // conjonctifs, page servie quand même).
+        $disjunctiveDeadline = microtime(true) + \Meilisearchprestashop::DISJUNCTIVE_BUDGET;
+
         foreach ($groupedFilters as $groupKey => $groupFilterLines) {
+            if (microtime(true) > $disjunctiveDeadline) {
+                break;
+            }
+
             $filtersWithoutGroup = array_diff_key($groupedFilters, [$groupKey => null]);
 
             $filter = $baseFilter;
@@ -280,7 +289,7 @@ trait MeilisearchListingControllerTrait
                     'filter' => $filter,
                     'facets' => ['quantity'],
                 ];
-                $respCount = $module->requestCurlSearch($meiliUrl, json_encode($dataCount));
+                $respCount = $module->requestCurlSearchGuarded($meiliUrl, json_encode($dataCount));
                 $qtyFacets = $respCount && isset($respCount->facetDistribution)
                     ? json_decode(json_encode($respCount->facetDistribution), true)
                     : [];
@@ -297,7 +306,7 @@ trait MeilisearchListingControllerTrait
                 'facets' => ['*'],
             ];
 
-            $resp = $module->requestCurlSearch($meiliUrl, json_encode($data));
+            $resp = $module->requestCurlSearchGuarded($meiliUrl, json_encode($data));
             if (!$resp || !isset($resp->facetDistribution)) {
                 continue;
             }
