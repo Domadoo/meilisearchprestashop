@@ -276,6 +276,28 @@ visible. Ne jamais déplacer ce masquage en CSS : la page deviendrait blanche en
 
 - `$contextFilters` (static) : filtres de contexte non-utilisateur (ex: `['ids_category = 5']`). Injectés dans `buildFilterArray()` ET dans les sous-requêtes disjunctives. Remis à `[]` à la fin de `searchInMeili()`.
 - `$lastFacetDistribution` (static) : distribution des facettes du dernier appel, lue par les contrôleurs pour construire la réponse JSON.
+- `$skipDisjunctiveFacets` (static) : l'appelant annonce qu'il refera les facettes disjunctives via le trait ; le provider saute alors sa propre boucle. **Consommé puis remis à `false` en tête de `searchInMeili()`** (pas à la fin : la méthode a un retour anticipé en cas de panne, un `true` résiduel fuiterait).
+
+### Qui calcule les facettes disjunctives, et où
+
+Deux implémentations coexistent. Celle du trait est la complète (pré-remplissage à 0 depuis une
+requête « toutes valeurs », donc les valeurs à 0 sont présentes) ; celle du provider est l'originale,
+antérieure, conservée pour un seul chemin.
+
+| Chemin | Qui calcule | Drapeau posé ? |
+|--------|-------------|----------------|
+| `listing.php` (toujours AJAX) | trait | ✅ oui |
+| `meilisearch.php` — rendu SSR | trait | ✅ oui |
+| `meilisearch.php` — **AJAX** (`getAjaxProductSearchVariables`) | **provider** | ❌ **non — ne pas poser** |
+
+Le chemin AJAX de la page recherche renvoie `$lastFacetDistribution` tel quel, **sans jamais appeler
+le trait** : la boucle du provider y est la seule source de compteurs disjunctifs. Y poser le drapeau
+ferait retomber tous ses compteurs en conjonctif dès qu'un visiteur clique une facette.
+
+Corollaire en mode dégradé sur les chemins où le drapeau est posé : si la requête « toutes valeurs »
+du trait échoue ou si son budget s'épuise, les compteurs deviennent conjonctifs — alors qu'avant ils
+conservaient les valeurs du provider (les branches du trait étant gardées par `isset($allFacets[…])`).
+C'est voulu : dégradation prévisible et homogène plutôt qu'un mélange non conçu.
 
 ## Conventions
 

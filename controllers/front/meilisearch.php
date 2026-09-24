@@ -105,6 +105,11 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
             return;
         }
 
+        // Rendu SSR uniquement : les facettes disjunctives sont recalculées par le trait plus bas,
+        // le provider n'a donc pas à les calculer. Surtout PAS sur le chemin AJAX ci-dessus, qui
+        // renvoie $lastFacetDistribution tel quel et dépend de la boucle du provider.
+        MeiliSearchProductSearchProvider::$skipDisjunctiveFacets = true;
+
         $variables = $this->getProductSearchVariables();
         $encodedFacets = Tools::getValue('encodedFacets', '');
 

@@ -42,6 +42,19 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     public static $contextFilters = [];
 
     /**
+     * @var bool Le contrôleur appelant recalculera lui-même les facettes disjunctives via
+     *           MeilisearchListingControllerTrait::getDisjunctiveFacets(). La boucle ci-dessous
+     *           est alors sautée : son résultat serait intégralement écrasé, chaque groupe actif
+     *           étant reconstruit à zéro par le trait.
+     *
+     *           À NE PAS poser sur le chemin AJAX de la page de recherche
+     *           (meilisearch.php::getAjaxProductSearchVariables) : celui-ci renvoie
+     *           $lastFacetDistribution tel quel, sans passer par le trait, et cette boucle y est
+     *           donc la seule source de compteurs disjunctifs.
+     */
+    public static $skipDisjunctiveFacets = false;
+
+    /**
      * @var bool Vrai si la dernière requête produits Meili a échoué (null réseau / 5xx /
      *           réponse malformée), à distinguer d'un « 0 résultat légitime ». Lu par
      *           listing.php pour basculer sur l'affichage PrestaShop natif.
@@ -211,6 +224,12 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
     {
         self::$lastRequestFailed = false;
 
+        // Consommé puis remis à zéro immédiatement : la méthode a plusieurs sorties (dont le
+        // retour anticipé en cas de panne), et un `true` résiduel fuiterait vers une recherche
+        // ultérieure dans la même requête.
+        $skipDisjunctive = self::$skipDisjunctiveFacets;
+        self::$skipDisjunctiveFacets = false;
+
         $iso_lang = $this->context->language->iso_code;
 
         $search = $query->getSearchString();
@@ -262,7 +281,6 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
             return [
                 'products' => [],
-                'allProducts' => [],
                 'total' => 0,
                 'facets' => null,
             ];
@@ -278,49 +296,55 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         // peut coûter jusqu'au timeout de recherche : on borne le total pour ne pas
         // immobiliser un worker PHP-FPM quand Meili est UP mais lent. Budget épuisé =
         // compteurs restants conjonctifs (dégradés), page servie quand même.
-        $disjunctiveDeadline = microtime(true) + \Meilisearchprestashop::DISJUNCTIVE_BUDGET;
+        //
+        // Sautées quand l'appelant refait ce travail via le trait (voir $skipDisjunctiveFacets) :
+        // le trait reconstruit chaque groupe actif à zéro, donc tout ce qu'on calculerait ici
+        // serait écrasé. Seul le chemin AJAX de la page de recherche en dépend encore.
+        if (!$skipDisjunctive) {
+            $disjunctiveDeadline = microtime(true) + \Meilisearchprestashop::DISJUNCTIVE_BUDGET;
 
-        foreach ($groupedFilters as $groupKey => $groupFilterLines) {
-            if (microtime(true) > $disjunctiveDeadline) {
-                break;
-            }
-
-            $filtersWithoutGroup = array_diff_key($groupedFilters, [$groupKey => null]);
-            $dataForGroup = $baseData;
-            $dataForGroup['filter'] = $this->buildFilterArray($filtersWithoutGroup);
-
-            if ($groupKey === 'avail') {
-                // Pour availability on a besoin des hits pour compter la quantité
-                $dataForGroup['limit'] = 9999;
-                $dataForGroup['attributesToRetrieve'] = ['quantity'];
-                $resp = $this->module->requestCurlSearchGuarded($meiliUrl, json_encode($dataForGroup));
-                if ($resp && isset($resp->hits)) {
-                    $mergedFacets['availability'] = [
-                        'in_stock' => $this->countInStock($resp->hits),
-                    ];
-                }
-            } else {
-                $dataForGroup['limit'] = 0;
-                $dataForGroup['attributesToRetrieve'] = [];
-                $resp = $this->module->requestCurlSearchGuarded($meiliUrl, json_encode($dataForGroup));
-                if (!$resp || !isset($resp->facetDistribution)) {
-                    continue;
+            foreach ($groupedFilters as $groupKey => $groupFilterLines) {
+                if (microtime(true) > $disjunctiveDeadline) {
+                    break;
                 }
 
-                $respFacets = json_decode(json_encode($resp->facetDistribution), true);
-                $meiliKey = $this->getMeiliGroupKey($groupKey, $featureMap);
+                $filtersWithoutGroup = array_diff_key($groupedFilters, [$groupKey => null]);
+                $dataForGroup = $baseData;
+                $dataForGroup['filter'] = $this->buildFilterArray($filtersWithoutGroup);
 
-                if ($meiliKey === 'feature_values') {
-                    $featureId = $this->getFeatureIdFromGroupKey($groupKey, $featureMap);
-                    if ($featureId && isset($respFacets['feature_values'])) {
-                        foreach ($respFacets['feature_values'] as $fvKey => $count) {
-                            if (strpos($fvKey, $featureId . '-') === 0) {
-                                $mergedFacets['feature_values'][$fvKey] = $count;
+                if ($groupKey === 'avail') {
+                    // Pour availability on a besoin des hits pour compter la quantité
+                    $dataForGroup['limit'] = 9999;
+                    $dataForGroup['attributesToRetrieve'] = ['quantity'];
+                    $resp = $this->module->requestCurlSearchGuarded($meiliUrl, json_encode($dataForGroup));
+                    if ($resp && isset($resp->hits)) {
+                        $mergedFacets['availability'] = [
+                            'in_stock' => $this->countInStock($resp->hits),
+                        ];
+                    }
+                } else {
+                    $dataForGroup['limit'] = 0;
+                    $dataForGroup['attributesToRetrieve'] = [];
+                    $resp = $this->module->requestCurlSearchGuarded($meiliUrl, json_encode($dataForGroup));
+                    if (!$resp || !isset($resp->facetDistribution)) {
+                        continue;
+                    }
+
+                    $respFacets = json_decode(json_encode($resp->facetDistribution), true);
+                    $meiliKey = $this->getMeiliGroupKey($groupKey, $featureMap);
+
+                    if ($meiliKey === 'feature_values') {
+                        $featureId = $this->getFeatureIdFromGroupKey($groupKey, $featureMap);
+                        if ($featureId && isset($respFacets['feature_values'])) {
+                            foreach ($respFacets['feature_values'] as $fvKey => $count) {
+                                if (strpos($fvKey, $featureId . '-') === 0) {
+                                    $mergedFacets['feature_values'][$fvKey] = $count;
+                                }
                             }
                         }
+                    } elseif ($meiliKey && isset($respFacets[$meiliKey])) {
+                        $mergedFacets[$meiliKey] = $respFacets[$meiliKey];
                     }
-                } elseif ($meiliKey && isset($respFacets[$meiliKey])) {
-                    $mergedFacets[$meiliKey] = $respFacets[$meiliKey];
                 }
             }
         }
@@ -355,7 +379,6 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
 
         return [
             'products' => $this->formatProducts($productsChunk[$page - 1] ?? []),
-            'allProducts' => $this->formatProducts($response->hits),
             'total' => $totalHits,
             'facets' => (object) $mergedFacets,
         ];

@@ -53,6 +53,10 @@ class MeilisearchprestashopListingModuleFrontController extends ProductListingFr
             return;
         }
 
+        // getMeilisearchListingResponse() recalcule les facettes disjunctives via le trait :
+        // inutile que le provider les calcule d'abord, son résultat serait écrasé.
+        MeiliSearchProductSearchProvider::$skipDisjunctiveFacets = true;
+
         $idCategory = (int) Tools::getValue('id_category', 0);
         $idManufacturer = (int) Tools::getValue('id_manufacturer', 0);
 

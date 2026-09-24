@@ -232,7 +232,13 @@ trait MeilisearchListingControllerTrait
             'filter' => $baseFilter,
             'facets' => ['*'],
         ];
-        $responseAll = $module->requestCurlSearchGuarded($meiliUrl, json_encode($dataAll));
+        // Sur une page listing ($search vide), ce payload est identique à celui des facettes SSR
+        // de getListingFacetsData() — même URL, mêmes clés, mêmes filtres de contexte — donc même
+        // clé de cache : c'est un HIT, sans appel réseau. Sur la page recherche on reste en direct,
+        // une entrée de cache par chaîne de requête n'apporterait rien.
+        $responseAll = $search === ''
+            ? $module->requestCurlSearchCached($meiliUrl, json_encode($dataAll))
+            : $module->requestCurlSearchGuarded($meiliUrl, json_encode($dataAll));
         $allFacets = $responseAll && isset($responseAll->facetDistribution)
             ? json_decode(json_encode($responseAll->facetDistribution), true)
             : [];
