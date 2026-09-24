@@ -261,7 +261,27 @@ Sur le rendu serveur, `getListingFacetsData()` renvoie `null` → les hooks sort
 JS Meili n'est injecté**, et comme le masquage `opacity:0` est posé *par ce JS*, le natif reste
 visible. Ne jamais déplacer ce masquage en CSS : la page deviendrait blanche en panne.
 
-> La page **recherche** (`meilisearch.php`) n'a **pas** encore de repli (Surface B, #4 étapes 2+5).
+**Surface B — page recherche** : `getDefaultProductSearchProvider()` renvoie
+`NativeFallbackSearchProvider`, qui interroge Meilisearch puis, **si et seulement si**
+`$lastRequestFailed`, délègue à la recherche SQL native (`SearchProductSearchProvider` du cœur).
+Deux points à ne pas casser :
+- Le SortOrder doit être **normalisé** avant délégation (`nativeQuery()`) : tous les tris du
+  module déclarent l'entité `meilisearch`, et `relevance`/`sales` n'existent pas en SQL — le
+  provider natif construit son `ORDER BY` depuis le SortOrder et produirait une requête invalide.
+  On clone la requête pour ne pas modifier le tri que le thème réaffiche.
+- Le repli **ne doit jamais faire pire que son absence** : classe absente, constructeur d'une
+  autre signature, exception SQL — tout est rattrapé et on renvoie le résultat Meili tel quel.
+- Prérequis d'exploitation : l'index natif `ps_search_index` doit être peuplé, sinon le repli
+  délègue à un moteur vide. À reconstruire depuis le BO si la recherche native a été laissée
+  de côté.
+
+**Bloc de facettes en panne (#N14)** : `meilisearchHideFacets()` vit dans
+`meilisearch_facets.js` (chargé sur listing **et** recherche) et retire le bloc dès que
+Meilisearch ne peut plus alimenter les compteurs — repli listing, timeout JS, ou distribution
+vide côté recherche. Sans ça la page se contredit : filtres cochés au-dessus d'une liste de
+repli qui ignore `encodedFacets`. Côté rendu serveur, `search.tpl` garde l'include derrière
+`{if $meilisearch_facets|...|@count > 0}` mais **conserve le `<div id="left-column">`** — le
+retirer décalerait la grille, `#content-wrapper` gardant ses `col-sm-8 col-md-9`.
 
 ## Hooks utilisés
 

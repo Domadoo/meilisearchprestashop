@@ -114,6 +114,7 @@ function meilisearchLoadListingProducts() {
     .then(function (data) {
         // Meili KO côté serveur : on révèle le natif SANS écraser les produits par du vide.
         if (data && data.meilisearch_failed) {
+            meilisearchHideFacets();
             meilisearchRevealListing();
             return;
         }
@@ -127,6 +128,7 @@ function meilisearchLoadListingProducts() {
     .catch(function (err) {
         // Timeout (AbortError) ou erreur réseau : repli sur le natif déjà rendu.
         console.error('[Meilisearch] Repli natif (listing) :', err);
+        meilisearchHideFacets();
         meilisearchRevealListing();
     })
     .finally(function () {

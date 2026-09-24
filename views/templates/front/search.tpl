@@ -32,7 +32,12 @@
 {block name='content'}
   {block name='product_facets'}
     <div id="left-column" class="col-xs-12 col-sm-4 col-md-3">
-      {include file='module:meilisearchprestashop/views/templates/front/_partials/meilisearch_facets.tpl' meilisearch_hidden_facets=$meilisearch_hidden_facets|default:[]}
+      {* Meilisearch indisponible => $meilisearch_facets est vide : pas de bloc de filtres
+         inerte au-dessus d'une liste qui ne les respecterait pas. La colonne, elle, reste en
+         place — la retirer décalerait la grille, #content-wrapper gardant ses col-sm-8. *}
+      {if $meilisearch_facets|default:[]|@count > 0}
+        {include file='module:meilisearchprestashop/views/templates/front/_partials/meilisearch_facets.tpl' meilisearch_hidden_facets=$meilisearch_hidden_facets|default:[]}
+      {/if}
     </div>
   {/block}
 

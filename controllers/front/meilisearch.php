@@ -22,6 +22,7 @@ if (!defined('_PS_VERSION_')) {
 
 use PrestaShop\Module\MeiliSearch\Listing\MeilisearchListingControllerTrait;
 use PrestaShop\Module\MeiliSearch\Search\MeiliSearchProductSearchProvider;
+use PrestaShop\Module\MeiliSearch\Search\NativeFallbackSearchProvider;
 use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchContext;
 use PrestaShop\PrestaShop\Core\Product\Search\ProductSearchQuery;
 use PrestaShop\PrestaShop\Core\Product\Search\SortOrder;
@@ -68,7 +69,13 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
 
     public function getDefaultProductSearchProvider()
     {
-        return new MeiliSearchProductSearchProvider($this->getTranslator(), $this->context);
+        // Surface B : Meilisearch d'abord, recherche SQL native en repli s'il est injoignable.
+        // Sans ça, une panne rendait 0 produit — donc la branche « No products available yet »
+        // du thème, que le visiteur lit comme « catalogue vide » plutôt que « panne ».
+        return new NativeFallbackSearchProvider(
+            new MeiliSearchProductSearchProvider($this->getTranslator(), $this->context),
+            $this->getTranslator()
+        );
     }
 
     public function getListingLabel()

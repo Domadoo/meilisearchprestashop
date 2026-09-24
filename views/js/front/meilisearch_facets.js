@@ -299,9 +299,30 @@ function meilisearchUpdateProducts(data) {
         meilisearchUpdateSortControl(data);
     }
 
-    if (data.meilisearch_facets) {
-        meilisearchUpdateFacetCounts(data.meilisearch_facets);
+    const facets = data.meilisearch_facets;
+    if (facets && Object.keys(facets).length > 0) {
+        meilisearchUpdateFacetCounts(facets);
+    } else {
+        // Aucune distribution : soit Meilisearch est tombé et les produits affichés viennent
+        // du repli (natif sur les listings, SQL sur la recherche), soit la requête ne ramène
+        // rien. Dans les deux cas un bloc de filtres dont les compteurs ne correspondent plus
+        // à la liste affichée induit en erreur — et ses cases ne répondraient plus.
+        meilisearchHideFacets();
     }
+}
+
+/**
+ * Retire le bloc de facettes. Appelé dès que Meilisearch ne peut plus alimenter les
+ * compteurs, aussi bien depuis ce fichier que depuis meilisearch_listing.js.
+ *
+ * Sans ça la page se contredit : le bloc vient d'un chemin serveur séparé et caché, donc il
+ * reste affiché avec ses filtres cochés alors que la liste de repli ignore `encodedFacets`
+ * et montre tous les produits. Le visiteur voit des filtres actifs que la liste ne respecte
+ * pas, et un clic dessus ne fait plus rien.
+ */
+function meilisearchHideFacets() {
+    const block = document.querySelector('.meilisearch-facets');
+    if (block) block.hidden = true;
 }
 
 /**
