@@ -296,7 +296,25 @@ retirer décalerait la grille, `#content-wrapper` gardant ses `col-sm-8 col-md-9
 
 - `$contextFilters` (static) : filtres de contexte non-utilisateur (ex: `['ids_category = 5']`). Injectés dans `buildFilterArray()` ET dans les sous-requêtes disjunctives. Remis à `[]` à la fin de `searchInMeili()`.
 - `$lastFacetDistribution` (static) : distribution des facettes du dernier appel, lue par les contrôleurs pour construire la réponse JSON.
-- `$skipDisjunctiveFacets` (static) : l'appelant annonce qu'il refera les facettes disjunctives via le trait ; le provider saute alors sa propre boucle. **Consommé puis remis à `false` en tête de `searchInMeili()`** (pas à la fin : la méthode a un retour anticipé en cas de panne, un `true` résiduel fuiterait).
+- `$skipDisjunctiveFacets` (static) : l'appelant annonce qu'il refera les facettes disjunctives via le trait ; le provider saute alors sa propre boucle **et le calcul de `availability`**. **Consommé puis remis à `false` en tête de `searchInMeili()`** (pas à la fin : la méthode a un retour anticipé en cas de panne, un `true` résiduel fuiterait).
+  > ⚠️ **Contrat** : poser le drapeau engage à produire soi-même `availability`. `getDisjunctiveFacets()` le fait, mais **seulement si `encodedFacets` est non vide** — il faut donc une branche `else` pour le cas sans filtre. `listing.php` et `meilisearch.php` en ont une ; leur absence fait disparaître le bloc « En stock » sans le moindre message (bug rencontré en recette #N1).
+
+### Comptage « En stock »
+
+Facette **synthétique** : Meilisearch ne renvoie pas `availability`, le module l'invente.
+Une seule méthode depuis #N1 — `Meilisearchprestashop::countInStockViaMeili()` — qui applique
+exactement le filtre déclenché par le clic (`quantity >= 1`, `limit: 0`) et lit
+`estimatedTotalHits`. Le compteur annonce donc ce qu'il promet. Un produit à quantité 0 reste
+« pas en stock » même commandable en rupture : **choix métier assumé**.
+
+Quatre appelants, tous via cette méthode : le hook SSR et la branche sans filtre de
+`listing.php` passent `$cacheable = true` (même payload, donc même clé de cache, donc gratuit
+sur un hit) ; le trait et le provider passent en direct, les filtres utilisateur rendant la
+clé inexploitable.
+
+Plafond restant : `estimatedTotalHits` est borné par `maxTotalHits` (9999). Un seul nombre
+explicite, au lieu des deux plafonds invisibles d'avant — `limit => 9999` côté provider et
+`maxValuesPerFacet` côté trait, qui donnaient des chiffres différents selon la page.
 
 ### Qui calcule les facettes disjunctives, et où
 

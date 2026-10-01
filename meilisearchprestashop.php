@@ -518,11 +518,12 @@ class Meilisearchprestashop extends Module
 
         $facets = json_decode(json_encode($response->facetDistribution), true) ?? [];
 
-        // Comptage stock en stock (facette synthétique) : somme des tranches
-        // quantity >= 1 de la distribution déjà récupérée ci-dessus.
-        $facets['availability'] = [
-            'in_stock' => $this->computeInStockCount($facets),
-        ];
+        // Facette synthétique « En stock » : même filtre non filtré que ci-dessus, donc
+        // cacheable — sur un succès de cache, aucun appel réseau supplémentaire.
+        $inStock = $this->countInStockViaMeili($meiliUrl, $baseFilter, '', true);
+        if ($inStock !== null) {
+            $facets['availability'] = ['in_stock' => $inStock];
+        }
 
         $facetLabels = $this->getFacetLabels();
         $facetsConfig = $this->buildFacetsJsConfig($facets, $facetLabels);
@@ -728,6 +729,49 @@ class Meilisearchprestashop extends Module
             ),
             2
         );
+    }
+
+    /**
+     * Compte les produits « en stock » pour un état de filtre donné, en demandant le chiffre
+     * à Meilisearch au lieu de le recalculer côté PHP.
+     *
+     * `availability` est une facette SYNTHÉTIQUE : Meilisearch ne la renvoie pas, le module
+     * l'invente. Elle était comptée de deux façons non équivalentes — les hits retournés,
+     * plafonnés à `limit => 9999`, côté provider ; la distribution `quantity`, tronquée par
+     * `maxValuesPerFacet`, côté trait — d'où des chiffres différents selon la page affichée.
+     *
+     * On applique désormais exactement le filtre que le visiteur déclenche en cochant la case
+     * (`quantity >= 1`) et on lit le total : le compteur annonce donc ce qu'il promet. Un
+     * produit à quantité 0 reste « pas en stock », même commandable en rupture — choix métier
+     * assumé. Le chiffre reste borné par `maxTotalHits`, mais c'est un plafond unique et
+     * explicite au lieu de deux plafonds invisibles et différents.
+     *
+     * @param string $url URL de recherche de l'index
+     * @param array $filter filtre déjà construit ; `quantity >= 1` y est ajouté en AND
+     * @param string $search terme courant ('' sur les pages listing)
+     * @param bool $cacheable vrai seulement si le filtre ne dépend d'aucun choix du visiteur
+     *
+     * @return int|null `0` = demandé, la réponse est zéro. `null` = Meili n'a pas répondu.
+     *                  La distinction est CAPITALE : sur `null`, l'appelant doit **omettre**
+     *                  la clé `availability` plutôt que d'écrire 0. Écrire 0 rendrait
+     *                  `meilisearch_facets` non vide pendant une panne, ce qui empêcherait
+     *                  `meilisearchHideFacets()` et la garde de `search.tpl` de masquer le
+     *                  bloc (#N14) — on afficherait un bloc fantôme « En stock (0) ».
+     */
+    public function countInStockViaMeili($url, array $filter, $search = '', $cacheable = false)
+    {
+        $filter[] = 'quantity >= 1';
+        $payload = json_encode([
+            'q' => $search,
+            'limit' => 0,
+            'filter' => $filter,
+        ]);
+
+        $response = $cacheable
+            ? $this->requestCurlSearchCached($url, $payload)
+            : $this->requestCurlSearchGuarded($url, $payload);
+
+        return isset($response->estimatedTotalHits) ? (int) $response->estimatedTotalHits : null;
     }
 
     /**

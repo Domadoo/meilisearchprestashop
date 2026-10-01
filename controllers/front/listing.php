@@ -87,12 +87,10 @@ class MeilisearchprestashopListingModuleFrontController extends ProductListingFr
         // Meili injoignable / en erreur : on ne renvoie PAS de produits, pour que le JS
         // conserve le listing PrestaShop natif déjà rendu côté serveur (repli anti-page-vide).
         if (MeiliSearchProductSearchProvider::$lastRequestFailed) {
-            // Cette classe étend ProductListingFrontController, pas ModuleFrontController :
-            // il n'existe donc AUCUNE propriété $module ici. La lire émettait un notice —
-            // converti en ContextErrorException par le mode debug, ce qui remplaçait le JSON
-            // de repli par une page d'erreur — et laissait le diagnostic cURL vide en prod.
-            $module = Module::getInstanceByName('meilisearchprestashop');
-            $info = $module instanceof Meilisearchprestashop ? $module->lastCurlInfo : [];
+            // Passer par meiliModule() : cette classe étend ProductListingFrontController,
+            // pas ModuleFrontController, il n'existe donc AUCUNE propriété $module ici.
+            $module = $this->meiliModule();
+            $info = $module ? $module->lastCurlInfo : [];
             PrestaShopLogger::addLog(
                 sprintf(
                     'Meilisearch indisponible (page listing) — repli PrestaShop natif (HTTP %s, errno %s: %s)',
@@ -116,10 +114,22 @@ class MeilisearchprestashopListingModuleFrontController extends ProductListingFr
             $facets = $this->getDisjunctiveFacets($facets, $encodedFacets);
             MeiliSearchProductSearchProvider::$contextFilters = [];
         } else {
-            // Meilisearch ne renvoie pas la facette synthétique "availability" :
-            // on la reconstruit depuis la distribution `quantity`, sinon l'AJAX
-            // initial écrase le compteur serveur par 0.
-            $facets['availability'] = ['in_stock' => $this->computeInStockCount($facets)];
+            // Meilisearch ne renvoie pas la facette synthétique "availability" : on la
+            // demande à part, sinon l'AJAX initial écrase le compteur serveur par 0.
+            // Aucun filtre utilisateur ici, donc même payload que le rendu SSR du hook —
+            // même clé de cache, donc succès de cache sans appel réseau.
+            $baseFilter = [['visibility = both'], ['available_for_order = true']];
+            foreach ($contextFilters as $contextFilter) {
+                $baseFilter[] = $contextFilter;
+            }
+
+            $module = $this->meiliModule();
+            $inStock = $module
+                ? $module->countInStockViaMeili($this->meiliSearchUrl(), $baseFilter, '', true)
+                : null;
+            if ($inStock !== null) {
+                $facets['availability'] = ['in_stock' => $inStock];
+            }
         }
 
         $variables['meilisearch_facets'] = $facets;

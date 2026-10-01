@@ -130,33 +130,28 @@ trait MeilisearchListingControllerTrait
     }
 
     /**
-     * Compte les produits en stock (quantity >= 1) pour la facette synthétique
-     * "availability", à partir de la distribution de facette `quantity` déjà
-     * renvoyée par Meilisearch — et NON via un filtre `quantity >= 1`.
+     * URL de recherche de l'index de la langue courante.
      *
-     * Raison : sur les index où `quantity` est stocké en chaîne, Meilisearch
-     * ignore les valeurs non numériques lors d'une comparaison `>=`, donc le
-     * filtre renvoie 0 alors que des produits sont bien en stock. Sommer les
-     * tranches de la distribution (clé >= 1) est insensible au type stocké.
-     * "availability" étant absente de la facetDistribution native, on la
-     * reconstruit ici, sinon le compteur retombe à 0.
-     *
-     * @param array $facets facetDistribution pouvant contenir la clé `quantity`
+     * @return string
      */
-    private function computeInStockCount(array $facets): int
+    private function meiliSearchUrl(): string
     {
-        if (!isset($facets['quantity']) || !is_array($facets['quantity'])) {
-            return 0;
-        }
+        return \Configuration::get('MEILISEARCHPRESTASHOP_URL')
+            . 'indexes/' . \Configuration::get('MEILISEARCHPRESTASHOP_PREFIX')
+            . 'products_' . $this->context->language->iso_code . '/search';
+    }
 
-        $total = 0;
-        foreach ($facets['quantity'] as $qty => $count) {
-            if ((int) $qty >= 1) {
-                $total += (int) $count;
-            }
-        }
+    /**
+     * Instance du module, pour les classes qui étendent ProductListingFrontController et
+     * n'ont donc PAS de propriété `$module` (celle-ci vient de ModuleFrontController).
+     *
+     * @return \Meilisearchprestashop|null
+     */
+    private function meiliModule()
+    {
+        $module = \Module::getInstanceByName('meilisearchprestashop');
 
-        return $total;
+        return $module instanceof \Meilisearchprestashop ? $module : null;
     }
 
     private function getDisjunctiveFacets(array $currentFacets, string $encodedFacets): array
@@ -165,12 +160,9 @@ trait MeilisearchListingControllerTrait
         if (!$module instanceof \Meilisearchprestashop) {
             return $currentFacets;
         }
-        $iso_lang = $this->context->language->iso_code;
         $search = \Tools::getValue('s', '');
 
-        $meiliUrl = \Configuration::get('MEILISEARCHPRESTASHOP_URL')
-            . 'indexes/' . \Configuration::get('MEILISEARCHPRESTASHOP_PREFIX')
-            . 'products_' . $iso_lang . '/search';
+        $meiliUrl = $this->meiliSearchUrl();
 
         $filtersArray = array_filter(explode('|', $encodedFacets));
 
@@ -249,13 +241,17 @@ trait MeilisearchListingControllerTrait
             $mergedFacets[$groupKey] = array_fill_keys(array_keys($values), 0);
         }
 
-        // Stock : somme des tranches quantity >= 1 de la requête principale, qui
-        // reflète déjà tous les filtres utilisateurs actifs (comportement disjunctif
-        // correct tant que le filtre stock lui-même n'est pas coché — auquel cas le
-        // bloc 'avail' plus bas le recalcule en excluant son propre filtre).
-        $mergedFacets['availability'] = [
-            'in_stock' => $this->computeInStockCount($currentFacets),
-        ];
+        // Stock : demandé à Meilisearch avec TOUS les filtres actifs. Si le filtre stock
+        // lui-même est coché, le bloc 'avail' plus bas le recalcule en excluant son propre
+        // filtre (comportement disjunctif).
+        $fullFilter = $baseFilter;
+        foreach ($groupedFilters as $lines) {
+            $fullFilter[] = count($lines) === 1 ? $lines[0] : $lines;
+        }
+        $inStock = $module->countInStockViaMeili($meiliUrl, $fullFilter, $search);
+        if ($inStock !== null) {
+            $mergedFacets['availability'] = ['in_stock' => $inStock];
+        }
 
         // Écrase avec les compteurs de la requête filtrée principale
         foreach ($currentFacets as $groupKey => $values) {
@@ -288,20 +284,11 @@ trait MeilisearchListingControllerTrait
             }
 
             if ($groupKey === 'avail') {
-                // Distribution quantity avec les AUTRES filtres actifs, puis somme des tranches >= 1
-                $dataCount = [
-                    'q' => $search,
-                    'limit' => 0,
-                    'filter' => $filter,
-                    'facets' => ['quantity'],
-                ];
-                $respCount = $module->requestCurlSearchGuarded($meiliUrl, json_encode($dataCount));
-                $qtyFacets = $respCount && isset($respCount->facetDistribution)
-                    ? json_decode(json_encode($respCount->facetDistribution), true)
-                    : [];
-                $mergedFacets['availability'] = [
-                    'in_stock' => $this->computeInStockCount($qtyFacets),
-                ];
+                // Comptage disjunctif : avec les AUTRES filtres actifs, sans celui du stock.
+                $inStockDisjunctive = $module->countInStockViaMeili($meiliUrl, $filter, $search);
+                if ($inStockDisjunctive !== null) {
+                    $mergedFacets['availability'] = ['in_stock' => $inStockDisjunctive];
+                }
                 continue;
             }
 

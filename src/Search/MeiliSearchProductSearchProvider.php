@@ -51,6 +51,12 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
      *           (meilisearch.php::getAjaxProductSearchVariables) : celui-ci renvoie
      *           $lastFacetDistribution tel quel, sans passer par le trait, et cette boucle y est
      *           donc la seule source de compteurs disjunctifs.
+     *
+     *           CONTRAT : poser ce drapeau, c'est s'engager à produire soi-même la facette
+     *           synthétique `availability` — le provider la saute aussi. `getDisjunctiveFacets()`
+     *           s'en charge, mais il n'est appelé QUE si `encodedFacets` est non vide : l'appelant
+     *           doit donc prévoir une branche pour le cas sans filtre, comme le font listing.php
+     *           et meilisearch.php. À défaut, le bloc « En stock » disparaît silencieusement.
      */
     public static $skipDisjunctiveFacets = false;
 
@@ -207,19 +213,6 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         return $flipped[$groupKey] ?? null;
     }
 
-    private function countInStock(array $hits): int
-    {
-        $count = 0;
-        foreach ($hits as $hit) {
-            $qty = is_object($hit) ? ($hit->quantity ?? 0) : ($hit['quantity'] ?? 0);
-            if ($qty > 0) {
-                ++$count;
-            }
-        }
-
-        return $count;
-    }
-
     private function searchInMeili($query)
     {
         self::$lastRequestFailed = false;
@@ -245,8 +238,9 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
         $baseData = [
             'q' => $search,
             'limit' => 9999,
-            // 'quantity' est indispensable à countInStock() (facette "availability") :
-            // sans lui, $hit->quantity est absent et le compteur "en stock" reste à 0.
+            // `quantity` n'est plus lu depuis les hits depuis que le comptage « En stock »
+            // passe par countInStockViaMeili() ; il est conservé le temps de vérifier que
+            // rien en aval ne s'en sert. Candidat au retrait (payload × jusqu'à 9999 hits).
             'attributesToRetrieve' => ['id_product', 'sales', 'quantity'],
             'filter' => [],
             'facets' => ['*'],
@@ -286,11 +280,21 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
             ];
         }
 
-        // Calcul manuel du stock (quantity > 0)
         $mergedFacets = json_decode(json_encode($response->facetDistribution), true) ?? [];
-        $mergedFacets['availability'] = [
-            'in_stock' => $this->countInStock($response->hits),
-        ];
+
+        // Facette synthétique « En stock ». Sautée quand l'appelant refait les facettes via
+        // le trait : celui-ci la recalcule intégralement et ignore explicitement la nôtre,
+        // donc la requête serait perdue. Seul le chemin AJAX de la recherche s'en sert.
+        if (!$skipDisjunctive) {
+            $inStock = $this->module->countInStockViaMeili(
+                $meiliUrl,
+                $this->buildFilterArray($groupedFilters),
+                $search
+            );
+            if ($inStock !== null) {
+                $mergedFacets['availability'] = ['in_stock' => $inStock];
+            }
+        }
 
         // Requêtes disjunctives : une par groupe actif. Elles sont sérialisées et chacune
         // peut coûter jusqu'au timeout de recherche : on borne le total pour ne pas
@@ -313,14 +317,15 @@ class MeiliSearchProductSearchProvider implements ProductSearchProviderInterface
                 $dataForGroup['filter'] = $this->buildFilterArray($filtersWithoutGroup);
 
                 if ($groupKey === 'avail') {
-                    // Pour availability on a besoin des hits pour compter la quantité
-                    $dataForGroup['limit'] = 9999;
-                    $dataForGroup['attributesToRetrieve'] = ['quantity'];
-                    $resp = $this->module->requestCurlSearchGuarded($meiliUrl, json_encode($dataForGroup));
-                    if ($resp && isset($resp->hits)) {
-                        $mergedFacets['availability'] = [
-                            'in_stock' => $this->countInStock($resp->hits),
-                        ];
+                    // Comptage disjunctif : les AUTRES filtres actifs, sans celui du stock.
+                    // Remplace un ancien rapatriement de 9999 documents par un simple total.
+                    $inStock = $this->module->countInStockViaMeili(
+                        $meiliUrl,
+                        $this->buildFilterArray($filtersWithoutGroup),
+                        $search
+                    );
+                    if ($inStock !== null) {
+                        $mergedFacets['availability'] = ['in_stock' => $inStock];
                     }
                 } else {
                     $dataForGroup['limit'] = 0;

@@ -126,6 +126,22 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
 
         if ($encodedFacets) {
             $facets = $this->getDisjunctiveFacets($facets, $encodedFacets);
+        } else {
+            // Sans filtre actif, getDisjunctiveFacets() n'est pas appelé et le provider a sauté
+            // son propre calcul (drapeau posé plus haut) : personne ne produirait la facette
+            // synthétique « En stock », qui disparaîtrait purement et simplement du bloc.
+            // Pas de filtre de contexte sur la recherche, mais le terme compte.
+            $module = $this->meiliModule();
+            $inStock = $module
+                ? $module->countInStockViaMeili(
+                    $this->meiliSearchUrl(),
+                    [['visibility = both'], ['available_for_order = true']],
+                    (string) Tools::getValue('s', '')
+                )
+                : null;
+            if ($inStock !== null) {
+                $facets['availability'] = ['in_stock' => $inStock];
+            }
         }
 
         // Pré-groupe feature_values par id_feature pour le tpl
