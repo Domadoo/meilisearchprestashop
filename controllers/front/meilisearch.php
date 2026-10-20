@@ -168,6 +168,12 @@ class MeilisearchprestashopMeilisearchModuleFrontController extends ProductListi
             'open_facets' => ['condition', 'availability', 'id_manufacturer'],
             'current_facets_encoded' => $encodedFacets,
             'meilisearch_hidden_facets' => $hiddenFacets,
+            // #N17 : distingue « aucun produit ne correspond » d'une panne. Sans ce drapeau, le
+            // thème affiche sa branche « catalogue vide » quand le repli SQL ne trouve rien non
+            // plus — cas réel avec un terme que la recherche native ignore (mot vide PrestaShop,
+            // terme plus court que PS_SEARCH_MINWORDLEN, index natif incomplet).
+            // Sûr à lire ici : seul searchInMeili() écrit ce drapeau, et il a déjà tourné.
+            'meilisearch_unavailable' => MeiliSearchProductSearchProvider::$lastRequestFailed,
         ]);
 
         Media::addJsDef([

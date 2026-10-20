@@ -274,6 +274,16 @@ Deux points à ne pas casser :
 - Prérequis d'exploitation : l'index natif `ps_search_index` doit être peuplé, sinon le repli
   délègue à un moteur vide. À reconstruire depuis le BO si la recherche native a été laissée
   de côté.
+- **Filet #N17** : le repli hérite des limites du moteur natif — **mots vides** PrestaShop
+  (cas réel : la marque « Nous » est introuvable, le mot étant blacklisté donc jamais indexé),
+  termes plus courts que `PS_SEARCH_MINWORDLEN`, index incomplet. Quand Meilisearch a échoué
+  **et** que le natif ne rend rien, `search.tpl` affiche un message d'indisponibilité au lieu
+  de la branche « catalogue vide » du thème, via le drapeau Smarty `meilisearch_unavailable`
+  (assigné depuis `$lastRequestFailed`). Hors couverture : le chemin AJAX de la recherche rend
+  ses produits par les templates du cœur, pas par `search.tpl` — négligeable, un clic de facette
+  suppose déjà des résultats affichés.
+- Complément **hors code** : retirer de la liste des mots vides ceux qui sont des noms de marque
+  vendus, puis reconstruire l'index natif.
 
 **Bloc de facettes en panne (#N14)** : `meilisearchHideFacets()` vit dans
 `meilisearch_facets.js` (chargé sur listing **et** recherche) et retire le bloc dès que

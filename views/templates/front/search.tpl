@@ -84,8 +84,16 @@
 
           <div id="js-product-list">
             {capture assign="errorContent"}
-              <h4>{l s='No products available yet' d='Shop.Theme.Catalog'}</h4>
-              <p>{l s='Stay tuned! More products will be shown here as they are added.' d='Shop.Theme.Catalog'}</p>
+              {if $meilisearch_unavailable|default:false}
+                {* Meilisearch est tombé ET le repli SQL natif n'a rien trouvé — il ignore les
+                   mots vides de PrestaShop, par exemple. Annoncer une panne plutôt que de
+                   laisser croire que le catalogue est vide. *}
+                <h4>{l s='Search is temporarily unavailable' mod='meilisearchprestashop'}</h4>
+                <p>{l s='Our search engine is having trouble right now. Please try again in a few moments, or browse our categories.' mod='meilisearchprestashop'}</p>
+              {else}
+                <h4>{l s='No products available yet' d='Shop.Theme.Catalog'}</h4>
+                <p>{l s='Stay tuned! More products will be shown here as they are added.' d='Shop.Theme.Catalog'}</p>
+              {/if}
             {/capture}
 
             {include file='errors/not-found.tpl' errorContent=$errorContent}

@@ -149,3 +149,5 @@ $_MODULE['<{meilisearchprestashop}prestashop>productindexer_0452f0c7357e70592e04
 $_MODULE['<{meilisearchprestashop}prestashop>indexrun_82d6d5770b3e921f47800a8ef0098099'] = '%1$s : un lot de %2$d produit(s) n\'a pas pu être envoyé — %3$s';
 $_MODULE['<{meilisearchprestashop}prestashop>indexrun_2c45855e8ee6b14bfde066a298ca3ab5'] = '%1$s : nouvel essai de ce lot avec %2$d produits par lot.';
 $_MODULE['<{meilisearchprestashop}prestashop>indexrun_6b5d74118beda90bbcd28efff649f7b8'] = 'Impossible d\'envoyer les produits à Meilisearch : bascule annulée, index actif conservé. La cause HTTP/cURL est dans les logs de la boutique.';
+$_MODULE['<{meilisearchprestashop}prestashop>search_211a7920f3803aa14b30077e757e842a'] = 'La recherche est momentanément indisponible';
+$_MODULE['<{meilisearchprestashop}prestashop>search_2fb17b070faed0c7979a1bf35d74c523'] = 'Notre moteur de recherche rencontre un incident. Réessayez dans quelques instants, ou parcourez nos catégories.';
