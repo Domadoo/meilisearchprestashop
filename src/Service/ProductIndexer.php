@@ -43,7 +43,7 @@ class ProductIndexer
     private $prefix;
 
     /** @var bool|null Cache de la compatibilité /swap-indexes (Meilisearch >= 0.29) */
-    private static $swapSupported = null;
+    private static $swapSupported;
 
     /**
      * @var string|null Cause du dernier envoi de documents échoué (code HTTP, errno cURL,
@@ -231,10 +231,20 @@ class ProductIndexer
                 );
                 $this->ensureIndex($live);
                 $docs = $this->buildDocuments($language, null);
-                if (!empty($docs)) {
-                    $this->pushDocuments($live, $docs, $batchSize);
-                }
+                $pushedTask = empty($docs) ? null : $this->pushDocuments($live, $docs, $batchSize);
                 $this->applySettings($live);
+
+                // Le live vient de changer sans passer par un swap : il faut invalider le
+                // cache de réponses exactement comme après une bascule confirmée. Sans ce
+                // bump, une instance Meili < 0.29 ne l'invalidait JAMAIS, et une
+                // réindexation suivant une suppression d'index depuis le BO laissait
+                // survivre les entrées de l'ancien index jusqu'au TTL.
+                // Conditionné à un envoi réellement enfilé : si Meili n'a rien accepté,
+                // jeter le cache le priverait de son rôle de filet pendant la panne — un
+                // succès de cache sert délibérément le front sans consulter le breaker.
+                if ($pushedTask !== null) {
+                    $this->bumpResponseCacheGeneration();
+                }
 
                 return;
             }
@@ -439,8 +449,15 @@ class ProductIndexer
         $taskUid = isset($ctx['taskUid']) && $ctx['taskUid'] !== null ? (int) $ctx['taskUid'] : null;
         $phase = !empty($ctx['finishPhase']) ? (string) $ctx['finishPhase'] : 'wait_push';
 
-        // Mode direct : rien à basculer, les settings sont déjà posés.
+        // Mode direct : rien à basculer, les settings sont déjà posés. Le live a tout de
+        // même changé → même invalidation du cache de réponses que sur le chemin swap.
+        // `expected` ne compte que les documents réellement enfilés (voir IndexRun) : à
+        // zéro, rien n'a bougé et le cache garde sa valeur de filet.
         if (($ctx['mode'] ?? '') !== 'swap') {
+            if ((int) ($ctx['expected'] ?? 0) > 0) {
+                $this->bumpResponseCacheGeneration();
+            }
+
             return ['ctx' => $ctx, 'status' => 'done', 'message' => null];
         }
 

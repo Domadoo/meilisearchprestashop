@@ -32,16 +32,16 @@ if (!defined('_PS_VERSION_')) {
 class MeilisearchResponseCache implements MeilisearchCacheInterface
 {
     /** Clé Configuration du jeton de génération (bumpé au full reindex confirmé). */
-    const GENERATION_KEY = 'MEILISEARCHPRESTASHOP_CACHE_GEN';
+    public const GENERATION_KEY = 'MEILISEARCHPRESTASHOP_CACHE_GEN';
 
     /** Âge (s) au-delà duquel un fichier est éligible au GC. Doit dépasser le TTL servi. */
-    const GC_MAX_AGE = 3600;
+    public const GC_MAX_AGE = 3600;
 
     /** Probabilité 1/N de déclencher un passage de GC lors d'un set(). */
-    const GC_PROBABILITY = 100;
+    public const GC_PROBABILITY = 100;
 
     /** Borne du nombre de suppressions par passage de GC (coût O(n) maîtrisé). */
-    const GC_MAX_DELETIONS = 200;
+    public const GC_MAX_DELETIONS = 200;
 
     /** @var string Dossier de cache (avec `/` final) */
     private $dir;

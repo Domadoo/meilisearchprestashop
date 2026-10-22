@@ -857,7 +857,7 @@ class Meilisearchprestashop extends Module
      */
     private function isWellFormedSearchResponse($response)
     {
-        return $response instanceof \stdClass
+        return $response instanceof stdClass
             && isset($response->hits)
             && is_array($response->hits);
     }

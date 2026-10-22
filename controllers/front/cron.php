@@ -32,7 +32,15 @@ class MeilisearchprestashopCronModuleFrontController extends ModuleFrontControll
     {
         $token = Tools::getValue('token');
         $expectedToken = Configuration::get('MEILISEARCHPRESTASHOP_TOKEN_CRON');
-        if (empty($token) || empty($expectedToken) || $token !== $expectedToken) {
+
+        // hash_equals : comparaison à temps constant. Un `!==` sort au premier octet
+        // différent, ce qui laisse mesurer la longueur du préfixe correct et reconstruire
+        // le token octet par octet. Les deux opérandes doivent être des chaînes :
+        // Tools::getValue() peut renvoyer un tableau, Configuration::get() renvoie false
+        // si la clé n'existe pas.
+        if (!is_string($token) || $token === ''
+            || !is_string($expectedToken) || $expectedToken === ''
+            || !hash_equals($expectedToken, $token)) {
             PrestaShopLogger::addLog($this->l('Illegal access to CRON Meilisearch'), 3);
             http_response_code(403);
             exit;
